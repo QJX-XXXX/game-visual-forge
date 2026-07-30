@@ -5,9 +5,6 @@
 Game Visual Forge 是一组独立的 Agent Skills，用于生成 2D Sprite、面向生产的
 2D 地图，以及 Video -> 2D Sprite 动画。
 
-本仓库采用 clean-room 方式实现，不依赖 `agent-sprite-forge`，也不是 Codex
-Plugin。
-
 ### M0 范围
 
 M0 提供版本化数据契约、安全的任务状态、零网络执行计划和三个 Skill 基础骨架。

@@ -5,9 +5,6 @@ English | [简体中文](README.zh-CN.md)
 Game Visual Forge is an independent set of Agent Skills for generating 2D
 sprites, production-oriented 2D maps, and Video -> 2D Sprite animation.
 
-This repository is a clean-room implementation. It does not depend on
-`agent-sprite-forge` and is not a Codex Plugin.
-
 ### M0 scope
 
 M0 provides versioned contracts, safe job state, zero-network planning, and
