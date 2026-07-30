@@ -72,6 +72,28 @@ and solves alpha/foreground separately. It is available with
 off by default because it adds cost and was not better on this sample. These
 figures describe this validation image, not a universal model benchmark.
 
+### Optional delivery normalization
+
+Set `delivery_normalization` when a game needs a consistently sized, anchored
+delivery copy. The normalizer keeps the regular transparent `frames/` output,
+then crops each frame to its visible alpha bounds, applies one shared LANCZOS
+scale for the whole animation, and exports a second bundle under `delivery/`.
+Use `feet` for grounded characters and `center` for props or hovering assets.
+
+```json
+"delivery_normalization": {
+  "canvas_width": 1024,
+  "canvas_height": 1024,
+  "anchor": "feet",
+  "fit_scale": 0.88
+}
+```
+
+This is a delivery-layout step, not a background-removal improvement: it can
+make tiny color fringes less visible but may soften fine antennae, fingers, or
+hair. The manifest records the source bounds and shared scale for the delivery
+bundle.
+
 ### Routing and safety
 
 - native supported -> native path

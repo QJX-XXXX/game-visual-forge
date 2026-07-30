@@ -110,6 +110,48 @@ class RembgRefinement(StrEnum):
     PYMATTING = "pymatting"
 
 
+class DeliveryAnchor(StrEnum):
+    CENTER = "center"
+    FEET = "feet"
+
+
+@dataclass(frozen=True)
+class DeliveryNormalization:
+    canvas_width: int
+    canvas_height: int
+    anchor: DeliveryAnchor = DeliveryAnchor.FEET
+    fit_scale: float = 0.88
+
+    def __post_init__(self) -> None:
+        _require_int(self.canvas_width, "delivery_normalization.canvas_width")
+        _require_int(self.canvas_height, "delivery_normalization.canvas_height")
+        if not isinstance(self.anchor, DeliveryAnchor):
+            raise TypeError("delivery_normalization.anchor must be DeliveryAnchor")
+        if isinstance(self.fit_scale, bool) or not isinstance(self.fit_scale, (int, float)):
+            raise TypeError("delivery_normalization.fit_scale must be a number")
+        if not 0 < float(self.fit_scale) <= 1:
+            raise ValueError("delivery_normalization.fit_scale must be in (0, 1]")
+
+    def to_dict(self) -> dict[str, Any]:
+        return {
+            "canvas_width": self.canvas_width,
+            "canvas_height": self.canvas_height,
+            "anchor": self.anchor.value,
+            "fit_scale": self.fit_scale,
+        }
+
+    @classmethod
+    def from_dict(cls, value: dict[str, Any]) -> "DeliveryNormalization":
+        if not isinstance(value, dict):
+            raise TypeError("delivery_normalization must be an object")
+        return cls(
+            canvas_width=_require_int(value["canvas_width"], "delivery_normalization.canvas_width"),
+            canvas_height=_require_int(value["canvas_height"], "delivery_normalization.canvas_height"),
+            anchor=_require_enum(value.get("anchor", "feet"), DeliveryAnchor, "delivery_normalization.anchor"),
+            fit_scale=value.get("fit_scale", 0.88),
+        )
+
+
 @dataclass(frozen=True)
 class SpriteRequest:
     schema_version: int
@@ -134,6 +176,7 @@ class SpriteRequest:
     background_removal: BackgroundRemoval = BackgroundRemoval.PRESERVE
     chroma_color: str | None = None
     rembg_refinement: RembgRefinement | None = None
+    delivery_normalization: DeliveryNormalization | None = None
     target_engine_notes: str | None = None
 
     def __post_init__(self) -> None:
@@ -212,6 +255,11 @@ class SpriteRequest:
             raise ValueError(
                 "rembg_refinement requires rembg removal with chroma_color"
             )
+        if (
+            self.delivery_normalization is not None
+            and not isinstance(self.delivery_normalization, DeliveryNormalization)
+        ):
+            raise TypeError("delivery_normalization must be DeliveryNormalization")
         _require_optional_string(self.action_name, "action_name")
         _require_optional_string(self.target_engine_notes, "target_engine_notes")
 
@@ -242,6 +290,11 @@ class SpriteRequest:
                 None
                 if self.rembg_refinement is None
                 else self.rembg_refinement.value
+            ),
+            "delivery_normalization": (
+                None
+                if self.delivery_normalization is None
+                else self.delivery_normalization.to_dict()
             ),
             "target_engine_notes": self.target_engine_notes,
         }
@@ -286,6 +339,11 @@ class SpriteRequest:
                     RembgRefinement,
                     "rembg_refinement",
                 )
+            ),
+            delivery_normalization=(
+                None
+                if value.get("delivery_normalization") is None
+                else DeliveryNormalization.from_dict(value["delivery_normalization"])
             ),
             target_engine_notes=_require_optional_string(value.get("target_engine_notes"), "target_engine_notes"),
         )

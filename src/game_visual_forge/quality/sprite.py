@@ -119,6 +119,12 @@ def apply_visual_review(report: QualityReport, payload: dict[str, Any]) -> Quali
 
 
 def artifact_role(path: str) -> str:
+    if path.startswith("delivery/frames/"):
+        return "delivery-frame"
+    if path == "delivery/sprite-sheet.png":
+        return "delivery-sheet"
+    if path == "delivery/preview.gif":
+        return "delivery-gif-preview"
     if path.startswith("frames/"):
         return "frame"
     if path == "sprite-sheet.png":
@@ -130,7 +136,29 @@ def artifact_role(path: str) -> str:
 
 def build_asset_manifest(staging_dir: Path, request: SpriteRequest, record: RawImageRecord, processing: ProcessingResult, report: QualityReport) -> AssetManifest:
     paths = (*processing.frame_paths, *((processing.sheet_path,) if processing.sheet_path else ()), *((processing.gif_path,) if processing.gif_path else ()))
-    output_artifacts = tuple(ArtifactRecord(role=artifact_role(path), path=f"{request.output_dir}/{path}", sha256=sha256_file(staging_dir / PurePosixPath(path))) for path in paths)
+    delivery_paths = (
+        *processing.delivery_frame_paths,
+        *((processing.delivery_sheet_path,) if processing.delivery_sheet_path else ()),
+        *((processing.delivery_gif_path,) if processing.delivery_gif_path else ()),
+    )
+    output_artifacts = tuple(
+        ArtifactRecord(
+            role=artifact_role(path),
+            path=f"{request.output_dir}/{path}",
+            sha256=sha256_file(staging_dir / PurePosixPath(path)),
+        )
+        for path in (*paths, *delivery_paths)
+    )
     artifacts = (ArtifactRecord(role="source", path=record.path, sha256=record.sha256), *output_artifacts)
     quality_status = "failed" if report.deterministic_status is QualityStatus.FAILED or report.visual_status is QualityStatus.FAILED else "passed" if report.deterministic_status is QualityStatus.PASSED and report.visual_status is QualityStatus.PASSED else "needs_attention"
-    return AssetManifest(1, request.asset_id, record.source_type.value, record.provider.value if record.provider else None, record.model, artifacts, processing.processing_steps, quality_status)
+    return AssetManifest(
+        1,
+        request.asset_id,
+        record.source_type.value,
+        record.provider.value if record.provider else None,
+        record.model,
+        artifacts,
+        processing.processing_steps,
+        quality_status,
+        processing.delivery_metadata,
+    )

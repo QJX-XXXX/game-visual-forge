@@ -1,10 +1,13 @@
 from __future__ import annotations
 
 import unittest
+from dataclasses import replace
 
 from tests._bootstrap import ROOT  # noqa: F401
 from game_visual_forge.contracts import (
     BackgroundRemoval,
+    DeliveryAnchor,
+    DeliveryNormalization,
     RembgRefinement,
     SpriteLayout,
     SpriteOutput,
@@ -91,6 +94,23 @@ class SpriteRequestTests(unittest.TestCase):
         payload.pop("rembg_refinement")
         request = SpriteRequest.from_dict(payload)
         self.assertIsNone(request.rembg_refinement)
+
+    def test_delivery_normalization_round_trips(self) -> None:
+        request = replace(
+            make_request(),
+            delivery_normalization=DeliveryNormalization(
+                canvas_width=512,
+                canvas_height=768,
+                anchor=DeliveryAnchor.FEET,
+                fit_scale=0.88,
+            ),
+        )
+        restored = SpriteRequest.from_dict(request.to_dict())
+        self.assertEqual(restored, request)
+
+    def test_delivery_normalization_rejects_invalid_fit_scale(self) -> None:
+        with self.assertRaisesRegex(ValueError, "fit_scale"):
+            DeliveryNormalization(canvas_width=64, canvas_height=64, fit_scale=1.1)
 
     def test_refinement_requires_rembg_with_chroma_color(self) -> None:
         payload = make_request().to_dict()

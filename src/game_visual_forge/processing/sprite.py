@@ -8,6 +8,7 @@ from typing import Any
 from game_visual_forge.contracts import RawImageRecord, SpriteRequest
 from game_visual_forge.processing.alignment import align_bottom_center
 from game_visual_forge.processing.background import remove_background
+from game_visual_forge.processing.delivery import normalize_delivery_frames
 from game_visual_forge.processing.export import export_frames, export_gif, export_sheet
 from game_visual_forge.processing.frames import split_grid, trim_alpha
 from game_visual_forge.processing.images import _load_pillow, verify_image_unchanged
@@ -22,6 +23,10 @@ class ProcessingResult:
     gif_path: str | None
     processing_steps: tuple[str, ...]
     needs_attention: bool
+    delivery_frame_paths: tuple[str, ...] = ()
+    delivery_sheet_path: str | None = None
+    delivery_gif_path: str | None = None
+    delivery_metadata: dict[str, Any] | None = None
 
     def to_dict(self) -> dict[str, Any]:
         return {
@@ -32,6 +37,10 @@ class ProcessingResult:
             "gif_path": self.gif_path,
             "processing_steps": list(self.processing_steps),
             "needs_attention": self.needs_attention,
+            "delivery_frame_paths": list(self.delivery_frame_paths),
+            "delivery_sheet_path": self.delivery_sheet_path,
+            "delivery_gif_path": self.delivery_gif_path,
+            "delivery_metadata": self.delivery_metadata,
         }
 
     @classmethod
@@ -48,6 +57,10 @@ class ProcessingResult:
             gif_path=None if value.get("gif_path") is None else str(value["gif_path"]),
             processing_steps=tuple(str(item) for item in value["processing_steps"]),
             needs_attention=value["needs_attention"],
+            delivery_frame_paths=tuple(str(item) for item in value.get("delivery_frame_paths", [])),
+            delivery_sheet_path=None if value.get("delivery_sheet_path") is None else str(value["delivery_sheet_path"]),
+            delivery_gif_path=None if value.get("delivery_gif_path") is None else str(value["delivery_gif_path"]),
+            delivery_metadata=value.get("delivery_metadata"),
         )
 
     @classmethod
@@ -61,6 +74,10 @@ class ProcessingResult:
         *,
         processing_steps: tuple[str, ...],
         needs_attention: bool,
+        delivery_frame_paths: tuple[Path, ...] = (),
+        delivery_sheet_path: Path | None = None,
+        delivery_gif_path: Path | None = None,
+        delivery_metadata: dict[str, Any] | None = None,
     ) -> "ProcessingResult":
         root = repo_root.resolve()
         staging_relative = PurePosixPath(staging.resolve().relative_to(root).as_posix()).as_posix()
@@ -74,6 +91,10 @@ class ProcessingResult:
             None if gif_path is None else relative(gif_path),
             processing_steps,
             needs_attention,
+            tuple(relative(path) for path in delivery_frame_paths),
+            None if delivery_sheet_path is None else relative(delivery_sheet_path),
+            None if delivery_gif_path is None else relative(delivery_gif_path),
+            delivery_metadata,
         )
 
 
@@ -96,14 +117,46 @@ def process_sprite(
     frame_paths = export_frames(aligned, staging)
     sheet_path = export_sheet(aligned, request, staging)
     gif_path = export_gif(aligned, request, staging)
+    delivery_frame_paths: tuple[Path, ...] = ()
+    delivery_sheet_path: Path | None = None
+    delivery_gif_path: Path | None = None
+    delivery_metadata: dict[str, Any] | None = None
+    processing_steps = [
+        "verify-source",
+        background.method,
+        "split-grid",
+        "trim-alpha",
+        "align-bottom-center",
+    ]
+    if request.delivery_normalization is not None:
+        delivery = normalize_delivery_frames(aligned, request.delivery_normalization)
+        delivery_dir = staging / "delivery"
+        delivery_frame_paths = export_frames(delivery.frames, delivery_dir)
+        delivery_sheet_path = export_sheet(delivery.frames, request, delivery_dir)
+        delivery_gif_path = export_gif(delivery.frames, request, delivery_dir)
+        delivery_metadata = {
+            "canvas_width": request.delivery_normalization.canvas_width,
+            "canvas_height": request.delivery_normalization.canvas_height,
+            "anchor": request.delivery_normalization.anchor.value,
+            "fit_scale": request.delivery_normalization.fit_scale,
+            "scale": delivery.scale,
+            "source_bounds": [list(bounds) for bounds in delivery.source_bounds],
+        }
+        processing_steps.append(
+            f"delivery-normalize-{request.delivery_normalization.anchor.value}"
+        )
     return ProcessingResult.from_paths(
         repo_root,
         staging,
         frame_paths,
         sheet_path,
         gif_path,
-        processing_steps=("verify-source", background.method, "split-grid", "trim-alpha", "align-bottom-center"),
+        processing_steps=tuple(processing_steps),
         needs_attention=background.needs_attention,
+        delivery_frame_paths=delivery_frame_paths,
+        delivery_sheet_path=delivery_sheet_path,
+        delivery_gif_path=delivery_gif_path,
+        delivery_metadata=delivery_metadata,
     )
 
 

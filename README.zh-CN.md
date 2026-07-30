@@ -1,5 +1,23 @@
 # Game Visual Forge
 
+### 可选：标准化交付尺寸
+
+当游戏需要统一尺寸和锚点时，可在请求中设置 `delivery_normalization`。流程会保留原有的
+透明 `frames/` 输出，然后按每帧可见 alpha 边界裁切，对整个动画使用同一缩放比例，并在
+`delivery/` 下额外导出标准化交付包。落地角色使用 `feet`，道具或悬浮资产使用 `center`。
+
+```json
+"delivery_normalization": {
+  "canvas_width": 1024,
+  "canvas_height": 1024,
+  "anchor": "feet",
+  "fit_scale": 0.88
+}
+```
+
+这是交付布局步骤，不会改善抠图本身；它可能让细微色边不那么显眼，但也会柔化细天线、手指或
+发丝。manifest 会记录标准化交付包的源裁切边界和共享缩放比例。
+
 [English](README.md) | 简体中文
 
 Game Visual Forge 是一组独立的 Agent Skills，用于生成 2D Sprite、面向生产的

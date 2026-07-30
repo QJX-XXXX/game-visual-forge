@@ -12,6 +12,8 @@ from PIL import Image, ImageDraw, ImageFilter
 from tests._bootstrap import ROOT  # noqa: F401
 from game_visual_forge.contracts import (
     BackgroundRemoval,
+    DeliveryAnchor,
+    DeliveryNormalization,
     RembgRefinement,
     SpriteOutput,
 )
@@ -98,6 +100,34 @@ class SpriteProcessingTests(unittest.TestCase):
                 with Image.open(staging / path) as frame:
                     sizes.add(frame.size)
             self.assertEqual(len(sizes), 1)
+
+    def test_delivery_normalization_preserves_original_and_exports_delivery_bundle(self) -> None:
+        with tempfile.TemporaryDirectory() as directory:
+            root = Path(directory)
+            source = self.make_image(root)
+            request = replace(
+                self.request(),
+                delivery_normalization=DeliveryNormalization(
+                    canvas_width=16,
+                    canvas_height=20,
+                    anchor=DeliveryAnchor.FEET,
+                    fit_scale=0.8,
+                ),
+            )
+            record = ingest_image(root, source, request_source_type(request), "a" * 64)
+            result = process_sprite(root, request, record, root / request.output_dir)
+            staging = root / result.staging_dir
+
+            self.assertEqual(len(result.frame_paths), 4)
+            self.assertEqual(len(result.delivery_frame_paths), 4)
+            self.assertTrue((staging / "frames" / "frame-000.png").is_file())
+            self.assertTrue((staging / "delivery" / "frames" / "frame-000.png").is_file())
+            self.assertTrue((staging / "delivery" / "sprite-sheet.png").is_file())
+            self.assertTrue((staging / "delivery" / "preview.gif").is_file())
+            with Image.open(staging / result.delivery_frame_paths[0]) as frame:
+                self.assertEqual(frame.size, (16, 20))
+            self.assertEqual(result.delivery_metadata["anchor"], "feet")
+            self.assertIn("delivery-normalize-feet", result.processing_steps)
 
     def test_missing_rembg_preserves_background_with_attention_flag(self) -> None:
         request = replace(self.request(), background_removal=BackgroundRemoval.REMBG, chroma_color=None)

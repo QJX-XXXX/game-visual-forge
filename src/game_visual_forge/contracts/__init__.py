@@ -16,6 +16,8 @@ from .provider import (
 )
 from .sprite import (
     BackgroundRemoval,
+    DeliveryAnchor,
+    DeliveryNormalization,
     PromptPackage,
     RawImageRecord,
     RembgRefinement,
@@ -51,6 +53,8 @@ __all__ = [
     "SourcePreference",
     "SubmissionReceipt",
     "BackgroundRemoval",
+    "DeliveryAnchor",
+    "DeliveryNormalization",
     "RembgRefinement",
     "PromptPackage",
     "RawImageRecord",

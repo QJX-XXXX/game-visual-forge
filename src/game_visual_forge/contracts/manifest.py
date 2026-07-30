@@ -43,6 +43,7 @@ class AssetManifest:
     artifacts: tuple[ArtifactRecord, ...]
     processing_steps: tuple[str, ...]
     quality_status: str
+    delivery_normalization: dict[str, Any] | None = None
 
     def __post_init__(self) -> None:
         if self.schema_version != 1:
@@ -55,6 +56,8 @@ class AssetManifest:
             raise ValueError("unsupported quality_status")
         if not all(isinstance(item, ArtifactRecord) for item in self.artifacts):
             raise TypeError("artifacts must contain ArtifactRecord objects")
+        if self.delivery_normalization is not None and not isinstance(self.delivery_normalization, dict):
+            raise TypeError("delivery_normalization must be an object")
         paths = [item.path for item in self.artifacts]
         if len(paths) != len(set(paths)):
             raise ValueError("artifact paths must be unique")
@@ -69,6 +72,7 @@ class AssetManifest:
             "artifacts": [artifact.to_dict() for artifact in self.artifacts],
             "processing_steps": list(self.processing_steps),
             "quality_status": self.quality_status,
+            "delivery_normalization": self.delivery_normalization,
         }
 
     @classmethod
@@ -94,4 +98,5 @@ class AssetManifest:
             ),
             processing_steps=tuple(value["processing_steps"]),
             quality_status=value["quality_status"],
+            delivery_normalization=value.get("delivery_normalization"),
         )

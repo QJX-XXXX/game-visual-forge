@@ -8,7 +8,12 @@ from pathlib import Path
 from PIL import Image
 
 from tests._bootstrap import ROOT  # noqa: F401
-from game_visual_forge.contracts import QualityStatus, SourceType
+from game_visual_forge.contracts import (
+    DeliveryAnchor,
+    DeliveryNormalization,
+    QualityStatus,
+    SourceType,
+)
 from game_visual_forge.processing.images import ingest_image
 from game_visual_forge.processing.sprite import ProcessingResult
 from game_visual_forge.quality import apply_visual_review, build_asset_manifest, validate_sprite_outputs
@@ -53,6 +58,37 @@ class SpriteQualityTests(unittest.TestCase):
         self.assertEqual(len(manifest.artifacts), 3)
         self.assertEqual(manifest.artifacts[0].role, "source")
         self.assertEqual(len({item.path for item in manifest.artifacts}), 3)
+
+    def test_manifest_records_delivery_normalization_metadata(self) -> None:
+        root, staging, request, record, processing = self.make_data()
+        delivery_dir = staging / "delivery" / "frames"
+        delivery_dir.mkdir(parents=True)
+        Image.new("RGBA", (16, 20), (0, 0, 0, 0)).save(delivery_dir / "frame-000.png")
+        processing = replace(
+            processing,
+            delivery_frame_paths=("delivery/frames/frame-000.png",),
+            delivery_metadata={
+                "canvas_width": 16,
+                "canvas_height": 20,
+                "anchor": "feet",
+                "fit_scale": 0.8,
+                "scale": 2.0,
+                "source_bounds": [[0, 0, 4, 4]],
+            },
+        )
+        request = replace(
+            request,
+            delivery_normalization=DeliveryNormalization(
+                canvas_width=16,
+                canvas_height=20,
+                anchor=DeliveryAnchor.FEET,
+                fit_scale=0.8,
+            ),
+        )
+        report = validate_sprite_outputs(staging, request, record, processing)
+        manifest = build_asset_manifest(staging, request, record, processing, report)
+        self.assertEqual(manifest.delivery_normalization, processing.delivery_metadata)
+        self.assertEqual(manifest.artifacts[-1].role, "delivery-frame")
 
 
 if __name__ == "__main__":
