@@ -6,6 +6,17 @@ from tests._bootstrap import ROOT
 
 
 class RepositoryContractTests(unittest.TestCase):
+    def test_readmes_have_reciprocal_language_links(self) -> None:
+        english = (ROOT / "README.md").read_text(encoding="utf-8")
+        chinese_path = ROOT / "README.zh-CN.md"
+
+        self.assertTrue(chinese_path.is_file())
+        chinese = chinese_path.read_text(encoding="utf-8")
+        self.assertIn("[简体中文](README.zh-CN.md)", english)
+        self.assertIn("[English](README.md)", chinese)
+        self.assertNotIn("\n## 中文\n", english)
+        self.assertNotIn("\n## English\n", chinese)
+
     def test_repository_is_skills_only_and_not_a_plugin(self) -> None:
         self.assertFalse((ROOT / ".codex-plugin").exists())
         self.assertFalse((ROOT / ".gitmodules").exists())
