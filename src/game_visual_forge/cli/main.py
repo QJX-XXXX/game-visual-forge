@@ -4,6 +4,7 @@ import argparse
 import json
 import sys
 from pathlib import Path
+from pathlib import PurePosixPath
 from typing import Any
 
 from game_visual_forge.cli.planning import build_execution_plan
@@ -26,10 +27,17 @@ def build_parser() -> argparse.ArgumentParser:
     return parser
 
 
+def _relative_posix_path(path: Path, *, root: Path) -> str:
+    return PurePosixPath(path.resolve().relative_to(root.resolve()).as_posix()).as_posix()
+
+
 def run_dry_run(brief_path: Path, out_dir: Path, now: str) -> dict[str, Any]:
     brief = AssetBrief.from_dict(load_json(brief_path))
     plan = build_execution_plan(brief)
     fingerprint = fingerprint_request(brief.to_dict())
+    out_dir = out_dir.resolve()
+    plan_path = out_dir / "execution-plan.json"
+    state_path = out_dir / "job-state.json"
     state = JobState(
         schema_version=1,
         job_id=f"job-{brief.asset_id}",
@@ -39,14 +47,14 @@ def run_dry_run(brief_path: Path, out_dir: Path, now: str) -> dict[str, Any]:
         updated_at=now,
         request_fingerprint=fingerprint,
     )
-    dump_json(out_dir.resolve() / "execution-plan.json", plan.to_dict())
-    save_job(out_dir.resolve() / "job-state.json", state)
+    dump_json(plan_path, plan.to_dict())
+    save_job(state_path, state)
     return {
         "schema_version": 1,
         "status": state.status.value,
         "dry_run": True,
-        "plan_path": str((out_dir.resolve() / "execution-plan.json")),
-        "state_path": str((out_dir.resolve() / "job-state.json")),
+        "plan_path": _relative_posix_path(plan_path, root=out_dir),
+        "state_path": _relative_posix_path(state_path, root=out_dir),
     }
 
 
