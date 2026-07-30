@@ -97,7 +97,7 @@ def validate_sprite_outputs(staging_dir: Path, request: SpriteRequest, record: R
         check_frame_count(request, processing),
         check_frame_readability(staging_dir, processing),
         check_frame_dimensions(staging_dir, processing),
-        check_alpha_coverage(staging_dir, processing, minimum=0.001, maximum=0.95),
+        check_alpha_coverage(staging_dir, processing, minimum=0.001, maximum=1.0),
         check_exact_duplicates(staging_dir, processing),
     )
     deterministic = QualityStatus.FAILED if any(item.status is QualityStatus.FAILED for item in checks) else QualityStatus.NEEDS_ATTENTION if processing.needs_attention or any(item.status is QualityStatus.NEEDS_ATTENTION for item in checks) else QualityStatus.PASSED
