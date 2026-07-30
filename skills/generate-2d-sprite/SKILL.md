@@ -5,14 +5,51 @@ description: "Generate production-oriented 2D game assets from natural-language 
 
 # Generate 2D Sprite
 
-先从用户请求建立并确认 `AssetBrief`。M0 只生成零网络 `dry-run`，不生成媒体。
-图片来源默认先使用 Agent 原生工具。原生不支持时，询问是否使用第三方；原生生成失败或质量不达标时，询问“继续尝试原生”或“使用第三方”。
-进入第三方流程后，每次都由用户选择即梦或通义万相，不得根据凭证、登录状态或历史自动选择。
-第三方预检和费用摘要完成后必须取得独立付费确认。不得自动安装工具，不得自动重新提交失败或 `submission_unknown` 的付费任务。
-用户提供已有图片时跳过生成。
-确定性操作统一委托给：
+使用共享 CLI 编排二维精灵生成、导入、处理和质量验证。Skill 负责理解用户请求、调用 Agent 原生图像工具和取得用户选择；本地运行时负责确定性处理。不得在 Skill 中复制图像处理实现或凭据。
+
+## 来源顺序
+
+1. 已有图像优先，直接选择 `existing-file` 并执行 `sprite ingest`。
+2. 没有已有图像时，检查 Agent 是否提供合适的原生图像工具。
+3. 原生能力可用时使用 Agent 原生图像工具，生成提示词包后把本地图像交回 `RawImageRecord` 流程。
+4. 原生能力不支持时，要求用户选择即梦、万相、已配置的本地图像工具或已有图像。
+5. 原生生成失败或质量不合格时，要求用户选择继续尝试原生、切换来源、接受当前图像并继续，或停止。
+6. 进入第三方流程后，每次都由用户选择即梦或万相；不得根据凭据、登录状态或历史选择自动选择服务商。
+
+## 付费门禁
+
+第三方提交前，展示并确认服务商、模型、非敏感参数、数量、费用、币种和请求指纹。每份确认只授权一次提交，必须在调用外部 CLI 前消费并持久化。
+
+不得自动安装依赖、CLI、模型或凭据。不得自动重新提交失败或 `submission_unknown` 的任务；未知提交只能查询或人工核对。
+
+## CLI 命令
+
+所有命令都输出版本化 JSON；`plan`、`route` 不访问网络，`ingest`、`process`、`validate` 只操作本地文件。
 
 ```powershell
-python skills/generate-2d-sprite/scripts/run.py dry-run `
-  --brief <brief.json> --out-dir <output> --now <utc-rfc3339>
+python skills/generate-2d-sprite/scripts/run.py sprite plan `
+  --request <request.json> --out-dir <output> --now <utc-rfc3339>
+
+python skills/generate-2d-sprite/scripts/run.py sprite route `
+  --request <output/sprite-request.json> --capabilities <capabilities.json> `
+  --out <output/source-decision.json> --state <output/job-state.json> `
+  --now <utc-rfc3339>
+
+python skills/generate-2d-sprite/scripts/run.py sprite ingest `
+  --request <output/sprite-request.json> --decision <output/source-decision.json> `
+  --image <repo-relative-image> --repo-root <repo> --out <output/raw-image.json> `
+  --state <output/job-state.json> --now <utc-rfc3339>
+
+python skills/generate-2d-sprite/scripts/run.py sprite process `
+  --request <output/sprite-request.json> --raw-image <output/raw-image.json> `
+  --repo-root <repo> --out-dir <repo>/outputs/<asset-id> `
+  --state <output/job-state.json> --now <utc-rfc3339>
+
+python skills/generate-2d-sprite/scripts/run.py sprite validate `
+  --request <output/sprite-request.json> --raw-image <output/raw-image.json> `
+  --processing-result <staging>/processing-result.json --repo-root <repo> `
+  --staging-dir <staging> --final-dir <repo>/outputs/<asset-id> `
+  --state <output/job-state.json> --now <utc-rfc3339>
 ```
+
+首次验证会保留暂存目录并进入 `needs_attention`，等待人工视觉审查；提供完整的六项视觉审查记录后再次运行 `validate`，通过才发布最终目录。

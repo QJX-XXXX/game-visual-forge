@@ -1,4 +1,4 @@
 interface:
   display_name: "Generate 2D Sprite"
-  short_description: "Plan and validate production-oriented 2D game assets"
-  default_prompt: "Use $generate-2d-sprite to create and validate a zero-network AssetBrief and execution Dry-run."
+  short_description: "Route, process, and validate production-ready 2D sprites"
+  default_prompt: "Use $generate-2d-sprite to route the image source explicitly, process local sprite media, and produce a quality report without silent paid submission."
