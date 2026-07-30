@@ -8,4 +8,5 @@ dist/
 *.egg-info/
 .env
 outputs/
-
+.superpowers/
+docs/
