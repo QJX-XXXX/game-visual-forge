@@ -81,6 +81,32 @@ class AssetContractTests(unittest.TestCase):
                 reference_paths=("references/../secret.png",),
             )
 
+    def test_asset_paths_reject_absolute_posix_and_windows_drive_paths(self) -> None:
+        for output_dir in ("/abs/path", "C:/abs/path"):
+            with self.subTest(field="output_dir", value=output_dir):
+                with self.assertRaisesRegex(ValueError, "output_dir"):
+                    AssetBrief(
+                        1,
+                        "item",
+                        AssetKind.SPRITE,
+                        "prompt",
+                        output_dir,
+                        SourcePreference.AUTO,
+                    )
+
+        for reference_path in ("/abs/path", "C:/abs/path"):
+            with self.subTest(field="reference_paths", value=reference_path):
+                with self.assertRaisesRegex(ValueError, "reference_paths"):
+                    AssetBrief(
+                        1,
+                        "item",
+                        AssetKind.SPRITE,
+                        "prompt",
+                        "outputs/item",
+                        SourcePreference.AUTO,
+                        reference_paths=(reference_path,),
+                    )
+
     def test_asset_paths_are_normalized_to_posix(self) -> None:
         brief = AssetBrief(
             schema_version=1,
@@ -121,6 +147,16 @@ class AssetContractTests(unittest.TestCase):
                 path="outputs/hero-run/../escape.png",
                 sha256="b" * 64,
             )
+
+    def test_manifest_artifact_path_rejects_absolute_posix_and_windows_drive_paths(self) -> None:
+        for artifact_path in ("/abs/path", "C:/abs/path"):
+            with self.subTest(value=artifact_path):
+                with self.assertRaisesRegex(ValueError, "path"):
+                    ArtifactRecord(
+                        role="source",
+                        path=artifact_path,
+                        sha256="b" * 64,
+                    )
 
     def test_dump_json_writes_deterministic_sorted_utf8_object_with_trailing_newline(self) -> None:
         with tempfile.TemporaryDirectory() as directory:
