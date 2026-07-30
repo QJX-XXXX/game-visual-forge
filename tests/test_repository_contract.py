@@ -17,6 +17,11 @@ class RepositoryContractTests(unittest.TestCase):
             self.assertIn("copy", guide.lower())
             self.assertIn("skills", guide.lower())
             self.assertIn("does not install dependencies", guide.lower())
+            self.assertTrue(
+                "src/" in guide or "full repository" in guide.lower(),
+                f"{agent} guide must preserve src/ or require a full repository copy",
+            )
+            self.assertNotIn("copy each directory under `skills/`", guide.lower())
             self.assertNotIn("curl |", guide.lower())
             self.assertNotIn("invoke-webrequest", guide.lower())
 

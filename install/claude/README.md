@@ -8,15 +8,15 @@ This M0 repository ships three manual Skills:
 
 Manual install only:
 
-- Copy each directory under `skills/` into the personal or repository-local Claude Skills location you use.
-- Keep this repository available after the copy. The launcher scripts resolve the shared repository `src/` package at runtime.
-- If your Claude setup supports repository-local Skills, you can keep the `skills/` directories in this repository instead of copying them elsewhere.
-- Restart the Claude session or task after the copy so Skill discovery reloads.
+- Supported workflow A: repository-local use. Keep this repository root intact and use its existing `skills/` and `src/` layout directly if your Claude setup supports repository-local Skills.
+- Supported workflow B: copy the full repository layout into a new root that preserves the shared runtime. At minimum, copy all three directories under `skills/`, the repository `src/` tree, and the required package files such as `pyproject.toml`, `README.md`, and any referenced docs/examples you want to keep with the copied root.
+- Copying only an individual Skill directory is not executable by itself unless you also provide a matching `src/` tree and package layout that the launcher can resolve.
+- Restart the Claude session or task after the repository-local setup or full repository copy so Skill discovery reloads.
 
 Authority and compatibility notes:
 
 - `SKILL.md` is the authoritative instruction file for Claude.
-- `agents/openai.yaml` is ignored by Claude and is present only for Codex-side metadata compatibility in this repository.
+- `agents/openai.yaml` is ignored by Claude. It may remain in a copied full repository for Codex-side metadata compatibility, but Claude does not use it to execute the Skill.
 
 M0 safety limits:
 
