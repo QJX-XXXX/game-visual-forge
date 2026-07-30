@@ -1,4 +1,5 @@
 from .asset import AssetBrief, AssetKind, SourcePreference
+from .execution import ExecutionPlan, PlanStep
 from .job import JobState, JobStatus
 from .manifest import ArtifactRecord, AssetManifest
 from .provider import (
@@ -17,8 +18,10 @@ __all__ = [
     "AssetBrief",
     "AssetKind",
     "AssetManifest",
+    "ExecutionPlan",
     "JobState",
     "JobStatus",
+    "PlanStep",
     "CliProviderProtocol",
     "CostEstimate",
     "ExternalProvider",
