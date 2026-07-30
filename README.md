@@ -37,8 +37,10 @@ M0 limitations:
 
 Routing rules in M0:
 
-- Preferred native path: ask for Agent-native tooling first when a later milestone supports real generation.
-- Third-party path: if native support is unavailable or rejected, the user must explicitly choose the third-party route each time.
+- native supported -> native path
+- native unsupported -> user chooses third party/local/existing
+- native failure or quality rejection -> defined fallback/choice only after confirmation
+- every Dreamina/Wanxiang third-party attempt has explicit provider/model/parameter/cost confirmation and no silent resubmission
 - Future third-party adapters: Dreamina and Wanxiang are planned adapter targets, but they are not implemented in M0.
 - Future Video -> Sprite scope: later milestones may cover provider-backed video generation, existing MP4 ingestion, extraction, cleanup, alignment, and export workflows. M0 only plans the dry-run.
 
@@ -53,5 +55,5 @@ Verification commands:
 
 ```powershell
 python -m unittest discover -s tests -v
-python -m game_visual_forge dry-run --brief examples/briefs/sprite-auto.json --out-dir outputs/demo --now 2026-07-30T00:00:00Z
+python skills/generate-2d-sprite/scripts/run.py dry-run --brief examples/briefs/sprite-auto.json --out-dir outputs/demo --now 2026-07-30T00:00:00Z
 ```
