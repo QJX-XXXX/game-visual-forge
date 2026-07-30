@@ -4,6 +4,7 @@ import unittest
 
 from tests._bootstrap import ROOT  # noqa: F401
 from game_visual_forge.cli.planning import build_execution_plan
+from game_visual_forge.contracts import ExecutionPlan, PlanStep
 from game_visual_forge.contracts import AssetBrief, AssetKind, SourcePreference
 
 
@@ -20,6 +21,37 @@ def brief(source: SourcePreference) -> AssetBrief:
 
 
 class ExecutionPlanTests(unittest.TestCase):
+    def make_step(
+        self,
+        *,
+        step_id: str = "step-01",
+        depends_on: tuple[str, ...] = (),
+        requires_confirmation: bool = False,
+    ) -> PlanStep:
+        return PlanStep(
+            step_id=step_id,
+            action="generate-agent-native",
+            owner="agent",
+            depends_on=depends_on,
+            requires_confirmation=requires_confirmation,
+        )
+
+    def make_plan(
+        self,
+        *,
+        schema_version: int = 1,
+        dry_run: bool = True,
+        steps: tuple[PlanStep, ...] | None = None,
+    ) -> ExecutionPlan:
+        return ExecutionPlan(
+            schema_version=schema_version,
+            plan_id="plan-hero-run",
+            asset_id="hero-run",
+            source_preference="auto",
+            dry_run=dry_run,
+            steps=steps if steps is not None else (self.make_step(),),
+        )
+
     def test_auto_source_starts_with_agent_native_capability_check(self) -> None:
         plan = build_execution_plan(brief(SourcePreference.AUTO))
         self.assertEqual(plan.steps[0].action, "check-agent-native")
@@ -42,6 +74,56 @@ class ExecutionPlanTests(unittest.TestCase):
     def test_plan_has_no_network_execution_flag(self) -> None:
         plan = build_execution_plan(brief(SourcePreference.WANXIANG))
         self.assertTrue(plan.dry_run)
+
+    def test_schema_version_rejected_on_construction(self) -> None:
+        with self.assertRaisesRegex(ValueError, "schema_version must be 1"):
+            self.make_plan(schema_version=2)
+
+    def test_constructor_rejects_out_of_order_dependencies(self) -> None:
+        with self.assertRaisesRegex(ValueError, "step dependencies must precede step-01"):
+            self.make_plan(steps=(self.make_step(depends_on=("step-02",)),))
+
+    def test_from_dict_rejects_non_boolean_dry_run(self) -> None:
+        with self.assertRaisesRegex(TypeError, "dry_run must be a boolean"):
+            ExecutionPlan.from_dict(
+                {
+                    "schema_version": 1,
+                    "plan_id": "plan-hero-run",
+                    "asset_id": "hero-run",
+                    "source_preference": "auto",
+                    "dry_run": "false",
+                    "steps": [
+                        {
+                            "step_id": "step-01",
+                            "action": "check-agent-native",
+                            "owner": "agent",
+                            "depends_on": [],
+                            "requires_confirmation": False,
+                        }
+                    ],
+                }
+            )
+
+    def test_from_dict_rejects_non_boolean_requires_confirmation(self) -> None:
+        with self.assertRaisesRegex(TypeError, "requires_confirmation must be a boolean"):
+            ExecutionPlan.from_dict(
+                {
+                    "schema_version": 1,
+                    "plan_id": "plan-hero-run",
+                    "asset_id": "hero-run",
+                    "source_preference": "auto",
+                    "dry_run": True,
+                    "steps": [
+                        {
+                            "step_id": "step-01",
+                            "action": "check-agent-native",
+                            "owner": "agent",
+                            "depends_on": [],
+                            "requires_confirmation": "false",
+                        }
+                    ],
+                }
+            )
 
 
 if __name__ == "__main__":
