@@ -26,6 +26,77 @@ class JobStateTests(unittest.TestCase):
             request_fingerprint="a" * 64,
         )
 
+    def test_fractional_second_utc_timestamps_are_accepted(self) -> None:
+        state = JobState(
+            schema_version=1,
+            job_id="job-hero-run",
+            asset_id="hero-run",
+            status=JobStatus.PLANNED,
+            created_at="2026-07-30T00:00:00.123Z",
+            updated_at="2026-07-30T00:00:00.123456Z",
+            request_fingerprint="a" * 64,
+        )
+        self.assertEqual(state.created_at, "2026-07-30T00:00:00.123Z")
+        self.assertEqual(state.updated_at, "2026-07-30T00:00:00.123456Z")
+
+    def test_non_utc_or_malformed_timestamps_are_rejected(self) -> None:
+        invalid_values = (
+            "2026-07-30T00:00:00",
+            "2026-07-30T00:00:00+00:00",
+            "2026-07-30T00:00:00.123+00:00",
+            "2026-07-30 00:00:00Z",
+            "2026-07-30T00:00Z",
+            "2026-07-30T00:00:00.z",
+        )
+
+        for value in invalid_values:
+            with self.subTest(value=value):
+                with self.assertRaisesRegex(ValueError, "timestamp|timestamps"):
+                    JobState(
+                        schema_version=1,
+                        job_id="job-hero-run",
+                        asset_id="hero-run",
+                        status=JobStatus.PLANNED,
+                        created_at=value,
+                        updated_at="2026-07-30T00:00:00Z",
+                        request_fingerprint="a" * 64,
+                    )
+
+    def test_artifact_paths_are_normalized_to_posix(self) -> None:
+        state = JobState(
+            schema_version=1,
+            job_id="job-hero-run",
+            asset_id="hero-run",
+            status=JobStatus.PLANNED,
+            created_at="2026-07-30T00:00:00Z",
+            updated_at="2026-07-30T00:00:00Z",
+            request_fingerprint="a" * 64,
+            artifact_paths=(r"outputs\hero-run\sheet.png",),
+        )
+        self.assertEqual(state.artifact_paths, ("outputs/hero-run/sheet.png",))
+
+    def test_artifact_paths_reject_escapes_and_absolute_paths(self) -> None:
+        invalid_paths = (
+            "../escape.png",
+            "outputs/hero-run/../escape.png",
+            "/abs/path.png",
+            "C:/abs/path.png",
+        )
+
+        for path in invalid_paths:
+            with self.subTest(path=path):
+                with self.assertRaisesRegex(ValueError, "artifact_paths"):
+                    JobState(
+                        schema_version=1,
+                        job_id="job-hero-run",
+                        asset_id="hero-run",
+                        status=JobStatus.PLANNED,
+                        created_at="2026-07-30T00:00:00Z",
+                        updated_at="2026-07-30T00:00:00Z",
+                        request_fingerprint="a" * 64,
+                        artifact_paths=(path,),
+                    )
+
     def test_happy_path_transition_is_immutable(self) -> None:
         original = self.make_state()
         updated = transition_job(

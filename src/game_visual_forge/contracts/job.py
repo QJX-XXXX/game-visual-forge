@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import re
 from dataclasses import dataclass
 from datetime import datetime
 from enum import StrEnum
@@ -8,11 +9,18 @@ from typing import Any
 from .pathing import normalize_repo_relative_path
 
 
+_UTC_RFC3339_PATTERN = re.compile(
+    r"^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}(?:\.\d+)?Z$"
+)
+
+
 def _validate_timestamp(value: str, *, field_name: str) -> str:
     if not value.endswith("Z"):
         raise ValueError("timestamps must be UTC RFC 3339 values ending in Z")
+    if not _UTC_RFC3339_PATTERN.fullmatch(value):
+        raise ValueError(f"{field_name} must be a UTC RFC 3339 timestamp")
     try:
-        datetime.strptime(value, "%Y-%m-%dT%H:%M:%SZ")
+        datetime.fromisoformat(value[:-1] + "+00:00")
     except ValueError as error:
         raise ValueError(f"{field_name} must be a UTC RFC 3339 timestamp") from error
     return value
