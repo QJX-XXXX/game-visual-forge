@@ -52,15 +52,10 @@ boundaries but does not include a default or real paid provider adapter.
 - `submission_unknown` may only be queried or manually reconciled.
 - M1 does not implement maps, video, MP4, FFmpeg, automatic dependency installation, or silent paid retries.
 
-### Installation and references
+### Installation
 
 - [Codex installation guide](install/codex/README.md)
 - [Claude installation guide](install/claude/README.md)
-- [M0 design specification](docs/superpowers/specs/2026-07-30-game-visual-forge-agent-skills-design.md)
-- [M0 implementation plan](docs/superpowers/plans/2026-07-30-game-visual-forge-m0-foundation.md)
-- [M1 design specification](docs/superpowers/specs/2026-07-30-game-visual-forge-m1-sprite-design.md)
-- [M1 Chinese design specification](docs/superpowers/specs/2026-07-30-game-visual-forge-m1-sprite-design.zh-CN.md)
-- [M1 implementation plan](docs/superpowers/plans/2026-07-30-game-visual-forge-m1-sprite.md)
 
 ### Verification
 
@@ -104,14 +99,10 @@ M1 增加版本化 `SpriteRequest`、明确的 `CapabilityRouter` 路由决策�
 - `submission_unknown` 只能查询或人工核对。
 - M1 不包含地图、视频、MP4、FFmpeg、自动安装依赖或自动付费重试。
 
-### 安装与参考资料
+### 安装
 
 - [Codex 安装指南](install/codex/README.md)
 - [Claude 安装指南](install/claude/README.md)
-- [M0 设计规范](docs/superpowers/specs/2026-07-30-game-visual-forge-agent-skills-design.md)
-- [M0 实施计划](docs/superpowers/plans/2026-07-30-game-visual-forge-m0-foundation.md)
-- [M1 设计规范](docs/superpowers/specs/2026-07-30-game-visual-forge-m1-sprite-design.zh-CN.md)
-- [M1 实施计划](docs/superpowers/plans/2026-07-30-game-visual-forge-m1-sprite.md)
 
 ### 验证命令
 
