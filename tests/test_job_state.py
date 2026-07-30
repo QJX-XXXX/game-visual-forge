@@ -199,6 +199,19 @@ class JobStateTests(unittest.TestCase):
                 now="2026-07-30T00:07:00Z",
             )
 
+    def test_needs_attention_can_resume_verification_for_manual_visual_review(self) -> None:
+        state = transition_job(
+            self.make_state(),
+            JobStatus.NEEDS_ATTENTION,
+            now="2026-07-30T00:01:00Z",
+        )
+        resumed = transition_job(
+            state,
+            JobStatus.VERIFYING,
+            now="2026-07-30T00:02:00Z",
+        )
+        self.assertEqual(resumed.status, JobStatus.VERIFYING)
+
     def test_job_round_trip_preserves_schema(self) -> None:
         state = transition_job(
             transition_job(

@@ -45,6 +45,7 @@ LEGAL_TRANSITIONS = {
     },
     JobStatus.NEEDS_ATTENTION: {
         JobStatus.READY,
+        JobStatus.VERIFYING,
         JobStatus.CANCELLED,
     },
     JobStatus.SUBMISSION_UNKNOWN: {

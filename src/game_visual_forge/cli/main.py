@@ -8,9 +8,19 @@ from pathlib import PurePosixPath
 from typing import Any
 
 from game_visual_forge.cli.planning import build_execution_plan
+from game_visual_forge.cli.sprite import (
+    run_sprite_ingest,
+    run_sprite_plan,
+    run_sprite_process,
+    run_sprite_route,
+    run_sprite_validate,
+)
 from game_visual_forge.contracts import AssetBrief, JobState, JobStatus, load_json
 from game_visual_forge.contracts.serialization import dump_json
+from game_visual_forge.contracts.sprite import SourceType
+from game_visual_forge.errors import ForgeError
 from game_visual_forge.jobs import fingerprint_request, load_job, save_job
+from game_visual_forge.routing import NativeAttemptOutcome
 
 
 def build_parser() -> argparse.ArgumentParser:
@@ -24,6 +34,52 @@ def build_parser() -> argparse.ArgumentParser:
 
     show_state = commands.add_parser("show-state")
     show_state.add_argument("--state", type=Path, required=True)
+
+    sprite = commands.add_parser("sprite")
+    sprite_commands = sprite.add_subparsers(dest="sprite_command", required=True)
+
+    plan = sprite_commands.add_parser("plan")
+    plan.add_argument("--request", type=Path, required=True)
+    plan.add_argument("--out-dir", type=Path, required=True)
+    plan.add_argument("--now", required=True)
+
+    route = sprite_commands.add_parser("route")
+    route.add_argument("--request", type=Path, required=True)
+    route.add_argument("--capabilities", type=Path, required=True)
+    route.add_argument("--native-outcome", choices=[item.value for item in NativeAttemptOutcome], default=NativeAttemptOutcome.NOT_ATTEMPTED.value)
+    route.add_argument("--selection", choices=[item.value for item in SourceType])
+    route.add_argument("--preflight", type=Path)
+    route.add_argument("--out", type=Path, required=True)
+    route.add_argument("--state", type=Path, required=True)
+    route.add_argument("--now", required=True)
+
+    ingest = sprite_commands.add_parser("ingest")
+    ingest.add_argument("--request", type=Path, required=True)
+    ingest.add_argument("--decision", type=Path, required=True)
+    ingest.add_argument("--image", type=Path, required=True)
+    ingest.add_argument("--repo-root", type=Path, required=True)
+    ingest.add_argument("--out", type=Path, required=True)
+    ingest.add_argument("--state", type=Path, required=True)
+    ingest.add_argument("--now", required=True)
+
+    process = sprite_commands.add_parser("process")
+    process.add_argument("--request", type=Path, required=True)
+    process.add_argument("--raw-image", type=Path, required=True)
+    process.add_argument("--repo-root", type=Path, required=True)
+    process.add_argument("--out-dir", type=Path, required=True)
+    process.add_argument("--state", type=Path, required=True)
+    process.add_argument("--now", required=True)
+
+    validate = sprite_commands.add_parser("validate")
+    validate.add_argument("--request", type=Path, required=True)
+    validate.add_argument("--raw-image", type=Path, required=True)
+    validate.add_argument("--processing-result", type=Path, required=True)
+    validate.add_argument("--repo-root", type=Path, required=True)
+    validate.add_argument("--staging-dir", type=Path, required=True)
+    validate.add_argument("--final-dir", type=Path, required=True)
+    validate.add_argument("--visual-review", type=Path)
+    validate.add_argument("--state", type=Path, required=True)
+    validate.add_argument("--now", required=True)
     return parser
 
 
@@ -63,10 +119,23 @@ def main(argv: list[str] | None = None) -> int:
     try:
         if args.command == "dry-run":
             payload = run_dry_run(args.brief, args.out_dir, args.now)
-        else:
+        elif args.command == "show-state":
             payload = load_job(args.state).to_dict()
+        elif args.sprite_command == "plan":
+            payload = run_sprite_plan(args.request, args.out_dir, args.now)
+        elif args.sprite_command == "route":
+            payload = run_sprite_route(args.request, args.capabilities, args.native_outcome, args.selection, args.preflight, args.out, args.state, args.now)
+        elif args.sprite_command == "ingest":
+            payload = run_sprite_ingest(args.request, args.decision, args.image, args.repo_root, args.out, args.state, args.now)
+        elif args.sprite_command == "process":
+            payload = run_sprite_process(args.request, args.raw_image, args.repo_root, args.out_dir, args.state, args.now)
+        else:
+            payload = run_sprite_validate(args.request, args.raw_image, args.processing_result, args.repo_root, args.staging_dir, args.final_dir, args.visual_review, args.state, args.now)
         print(json.dumps(payload, ensure_ascii=False, indent=2, sort_keys=True))
         return 0
-    except (OSError, ValueError, KeyError) as error:
-        print(json.dumps({"error": str(error)}, ensure_ascii=False), file=sys.stderr)
+    except ForgeError as error:
+        print(json.dumps(error.to_dict(), ensure_ascii=False, sort_keys=True), file=sys.stderr)
+        return 1
+    except (OSError, ValueError, TypeError, KeyError, json.JSONDecodeError) as error:
+        print(json.dumps({"schema_version": 1, "error": {"code": "invalid_request", "message": str(error), "recoverable": True, "context": {}}}, ensure_ascii=False, sort_keys=True), file=sys.stderr)
         return 1
