@@ -11,6 +11,15 @@ class RepositoryContractTests(unittest.TestCase):
         self.assertFalse((ROOT / ".gitmodules").exists())
         self.assertTrue((ROOT / "docs" / "superpowers" / "specs").is_dir())
 
+    def test_install_guides_are_manual_and_repo_local(self) -> None:
+        for agent in ("codex", "claude"):
+            guide = (ROOT / "install" / agent / "README.md").read_text(encoding="utf-8")
+            self.assertIn("copy", guide.lower())
+            self.assertIn("skills", guide.lower())
+            self.assertIn("does not install dependencies", guide.lower())
+            self.assertNotIn("curl |", guide.lower())
+            self.assertNotIn("invoke-webrequest", guide.lower())
+
     def test_package_declares_m0_version(self) -> None:
         from game_visual_forge import __version__
 
