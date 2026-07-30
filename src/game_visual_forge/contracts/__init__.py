@@ -1,4 +1,5 @@
 from .asset import AssetBrief, AssetKind, SourcePreference
+from .job import JobState, JobStatus
 from .manifest import ArtifactRecord, AssetManifest
 from .provider import (
     CliProviderProtocol,
@@ -16,6 +17,8 @@ __all__ = [
     "AssetBrief",
     "AssetKind",
     "AssetManifest",
+    "JobState",
+    "JobStatus",
     "CliProviderProtocol",
     "CostEstimate",
     "ExternalProvider",
