@@ -12,6 +12,10 @@ license = { text = "MIT" }
 authors = [{ name = "Game Visual Forge contributors" }]
 dependencies = []
 
+[project.optional-dependencies]
+image = ["Pillow>=10"]
+background = ["Pillow>=10", "rembg>=2"]
+
 [project.scripts]
 game-visual-forge = "game_visual_forge.cli.main:main"
 
