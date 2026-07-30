@@ -105,6 +105,11 @@ class BackgroundRemoval(StrEnum):
     PRESERVE = "preserve"
 
 
+class RembgRefinement(StrEnum):
+    KNOWN_BACKGROUND = "known-background"
+    PYMATTING = "pymatting"
+
+
 @dataclass(frozen=True)
 class SpriteRequest:
     schema_version: int
@@ -128,6 +133,7 @@ class SpriteRequest:
     grid_columns: int = 1
     background_removal: BackgroundRemoval = BackgroundRemoval.PRESERVE
     chroma_color: str | None = None
+    rembg_refinement: RembgRefinement | None = None
     target_engine_notes: str | None = None
 
     def __post_init__(self) -> None:
@@ -176,11 +182,36 @@ class SpriteRequest:
             _require_int(self.frame_height, "frame_height")
         if not isinstance(self.background_removal, BackgroundRemoval):
             raise TypeError("background_removal must be BackgroundRemoval")
-        if self.background_removal is BackgroundRemoval.CHROMA:
-            if self.chroma_color is None or not _HEX_COLOR_PATTERN.fullmatch(self.chroma_color):
-                raise ValueError("chroma_color must be an RGB hex color")
-        elif self.chroma_color is not None:
-            raise ValueError("chroma_color is only valid for chroma removal")
+        if (
+            self.chroma_color is not None
+            and not _HEX_COLOR_PATTERN.fullmatch(self.chroma_color)
+        ):
+            raise ValueError("chroma_color must be an RGB hex color")
+        if (
+            self.background_removal is BackgroundRemoval.CHROMA
+            and self.chroma_color is None
+        ):
+            raise ValueError("chroma_color must be an RGB hex color")
+        if (
+            self.background_removal is BackgroundRemoval.PRESERVE
+            and self.chroma_color is not None
+        ):
+            raise ValueError("chroma_color is only valid for rembg or chroma removal")
+        if (
+            self.rembg_refinement is not None
+            and not isinstance(self.rembg_refinement, RembgRefinement)
+        ):
+            raise TypeError("rembg_refinement must be RembgRefinement")
+        if (
+            self.rembg_refinement is not None
+            and (
+                self.background_removal is not BackgroundRemoval.REMBG
+                or self.chroma_color is None
+            )
+        ):
+            raise ValueError(
+                "rembg_refinement requires rembg removal with chroma_color"
+            )
         _require_optional_string(self.action_name, "action_name")
         _require_optional_string(self.target_engine_notes, "target_engine_notes")
 
@@ -207,6 +238,11 @@ class SpriteRequest:
             "grid_columns": self.grid_columns,
             "background_removal": self.background_removal.value,
             "chroma_color": self.chroma_color,
+            "rembg_refinement": (
+                None
+                if self.rembg_refinement is None
+                else self.rembg_refinement.value
+            ),
             "target_engine_notes": self.target_engine_notes,
         }
 
@@ -242,6 +278,15 @@ class SpriteRequest:
             grid_columns=_require_int(value["grid_columns"], "grid_columns"),
             background_removal=_require_enum(value["background_removal"], BackgroundRemoval, "background_removal"),
             chroma_color=_require_optional_string(value.get("chroma_color"), "chroma_color"),
+            rembg_refinement=(
+                None
+                if value.get("rembg_refinement") is None
+                else _require_enum(
+                    value["rembg_refinement"],
+                    RembgRefinement,
+                    "rembg_refinement",
+                )
+            ),
             target_engine_notes=_require_optional_string(value.get("target_engine_notes"), "target_engine_notes"),
         )
 

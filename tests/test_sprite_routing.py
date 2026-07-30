@@ -7,6 +7,7 @@ from unittest.mock import patch
 
 from tests._bootstrap import ROOT  # noqa: F401
 from game_visual_forge.contracts import (
+    BackgroundRemoval,
     ExternalProvider,
     ProviderPreflight,
     SourceType,
@@ -103,6 +104,11 @@ class SpriteRoutingTests(unittest.TestCase):
         self.assertEqual(package.expected_output_path, "outputs/hero-run/raw/source.png")
         self.assertEqual(package.frame_order[0], "right:00")
         self.assertEqual(package.frame_order[-1], "right:07")
+        self.assertEqual(package.solid_background, "#ff00ff")
+
+    def test_rembg_prompt_package_keeps_chroma_fallback_background(self) -> None:
+        request = replace(make_request(), background_removal=BackgroundRemoval.REMBG)
+        package = build_prompt_package(request)
         self.assertEqual(package.solid_background, "#ff00ff")
 
 

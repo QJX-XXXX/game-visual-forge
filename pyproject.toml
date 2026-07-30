@@ -14,7 +14,14 @@ dependencies = []
 
 [project.optional-dependencies]
 image = ["Pillow>=10"]
-background = ["Pillow>=10", "rembg>=2"]
+background = ["Pillow>=10", "numpy>=1.26", "scipy>=1.11", "rembg>=2"]
+matting = [
+    "Pillow>=10",
+    "numpy>=1.26",
+    "scipy>=1.11",
+    "rembg>=2",
+    "pymatting>=1.1.14",
+]
 
 [project.scripts]
 game-visual-forge = "game_visual_forge.cli.main:main"

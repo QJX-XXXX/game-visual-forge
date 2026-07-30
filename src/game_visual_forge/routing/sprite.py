@@ -176,7 +176,7 @@ def build_prompt_package(request: SpriteRequest) -> PromptPackage:
         frame_order=frame_order,
         solid_background=(
             request.chroma_color
-            if request.background_removal is BackgroundRemoval.CHROMA
+            if request.background_removal in {BackgroundRemoval.CHROMA, BackgroundRemoval.REMBG}
             else None
         ),
         expected_output_path=f"{request.output_dir}/raw/source.png",

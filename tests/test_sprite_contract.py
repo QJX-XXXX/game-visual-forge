@@ -5,6 +5,7 @@ import unittest
 from tests._bootstrap import ROOT  # noqa: F401
 from game_visual_forge.contracts import (
     BackgroundRemoval,
+    RembgRefinement,
     SpriteLayout,
     SpriteOutput,
     SpriteRequest,
@@ -67,6 +68,39 @@ class SpriteRequestTests(unittest.TestCase):
     def test_chroma_mode_requires_rgb_hex_color(self) -> None:
         payload = make_request().to_dict()
         payload["chroma_color"] = "magenta"
+        with self.assertRaisesRegex(ValueError, "chroma_color"):
+            SpriteRequest.from_dict(payload)
+
+    def test_rembg_mode_accepts_chroma_fallback_color(self) -> None:
+        payload = make_request().to_dict()
+        payload["background_removal"] = "rembg"
+        request = SpriteRequest.from_dict(payload)
+        self.assertEqual(request.background_removal, BackgroundRemoval.REMBG)
+        self.assertEqual(request.chroma_color, "#ff00ff")
+        self.assertIsNone(request.rembg_refinement)
+
+    def test_rembg_mode_accepts_explicit_pymatting_refinement(self) -> None:
+        payload = make_request().to_dict()
+        payload["background_removal"] = "rembg"
+        payload["rembg_refinement"] = "pymatting"
+        request = SpriteRequest.from_dict(payload)
+        self.assertEqual(request.rembg_refinement, RembgRefinement.PYMATTING)
+
+    def test_old_request_without_refinement_field_remains_compatible(self) -> None:
+        payload = make_request().to_dict()
+        payload.pop("rembg_refinement")
+        request = SpriteRequest.from_dict(payload)
+        self.assertIsNone(request.rembg_refinement)
+
+    def test_refinement_requires_rembg_with_chroma_color(self) -> None:
+        payload = make_request().to_dict()
+        payload["rembg_refinement"] = "pymatting"
+        with self.assertRaisesRegex(ValueError, "rembg_refinement"):
+            SpriteRequest.from_dict(payload)
+
+    def test_preserve_mode_rejects_chroma_color(self) -> None:
+        payload = make_request().to_dict()
+        payload["background_removal"] = "preserve"
         with self.assertRaisesRegex(ValueError, "chroma_color"):
             SpriteRequest.from_dict(payload)
 

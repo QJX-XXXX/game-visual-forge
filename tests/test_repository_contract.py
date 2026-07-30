@@ -17,6 +17,15 @@ class RepositoryContractTests(unittest.TestCase):
         self.assertNotIn("\n## 中文\n", english)
         self.assertNotIn("\n## English\n", chinese)
 
+    def test_readme_background_comparison_asset_exists(self) -> None:
+        relative_path = (
+            "assets/readme/rembg-production-comparison-on-gray.jpg"
+        )
+        self.assertTrue((ROOT / relative_path).is_file())
+        for readme in ("README.md", "README.zh-CN.md"):
+            content = (ROOT / readme).read_text(encoding="utf-8")
+            self.assertIn(f"]({relative_path})", content)
+
     def test_repository_is_skills_only_and_not_a_plugin(self) -> None:
         self.assertFalse((ROOT / ".codex-plugin").exists())
         self.assertFalse((ROOT / ".gitmodules").exists())
