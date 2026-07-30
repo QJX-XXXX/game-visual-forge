@@ -2,6 +2,7 @@ from __future__ import annotations
 
 import tempfile
 import unittest
+from dataclasses import replace
 from pathlib import Path
 
 from tests._bootstrap import ROOT  # noqa: F401
@@ -107,35 +108,112 @@ class JobStateTests(unittest.TestCase):
         self.assertEqual(original.status, JobStatus.PLANNED)
         self.assertEqual(updated.status, JobStatus.AWAITING_CONFIRMATION)
 
-    def test_submission_unknown_cannot_transition_to_submitting(self) -> None:
-        ready = transition_job(
-            self.make_state(),
+    def test_paid_provider_job_requires_confirmation_marker_before_ready_or_submitting(
+        self,
+    ) -> None:
+        provider_state = replace(self.make_state(), provider="jimeng")
+        with self.assertRaisesRegex(ValueError, "confirmation"):
+            transition_job(
+                provider_state,
+                JobStatus.READY,
+                now="2026-07-30T00:01:00Z",
+            )
+
+        bypass_ready = replace(
+            provider_state,
+            status=JobStatus.READY,
+            updated_at="2026-07-30T00:01:00Z",
+        )
+        with self.assertRaisesRegex(ValueError, "confirmation"):
+            transition_job(
+                bypass_ready,
+                JobStatus.SUBMITTING,
+                now="2026-07-30T00:02:00Z",
+            )
+
+        awaiting = transition_job(
+            provider_state,
+            JobStatus.AWAITING_CONFIRMATION,
+            now="2026-07-30T00:03:00Z",
+        )
+        confirmed_ready = transition_job(
+            awaiting,
             JobStatus.READY,
+            now="2026-07-30T00:04:00Z",
+        )
+        self.assertEqual(
+            confirmed_ready.ready_provenance,
+            JobStatus.AWAITING_CONFIRMATION.value,
+        )
+
+        submitting = transition_job(
+            confirmed_ready,
+            JobStatus.SUBMITTING,
+            now="2026-07-30T00:05:00Z",
+        )
+        self.assertEqual(submitting.status, JobStatus.SUBMITTING)
+
+    def test_submission_unknown_cannot_reenter_submitting_via_needs_attention_ready(
+        self,
+    ) -> None:
+        provider_state = replace(self.make_state(), provider="jimeng")
+        awaiting = transition_job(
+            provider_state,
+            JobStatus.AWAITING_CONFIRMATION,
             now="2026-07-30T00:01:00Z",
+        )
+        ready = transition_job(
+            awaiting,
+            JobStatus.READY,
+            now="2026-07-30T00:02:00Z",
         )
         submitting = transition_job(
             ready,
             JobStatus.SUBMITTING,
-            now="2026-07-30T00:02:00Z",
+            now="2026-07-30T00:03:00Z",
         )
         state = transition_job(
             submitting,
             JobStatus.SUBMISSION_UNKNOWN,
-            now="2026-07-30T00:03:00Z",
+            now="2026-07-30T00:04:00Z",
         )
-        with self.assertRaisesRegex(ValueError, "illegal transition"):
+        needs_attention = transition_job(
+            state,
+            JobStatus.NEEDS_ATTENTION,
+            now="2026-07-30T00:05:00Z",
+        )
+        ready_again = transition_job(
+            needs_attention,
+            JobStatus.READY,
+            now="2026-07-30T00:06:00Z",
+        )
+        self.assertEqual(
+            ready_again.ready_provenance,
+            JobStatus.NEEDS_ATTENTION.value,
+        )
+
+        with self.assertRaisesRegex(ValueError, "confirmation"):
             transition_job(
-                state,
+                ready_again,
                 JobStatus.SUBMITTING,
-                now="2026-07-30T00:04:00Z",
+                now="2026-07-30T00:07:00Z",
             )
 
     def test_job_round_trip_preserves_schema(self) -> None:
+        state = transition_job(
+            transition_job(
+                replace(self.make_state(), provider="jimeng"),
+                JobStatus.AWAITING_CONFIRMATION,
+                now="2026-07-30T00:01:00Z",
+            ),
+            JobStatus.READY,
+            now="2026-07-30T00:02:00Z",
+        )
         with tempfile.TemporaryDirectory() as directory:
             path = Path(directory) / "job.json"
-            save_job(path, self.make_state())
+            save_job(path, state)
             restored = load_job(path)
-        self.assertEqual(restored, self.make_state())
+        self.assertEqual(restored, state)
 
     def test_fingerprint_is_key_order_independent(self) -> None:
         left = fingerprint_request({"model": "x", "count": 1})

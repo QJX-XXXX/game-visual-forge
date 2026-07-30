@@ -53,6 +53,7 @@ class JobState:
     provider: str | None = None
     external_task_id: str | None = None
     error_code: str | None = None
+    ready_provenance: str | None = None
     artifact_paths: tuple[str, ...] = ()
 
     def __post_init__(self) -> None:
@@ -84,6 +85,11 @@ class JobState:
                 for path in self.artifact_paths
             ),
         )
+        if self.ready_provenance is not None:
+            try:
+                JobStatus(self.ready_provenance)
+            except ValueError as error:
+                raise ValueError("ready_provenance must name a valid job status") from error
 
     def to_dict(self) -> dict[str, Any]:
         return {
@@ -97,6 +103,7 @@ class JobState:
             "provider": self.provider,
             "external_task_id": self.external_task_id,
             "error_code": self.error_code,
+            "ready_provenance": self.ready_provenance,
             "artifact_paths": list(self.artifact_paths),
         }
 
@@ -119,6 +126,11 @@ class JobState:
                 else None
             ),
             error_code=str(value["error_code"]) if value.get("error_code") is not None else None,
+            ready_provenance=(
+                str(value["ready_provenance"])
+                if value.get("ready_provenance") is not None
+                else None
+            ),
             artifact_paths=tuple(
                 str(item) for item in value.get("artifact_paths", [])
             ),

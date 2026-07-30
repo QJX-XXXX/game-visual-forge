@@ -58,6 +58,24 @@ LEGAL_TRANSITIONS = {
 }
 
 
+def _is_paid_provider_job(state: JobState) -> bool:
+    return state.provider is not None
+
+
+def _validate_provider_confirmation(state: JobState, target: JobStatus) -> None:
+    if not _is_paid_provider_job(state):
+        return
+    if state.status is JobStatus.PLANNED and target is JobStatus.READY:
+        raise ValueError(
+            "provider jobs require explicit confirmation before becoming ready"
+        )
+    if state.status is JobStatus.READY and target is JobStatus.SUBMITTING:
+        if state.ready_provenance != JobStatus.AWAITING_CONFIRMATION.value:
+            raise ValueError(
+                "provider jobs require an awaiting_confirmation marker before submitting"
+            )
+
+
 def transition_job(
     state: JobState,
     target: JobStatus,
@@ -68,10 +86,15 @@ def transition_job(
 ) -> JobState:
     if target not in LEGAL_TRANSITIONS[state.status]:
         raise ValueError(f"illegal transition: {state.status.value} -> {target.value}")
+    _validate_provider_confirmation(state, target)
+    ready_provenance = state.ready_provenance
+    if target is JobStatus.READY:
+        ready_provenance = state.status.value
     return replace(
         state,
         status=target,
         updated_at=now,
         external_task_id=external_task_id or state.external_task_id,
         error_code=error_code,
+        ready_provenance=ready_provenance,
     )
