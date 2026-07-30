@@ -53,6 +53,11 @@ class AssetManifest:
             raise ValueError("source_type must not be empty")
         if self.quality_status not in {"passed", "failed", "needs_attention"}:
             raise ValueError("unsupported quality_status")
+        if not all(isinstance(item, ArtifactRecord) for item in self.artifacts):
+            raise TypeError("artifacts must contain ArtifactRecord objects")
+        paths = [item.path for item in self.artifacts]
+        if len(paths) != len(set(paths)):
+            raise ValueError("artifact paths must be unique")
 
     def to_dict(self) -> dict[str, Any]:
         return {
@@ -68,20 +73,25 @@ class AssetManifest:
 
     @classmethod
     def from_dict(cls, value: dict[str, Any]) -> "AssetManifest":
+        if not isinstance(value, dict):
+            raise TypeError("AssetManifest payload must be an object")
+        artifacts = value["artifacts"]
+        if not isinstance(artifacts, list):
+            raise TypeError("artifacts must be a JSON array")
         return cls(
-            schema_version=int(value["schema_version"]),
-            asset_id=str(value["asset_id"]),
-            source_type=str(value["source_type"]),
-            provider=str(value["provider"]) if value.get("provider") is not None else None,
-            model=str(value["model"]) if value.get("model") is not None else None,
+            schema_version=value["schema_version"],
+            asset_id=value["asset_id"],
+            source_type=value["source_type"],
+            provider=value.get("provider"),
+            model=value.get("model"),
             artifacts=tuple(
                 ArtifactRecord(
-                    role=str(item["role"]),
-                    path=str(item["path"]),
-                    sha256=str(item["sha256"]),
+                    role=item["role"],
+                    path=item["path"],
+                    sha256=item["sha256"],
                 )
-                for item in value["artifacts"]
+                for item in artifacts
             ),
-            processing_steps=tuple(str(item) for item in value["processing_steps"]),
-            quality_status=str(value["quality_status"]),
+            processing_steps=tuple(value["processing_steps"]),
+            quality_status=value["quality_status"],
         )

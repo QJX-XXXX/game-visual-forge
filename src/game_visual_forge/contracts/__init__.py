@@ -3,6 +3,7 @@ from .confirmation import PaidConfirmation
 from .execution import ExecutionPlan, PlanStep
 from .job import JobState, JobStatus
 from .manifest import ArtifactRecord, AssetManifest
+from .quality import QualityCheck, QualityReport, QualityStatus
 from .provider import (
     CliProviderProtocol,
     CostEstimate,
@@ -32,6 +33,9 @@ __all__ = [
     "AssetBrief",
     "AssetKind",
     "AssetManifest",
+    "QualityCheck",
+    "QualityReport",
+    "QualityStatus",
     "ExecutionPlan",
     "JobState",
     "JobStatus",
