@@ -5,6 +5,8 @@ from dataclasses import dataclass
 from enum import StrEnum
 from typing import Any
 
+from .pathing import normalize_repo_relative_path
+
 
 _SLUG_PATTERN = re.compile(r"[a-z0-9][a-z0-9-]{0,63}")
 
@@ -21,16 +23,6 @@ class SourcePreference(StrEnum):
     JIMENG = "jimeng"
     WANXIANG = "wanxiang"
     EXISTING_FILE = "existing-file"
-
-
-def _normalize_repo_path(value: str, *, field_name: str) -> str:
-    normalized = value.replace("\\", "/").strip()
-    if not normalized:
-        raise ValueError(f"{field_name} must not be empty")
-    if normalized.startswith("/") or re.match(r"^[A-Za-z]:", normalized):
-        raise ValueError(f"{field_name} must be repository-relative")
-    return normalized
-
 
 @dataclass(frozen=True)
 class AssetBrief:
@@ -55,13 +47,13 @@ class AssetBrief:
         object.__setattr__(
             self,
             "output_dir",
-            _normalize_repo_path(self.output_dir, field_name="output_dir"),
+            normalize_repo_relative_path(self.output_dir, field_name="output_dir"),
         )
         object.__setattr__(
             self,
             "reference_paths",
             tuple(
-                _normalize_repo_path(path, field_name="reference_paths")
+                normalize_repo_relative_path(path, field_name="reference_paths")
                 for path in self.reference_paths
             ),
         )

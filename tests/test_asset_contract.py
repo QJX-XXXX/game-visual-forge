@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import json
 import tempfile
 import unittest
 from pathlib import Path
@@ -59,6 +60,40 @@ class AssetContractTests(unittest.TestCase):
                 canvas_width=0,
             )
 
+    def test_asset_paths_reject_dot_segment_escapes(self) -> None:
+        with self.assertRaisesRegex(ValueError, "output_dir"):
+            AssetBrief(
+                1,
+                "item",
+                AssetKind.SPRITE,
+                "prompt",
+                "../escape",
+                SourcePreference.AUTO,
+            )
+        with self.assertRaisesRegex(ValueError, "reference_paths"):
+            AssetBrief(
+                1,
+                "item",
+                AssetKind.SPRITE,
+                "prompt",
+                "outputs/item",
+                SourcePreference.AUTO,
+                reference_paths=("references/../secret.png",),
+            )
+
+    def test_asset_paths_are_normalized_to_posix(self) -> None:
+        brief = AssetBrief(
+            schema_version=1,
+            asset_id="hero-run",
+            kind=AssetKind.SPRITE,
+            prompt="A side-view swordswoman running in place.",
+            output_dir=r"outputs\hero-run",
+            source_preference=SourcePreference.AUTO,
+            reference_paths=(r"references\hero.png",),
+        )
+        self.assertEqual(brief.output_dir, "outputs/hero-run")
+        self.assertEqual(brief.reference_paths, ("references/hero.png",))
+
     def test_manifest_round_trip_keeps_provenance_and_quality(self) -> None:
         manifest = AssetManifest(
             schema_version=1,
@@ -78,6 +113,29 @@ class AssetContractTests(unittest.TestCase):
         )
         restored = AssetManifest.from_dict(manifest.to_dict())
         self.assertEqual(restored, manifest)
+
+    def test_manifest_artifact_path_rejects_dot_segments(self) -> None:
+        with self.assertRaisesRegex(ValueError, "path"):
+            ArtifactRecord(
+                role="source",
+                path="outputs/hero-run/../escape.png",
+                sha256="b" * 64,
+            )
+
+    def test_dump_json_writes_deterministic_sorted_utf8_object_with_trailing_newline(self) -> None:
+        with tempfile.TemporaryDirectory() as directory:
+            path = Path(directory) / "payload.json"
+            dump_json(path, {"z": "雪", "a": 1})
+            payload = path.read_text(encoding="utf-8")
+        self.assertEqual(payload, '{\n  "a": 1,\n  "z": "雪"\n}\n')
+        self.assertEqual(json.loads(payload), {"a": 1, "z": "雪"})
+
+    def test_load_json_rejects_non_object_documents(self) -> None:
+        with tempfile.TemporaryDirectory() as directory:
+            path = Path(directory) / "payload.json"
+            path.write_text('["not", "an", "object"]\n', encoding="utf-8")
+            with self.assertRaisesRegex(ValueError, "object"):
+                load_json(path)
 
 
 if __name__ == "__main__":

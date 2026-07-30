@@ -4,19 +4,10 @@ import re
 from dataclasses import dataclass
 from typing import Any
 
+from .pathing import normalize_repo_relative_path
+
 
 _DIGEST_PATTERN = re.compile(r"[0-9a-f]{64}")
-
-
-def _normalize_repo_path(value: str, *, field_name: str) -> str:
-    normalized = value.replace("\\", "/").strip()
-    if not normalized:
-        raise ValueError(f"{field_name} must not be empty")
-    if normalized.startswith("/") or re.match(r"^[A-Za-z]:", normalized):
-        raise ValueError(f"{field_name} must be repository-relative")
-    return normalized
-
-
 @dataclass(frozen=True)
 class ArtifactRecord:
     role: str
@@ -26,7 +17,11 @@ class ArtifactRecord:
     def __post_init__(self) -> None:
         if not self.role.strip():
             raise ValueError("artifact role must not be empty")
-        object.__setattr__(self, "path", _normalize_repo_path(self.path, field_name="path"))
+        object.__setattr__(
+            self,
+            "path",
+            normalize_repo_relative_path(self.path, field_name="path"),
+        )
         if not _DIGEST_PATTERN.fullmatch(self.sha256):
             raise ValueError("artifact sha256 must be a 64-character digest")
 

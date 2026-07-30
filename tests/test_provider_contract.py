@@ -27,6 +27,19 @@ class ProviderContractTests(unittest.TestCase):
         forbidden = {"token", "cookie", "api_key", "access_key", "secret"}
         self.assertTrue(forbidden.isdisjoint(serialized))
 
+    def test_preflight_requires_schema_version_1(self) -> None:
+        with self.assertRaisesRegex(ValueError, "schema_version"):
+            ProviderPreflight(
+                schema_version=2,
+                provider=ExternalProvider.JIMENG,
+                available=True,
+                authenticated=False,
+                executable=None,
+                version=None,
+                account_credit=None,
+                reason=None,
+            )
+
     def test_capabilities_are_media_specific(self) -> None:
         value = ProviderCapabilities(
             schema_version=1,
