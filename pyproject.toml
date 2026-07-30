@@ -1,0 +1,20 @@
+[build-system]
+requires = ["setuptools>=68"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "game-visual-forge"
+version = "0.1.0"
+description = "Agent Skills and deterministic tooling for 2D game visual assets"
+readme = "README.md"
+requires-python = ">=3.11"
+license = { text = "MIT" }
+authors = [{ name = "Game Visual Forge contributors" }]
+dependencies = []
+
+[project.scripts]
+game-visual-forge = "game_visual_forge.cli.main:main"
+
+[tool.setuptools.packages.find]
+where = ["src"]
+
