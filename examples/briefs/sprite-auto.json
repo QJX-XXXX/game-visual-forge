@@ -1,0 +1,12 @@
+{
+  "schema_version": 1,
+  "asset_id": "hero-run",
+  "kind": "sprite",
+  "prompt": "A side-view hero running in place.",
+  "output_dir": "outputs/hero-run",
+  "source_preference": "auto",
+  "reference_paths": [],
+  "canvas_width": 1024,
+  "canvas_height": 1024,
+  "frame_count": 8
+}

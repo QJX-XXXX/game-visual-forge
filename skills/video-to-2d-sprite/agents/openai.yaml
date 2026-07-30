@@ -1,0 +1,4 @@
+interface:
+  display_name: "Video to 2D Sprite"
+  short_description: "Plan recoverable Video to 2D Sprite workflows"
+  default_prompt: "Use $video-to-2d-sprite to create and validate a zero-network AssetBrief and execution Dry-run."
