@@ -8,7 +8,7 @@ from tests._bootstrap import ROOT
 
 
 SKILLS = {
-    "generate-2d-sprite": {
+    "forge-2d-sprite": {
         "description": 'description: "Generate production-oriented 2D game assets from natural-language requests, references, or existing images, including characters, creatures, props, effects, frames, sheets, and transparent exports."',
         "required_body_fragments": (
             "已有图像优先",
@@ -26,7 +26,7 @@ SKILLS = {
             "sprite validate",
         ),
     },
-    "generate-2d-map": {
+    "forge-2d-map": {
         "description": 'description: "Generate production-oriented 2D game maps with explicit visual, layer, runtime-object, collision, and export models."',
         "required_body_fragments": (
             "Agent 原生工具",
@@ -38,7 +38,7 @@ SKILLS = {
             "不得自动重新提交",
         ),
     },
-    "video-to-2d-sprite": {
+    "forge-video-to-sprite": {
         "description": 'description: "Convert generated or existing video into 2D Sprite animation with safe provider selection, recoverable jobs, frame extraction, sampling, cleanup, alignment, and exports."',
         "required_body_fragments": (
             "Agent 原生工具",
@@ -75,7 +75,7 @@ class SkillContractTests(unittest.TestCase):
             self.assertIn("dry-run", result.stdout)
 
     def test_sprite_launcher_exposes_m1_commands(self) -> None:
-        launcher = ROOT / "skills" / "generate-2d-sprite" / "scripts" / "run.py"
+        launcher = ROOT / "skills" / "forge-2d-sprite" / "scripts" / "run.py"
         result = subprocess.run([sys.executable, str(launcher), "sprite", "--help"], cwd=ROOT, capture_output=True, text=True, encoding="utf-8", check=False)
         self.assertEqual(result.returncode, 0, result.stderr)
         for command in ("plan", "route", "ingest", "process", "validate"):
@@ -91,7 +91,7 @@ class SkillContractTests(unittest.TestCase):
     def test_readme_uses_supported_launcher_and_documents_exact_routing_rules(self) -> None:
         readme = (ROOT / "README.md").read_text(encoding="utf-8")
         self.assertNotIn("python -m game_visual_forge", readme)
-        self.assertIn("python skills/generate-2d-sprite/scripts/run.py dry-run", readme)
+        self.assertIn("python skills/forge-2d-sprite/scripts/run.py dry-run", readme)
         for required in (
             "native supported -> native path",
             "native unsupported -> user chooses third party/local/existing",

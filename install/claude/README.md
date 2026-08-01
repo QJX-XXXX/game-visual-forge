@@ -2,9 +2,9 @@
 
 This M0 repository ships three manual Skills:
 
-- `generate-2d-sprite`
-- `generate-2d-map`
-- `video-to-2d-sprite`
+- `forge-2d-sprite`
+- `forge-2d-map`
+- `forge-video-to-sprite`
 
 Manual install only:
 
@@ -28,5 +28,5 @@ After installation, verify from the repository with commands such as:
 
 ```powershell
 python -m unittest discover -s tests -v
-python skills/video-to-2d-sprite/scripts/run.py --help
+python skills/forge-video-to-sprite/scripts/run.py --help
 ```

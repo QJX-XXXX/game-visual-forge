@@ -1,0 +1,4 @@
+interface:
+  display_name: "Forge 2D Sprite"
+  short_description: "Route, process, and validate production-ready 2D sprites"
+  default_prompt: "Use $forge-2d-sprite to route the image source explicitly, process local sprite media, and produce a quality report without silent paid submission."

@@ -13,9 +13,9 @@ media.
 
 The three Skills are:
 
-- `generate-2d-sprite` — plan a dry-run for a side-view hero run cycle.
-- `generate-2d-map` — plan a layered village map with collision notes.
-- `video-to-2d-sprite` — plan conversion of an existing MP4 into a sprite sheet.
+- `forge-2d-sprite` — plan a dry-run for a side-view hero run cycle.
+- `forge-2d-map` — plan a layered village map with collision notes.
+- `forge-video-to-sprite` — plan conversion of an existing MP4 into a sprite sheet.
 
 ### M1 Generate 2D Sprite
 
@@ -26,9 +26,9 @@ processing, `QualityReport`, and `AssetManifest`.
 The local workflow is:
 
 ```powershell
-python skills/generate-2d-sprite/scripts/run.py sprite plan `
+python skills/forge-2d-sprite/scripts/run.py sprite plan `
   --request <request.json> --out-dir <output> --now <utc-rfc3339>
-python skills/generate-2d-sprite/scripts/run.py sprite route `
+python skills/forge-2d-sprite/scripts/run.py sprite route `
   --request <output/sprite-request.json> --capabilities <capabilities.json> `
   --out <output/source-decision.json> --state <output/job-state.json> `
   --now <utc-rfc3339>
@@ -112,7 +112,7 @@ bundle.
 
 ```powershell
 python -m unittest discover -s tests -v
-python skills/generate-2d-sprite/scripts/run.py dry-run `
+python skills/forge-2d-sprite/scripts/run.py dry-run `
   --brief examples/briefs/sprite-auto.json `
   --out-dir outputs/demo --now 2026-07-30T00:00:00Z
 ```

@@ -1,9 +1,9 @@
 ---
-name: generate-2d-sprite
+name: forge-2d-sprite
 description: "Generate production-oriented 2D game assets from natural-language requests, references, or existing images, including characters, creatures, props, effects, frames, sheets, and transparent exports."
 ---
 
-# Generate 2D Sprite
+# Forge 2D Sprite
 
 使用共享 CLI 编排二维精灵生成、导入、处理和质量验证。Skill 负责理解用户请求、调用 Agent 原生图像工具和取得用户选择；本地运行时负责确定性处理。不得在 Skill 中复制图像处理实现或凭据。
 
@@ -27,25 +27,25 @@ description: "Generate production-oriented 2D game assets from natural-language 
 所有命令都输出版本化 JSON；`plan`、`route` 不访问网络，`ingest`、`process`、`validate` 只操作本地文件。
 
 ```powershell
-python skills/generate-2d-sprite/scripts/run.py sprite plan `
+python skills/forge-2d-sprite/scripts/run.py sprite plan `
   --request <request.json> --out-dir <output> --now <utc-rfc3339>
 
-python skills/generate-2d-sprite/scripts/run.py sprite route `
+python skills/forge-2d-sprite/scripts/run.py sprite route `
   --request <output/sprite-request.json> --capabilities <capabilities.json> `
   --out <output/source-decision.json> --state <output/job-state.json> `
   --now <utc-rfc3339>
 
-python skills/generate-2d-sprite/scripts/run.py sprite ingest `
+python skills/forge-2d-sprite/scripts/run.py sprite ingest `
   --request <output/sprite-request.json> --decision <output/source-decision.json> `
   --image <repo-relative-image> --repo-root <repo> --out <output/raw-image.json> `
   --state <output/job-state.json> --now <utc-rfc3339>
 
-python skills/generate-2d-sprite/scripts/run.py sprite process `
+python skills/forge-2d-sprite/scripts/run.py sprite process `
   --request <output/sprite-request.json> --raw-image <output/raw-image.json> `
   --repo-root <repo> --out-dir <repo>/outputs/<asset-id> `
   --state <output/job-state.json> --now <utc-rfc3339>
 
-python skills/generate-2d-sprite/scripts/run.py sprite validate `
+python skills/forge-2d-sprite/scripts/run.py sprite validate `
   --request <output/sprite-request.json> --raw-image <output/raw-image.json> `
   --processing-result <staging>/processing-result.json --repo-root <repo> `
   --staging-dir <staging> --final-dir <repo>/outputs/<asset-id> `

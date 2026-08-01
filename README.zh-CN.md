@@ -86,6 +86,6 @@ BiRefNet 语义 alpha 与从画布边缘连通的色键证据，再根据已知�
 
 ```powershell
 python -m unittest discover -s tests -v
-python skills/generate-2d-sprite/scripts/run.py sprite plan `
+python skills/forge-2d-sprite/scripts/run.py sprite plan `
   --request <request.json> --out-dir <output> --now <utc-rfc3339>
 ```

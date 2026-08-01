@@ -2,9 +2,9 @@
 
 This M0 repository ships three manual Codex Skills:
 
-- `generate-2d-sprite`
-- `generate-2d-map`
-- `video-to-2d-sprite`
+- `forge-2d-sprite`
+- `forge-2d-map`
+- `forge-video-to-sprite`
 
 Manual install only:
 
@@ -24,5 +24,5 @@ After installation, keep using repository-local commands for verification, for e
 
 ```powershell
 python -m unittest discover -s tests -v
-python skills/generate-2d-sprite/scripts/run.py --help
+python skills/forge-2d-sprite/scripts/run.py --help
 ```

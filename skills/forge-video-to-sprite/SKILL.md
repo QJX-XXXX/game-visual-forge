@@ -1,9 +1,9 @@
 ---
-name: video-to-2d-sprite
+name: forge-video-to-sprite
 description: "Convert generated or existing video into 2D Sprite animation with safe provider selection, recoverable jobs, frame extraction, sampling, cleanup, alignment, and exports."
 ---
 
-# Video to 2D Sprite
+# Forge Video to Sprite
 
 先确认动作、角色、视角、循环、起止状态、镜头和背景，再建立 `AssetBrief`。用户提供已有 MP4 时跳过图像与视频生成；当前 M0 只支持零网络 `dry-run`，不调用服务商或 FFmpeg。
 
@@ -14,6 +14,6 @@ description: "Convert generated or existing video into 2D Sprite animation with 
 后续里程碑会在 clean-room 边界内处理视频媒体；当前仅规划：
 
 ```powershell
-python skills/video-to-2d-sprite/scripts/run.py dry-run `
+python skills/forge-video-to-sprite/scripts/run.py dry-run `
   --brief <brief.json> --out-dir <output> --now <utc-rfc3339>
 ```

@@ -1,9 +1,9 @@
 ---
-name: generate-2d-map
+name: forge-2d-map
 description: "Generate production-oriented 2D game maps with explicit visual, layer, runtime-object, collision, and export models."
 ---
 
-# Generate 2D Map
+# Forge 2D Map
 
 先确认地图视觉模型、图层、运行时对象、碰撞和交互目标，再建立 `AssetBrief`。当前 M0 只支持零网络 `dry-run`，不生成地图媒体或运行时数据。
 
@@ -12,6 +12,6 @@ description: "Generate production-oriented 2D game maps with explicit visual, la
 第三方预检和费用摘要完成后必须取得独立付费确认。不得根据凭据或历史选择自动选择服务商，不得自动安装工具，不得自动重新提交失败或 `submission_unknown` 的任务。
 
 ```powershell
-python skills/generate-2d-map/scripts/run.py dry-run `
+python skills/forge-2d-map/scripts/run.py dry-run `
   --brief <brief.json> --out-dir <output> --now <utc-rfc3339>
 ```
