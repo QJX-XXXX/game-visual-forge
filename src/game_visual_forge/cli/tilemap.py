@@ -16,6 +16,9 @@ from game_visual_forge.contracts import (
     RawImageRecord,
     SourceType,
     TileMapRequest,
+    TileMapSourceSet,
+    TileAtlasSourceRecord,
+    parse_atlas_page_argument,
     load_json,
 )
 from game_visual_forge.contracts.serialization import dump_json
@@ -72,7 +75,8 @@ def run_tilemap_route(
 def run_tilemap_ingest(
     request_path: Path,
     decision_path: Path,
-    image_path: Path,
+    image_path: Path | None,
+    atlas_page_arguments: list[str],
     repo_root: Path,
     out_path: Path,
     state_path: Path,
@@ -82,11 +86,26 @@ def run_tilemap_ingest(
     decision = MapSourceDecision.from_dict(load_json(decision_path))
     if decision.request_fingerprint != fingerprint or decision.source_type is None:
         raise ValueError("source decision does not match tilemap request or has no source")
-    record = ingest_image(repo_root, image_path, SourceType.EXISTING_FILE, fingerprint, provider=decision.selected_provider)
-    dump_json(out_path, record.to_dict())
+    if (image_path is None) == (not atlas_page_arguments):
+        raise ValueError("provide exactly one of --image or --atlas-page")
+    if image_path is not None:
+        record = ingest_image(repo_root, image_path, SourceType.EXISTING_FILE, fingerprint, provider=decision.selected_provider)
+        dump_json(out_path, record.to_dict())
+        output_path = str(out_path.name)
+    else:
+        pages = []
+        for argument in atlas_page_arguments:
+            atlas_id, page_path = parse_atlas_page_argument(argument)
+            pages.append(TileAtlasSourceRecord(atlas_id, ingest_image(repo_root, page_path, SourceType.EXISTING_FILE, fingerprint, provider=decision.selected_provider)))
+        source_set = TileMapSourceSet(1, tuple(pages))
+        expected_ids = tuple(page.atlas_id for page in request.resolved_atlas_pages)
+        if tuple(page.atlas_id for page in source_set.pages) != expected_ids:
+            raise ValueError(f"atlas page arguments must match request pages: expected {expected_ids}")
+        dump_json(out_path, source_set.to_dict())
+        output_path = str(out_path.name)
     state = transition_job(load_job(state_path), JobStatus.RUNNING, now=now)
     save_job(state_path, state)
-    return {"schema_version": 1, "status": state.status.value, "raw_image_path": str(out_path.name), "sha256": record.sha256}
+    return {"schema_version": 1, "status": state.status.value, "raw_image_path": output_path, "sha256": None if image_path is None else record.sha256}
 
 
 def run_tilemap_process(

@@ -159,6 +159,9 @@ def build_tilemap_execution_plan(request: TileMapRequest) -> ExecutionPlan:
             ("route-tileset-source", "agent", False),
             ("obtain-local-tileset", "agent", False),
         )
+    obtain_action = "obtain-local-tileset-pages" if request.tileset_profile.value == "adaptive_hd" else "obtain-local-tileset"
+    if source_actions[-1][0] == "obtain-local-tileset":
+        source_actions = source_actions[:-1] + ((obtain_action, source_actions[-1][1], source_actions[-1][2]),)
     actions = source_actions + (
         ("ingest-local-tileset", "local-runtime", False),
         ("slice-and-compose-tilemap", "local-runtime", False),

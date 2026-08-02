@@ -95,6 +95,17 @@ class SkillContractTests(unittest.TestCase):
         for command in ("plan", "route", "ingest", "process", "validate"):
             self.assertIn(command, result.stdout)
 
+        ingest = subprocess.run(
+            [sys.executable, str(launcher), "map", "tile", "ingest", "--help"],
+            cwd=ROOT,
+            capture_output=True,
+            text=True,
+            encoding="utf-8",
+            check=False,
+        )
+        self.assertEqual(ingest.returncode, 0, ingest.stderr)
+        self.assertIn("--atlas-page", ingest.stdout)
+
     def test_each_skill_contains_required_routing_and_safety_rules(self) -> None:
         for name, contract in SKILLS.items():
             skill = (ROOT / "skills" / name / "SKILL.md").read_text(encoding="utf-8")

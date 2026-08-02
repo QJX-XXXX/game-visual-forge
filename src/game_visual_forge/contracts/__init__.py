@@ -51,6 +51,7 @@ from .tilemap import (
     TileSetProfile,
     TilemapEngineTarget,
 )
+from .tilemap_sources import TileAtlasSourceRecord, TileMapSourceSet, load_tilemap_source_set, parse_atlas_page_argument
 
 __all__ = [
     "ArtifactRecord",
@@ -106,4 +107,8 @@ __all__ = [
     "TileSemanticRole",
     "TileSetProfile",
     "TilemapEngineTarget",
+    "TileAtlasSourceRecord",
+    "TileMapSourceSet",
+    "load_tilemap_source_set",
+    "parse_atlas_page_argument",
 ]

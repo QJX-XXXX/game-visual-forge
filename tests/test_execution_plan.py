@@ -5,7 +5,16 @@ import unittest
 from tests._bootstrap import ROOT  # noqa: F401
 from game_visual_forge.cli.planning import build_execution_plan
 from game_visual_forge.contracts import ExecutionPlan, PlanStep
-from game_visual_forge.contracts import AssetBrief, AssetKind, SourcePreference
+from game_visual_forge.contracts import (
+    AssetBrief,
+    AssetKind,
+    AtlasPageDefinition,
+    SourcePreference,
+    TileDefinition,
+    TileLayer,
+    TileMapRequest,
+    TileSetProfile,
+)
 
 
 def brief(source: SourcePreference) -> AssetBrief:
@@ -21,6 +30,33 @@ def brief(source: SourcePreference) -> AssetBrief:
 
 
 class ExecutionPlanTests(unittest.TestCase):
+    def adaptive_tilemap_request(self) -> TileMapRequest:
+        return TileMapRequest(
+            1,
+            "adaptive-plan",
+            "Adaptive forest tileset",
+            "outputs/adaptive-plan",
+            SourcePreference.EXISTING_FILE,
+            16,
+            16,
+            4,
+            4,
+            1,
+            1,
+            (TileDefinition("grass", 0, 0),),
+            (TileLayer("ground", 0, False, ("grass",)),),
+            "Adaptive Palette",
+            "Assets/GameVisualForge/adaptive-plan",
+            tileset_profile=TileSetProfile.ADAPTIVE_HD,
+            atlas_pages=(AtlasPageDefinition("page-01", 4, 4, 16, 16, "grass"),),
+        )
+
+    def test_adaptive_tilemap_plan_obtains_pages(self) -> None:
+        from game_visual_forge.cli.planning import build_tilemap_execution_plan
+
+        actions = [step.action for step in build_tilemap_execution_plan(self.adaptive_tilemap_request()).steps]
+        self.assertIn("obtain-local-tileset-pages", actions)
+
     def make_step(
         self,
         *,
