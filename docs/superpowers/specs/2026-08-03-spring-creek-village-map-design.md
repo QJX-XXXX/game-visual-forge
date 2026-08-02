@@ -78,12 +78,12 @@
 
 | 入口 ID | 建筑 | 建筑区域 | 门口格 | 目标场景 ID |
 | --- | --- | --- | --- | --- |
-| `inn-entrance` | 旅店 | `x=3..8, y=3..7` | `(5,8)` | `interiors/inn` |
-| `villager-a-entrance` | 村民住宅 A | `x=9..13, y=2..6` | `(11,7)` | `interiors/villager-a` |
-| `player-home-entrance` | 玩家住宅 | `x=3..9, y=17..21` | `(6,22)` | `interiors/player-home` |
-| `shop-entrance` | 杂货店 | `x=20..25, y=4..8` | `(22,9)` | `interiors/shop` |
-| `villager-b-entrance` | 村民住宅 B | `x=26..30, y=2..6` | `(28,7)` | `interiors/villager-b` |
-| `villager-c-entrance` | 村民住宅 C | `x=23..28, y=14..18` | `(25,19)` | `interiors/villager-c` |
+| `inn-entrance` | 旅店 | `x=3..8, y=3..8` | `(5,8)` | `interiors/inn` |
+| `villager-a-entrance` | 村民住宅 A | `x=9..13, y=2..7` | `(11,7)` | `interiors/villager-a` |
+| `player-home-entrance` | 玩家住宅 | `x=3..9, y=17..22` | `(6,22)` | `interiors/player-home` |
+| `shop-entrance` | 杂货店 | `x=20..25, y=4..9` | `(22,9)` | `interiors/shop` |
+| `villager-b-entrance` | 村民住宅 B | `x=26..30, y=2..7` | `(28,7)` | `interiors/villager-b` |
+| `villager-c-entrance` | 村民住宅 C | `x=23..28, y=14..19` | `(25,19)` | `interiors/villager-c` |
 
 `target_scene_id` 是稳定的目标标识，不代表本次会创建相应室内场景。传送组件和运行时代码不在本次范围内。
 
