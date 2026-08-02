@@ -1,0 +1,10 @@
+Use case: stylized-concept
+Asset type: production tileset atlas for an editable top-down Unity 2D Tilemap
+Primary request: Create one exact 4 by 4 atlas of coherent top-down pixel-art forest terrain tiles for a simple playable game map.
+Canvas and grid: square image, exactly 4 columns and 4 rows, every cell equal size, no outer margin, no gutters, no grid lines, no labels.
+Art style: polished readable 16-bit-inspired pixel art, orthographic true top-down view, compact limited palette, crisp hard pixels, consistent scale and lighting.
+Row 1: seamless bright grass; packed dirt path; sparse flowers on grass; one compact leafy tree on grass.
+Row 2: one compact gray rock on grass; horizontal wooden bridge over water; seamless deep blue water center; water top shoreline.
+Row 3: water bottom shoreline; water left shoreline; water right shoreline; water top-left outer corner.
+Row 4: water top-right outer corner; water bottom-left outer corner; water bottom-right outer corner; darker grass variation.
+Constraints: tile edges align; tree and rock stay inside their cells; no characters, animals, buildings, UI, text, watermark, perspective tilt, or shadows crossing tile boundaries.

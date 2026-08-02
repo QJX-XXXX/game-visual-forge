@@ -27,6 +27,54 @@ Tilemap Bundle** 选择 `unity-tilemap.json`，它会在 `generated_root` 下创
 过滤、关闭纹理压缩；当 pixels-per-unit 等于 Tile 宽度时，一个 Tile 对应一个
 Unity 单位。
 
+### Unity 成功案例
+
+#### 标准简易森林地图
+
+第一张端到端地图是 20×14 的俯视角森林地图，包含纵向土路、3×5 的池塘和桥梁，
+以及树木、岩石和花朵，用于验证基础的双层 Tilemap 交付流程。
+
+![标准简易森林地图 Unity Game View](assets/readme/standard-simple-map-game-view.png)
+
+![标准简易森林地图管线预览](assets/readme/standard-simple-map-pipeline-preview.png)
+
+![标准简易森林地图 Unity Scene View](assets/readme/standard-simple-map-scene-view.png)
+
+运行结果：
+
+- 4×4 图集共生成 16 个 Tile；地图尺寸为 20×14；使用 Point 过滤，每个 Unity 单位对应 256 像素。
+- 两个图层共包含 280 个地面摆放和 41 个细节摆放。
+- Unity 导入和场景摆放成功，确定性检查与人工视觉检查全部通过。
+- 结果文件：[Unity Bundle](assets/readme/standard-simple-map-unity-tilemap.json)、[质量报告](assets/readme/standard-simple-map-quality-report.json) 和 [Tilemap 摆放数据](assets/readme/standard-simple-map-tilemap-placement.json)。
+
+#### 枫叶溪谷地图
+
+第二次端到端地图流程使用生成的 4×4 秋季 Tileset，构建 24×16 的俯视角溪谷关卡。
+中央石路通过木桥跨过四格宽的溪流，树木、岩石、落叶和灯笼分别输出到不同的
+Tilemap 图层。
+
+![枫叶溪谷 Unity Game View](assets/readme/autumn-creek-map-game-view.png)
+
+![枫叶溪谷管线预览](assets/readme/autumn-creek-map-pipeline-preview.png)
+
+![枫叶溪谷 Unity Scene View](assets/readme/autumn-creek-map-scene-view.png)
+
+运行结果：
+
+- 生成 4×4、1024×1024 图集，共 16 个 Tile；使用 Point 过滤，每个 Unity 单位对应 256 像素。
+- 三个图层共包含 384 个地面摆放、28 个细节摆放和 22 个障碍物摆放。
+- Unity 导入成功，并在 `Assets/Scenes/SampleScene.unity` 中生成 `AutumnCreekMapDemo`。
+- 确定性检查通过：源图尺寸、产物可读性、栅格尺寸和 Unity Bundle 契约。
+- 人工视觉检查通过：接缝、可读性、图层顺序、碰撞图层以及无文字/水印。
+- `obstacles` Tilemap 使用 `TilemapCollider2D`，导入后场景已保存且无未保存修改。
+- 原先被裁切的 `tree-canopy` 已重新生成成完整的单格树木，包含完整树冠、树干、树根和透明边缘。
+
+结果文件：[Unity Bundle](assets/readme/autumn-creek-map-unity-tilemap.json)、
+[质量报告](assets/readme/autumn-creek-map-quality-report.json)、
+[Tileset 提示词](assets/readme/autumn-creek-tileset.prompt.txt)、
+[树木修复提示词](assets/readme/tree-canopy-replacement.prompt.txt) 和
+[Tilemap 摆放数据](assets/readme/autumn-creek-map-tilemap-placement.json)。
+
 ### 可选：标准化交付尺寸
 
 当游戏需要统一尺寸和锚点时，可在请求中设置 `delivery_normalization`。流程会保留原有的
