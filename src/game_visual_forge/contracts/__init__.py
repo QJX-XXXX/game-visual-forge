@@ -2,6 +2,15 @@ from .asset import AssetBrief, AssetKind, SourcePreference
 from .confirmation import PaidConfirmation
 from .execution import ExecutionPlan, PlanStep
 from .job import JobState, JobStatus
+from .map import (
+    MapPoint,
+    MapRequest,
+    MapShape,
+    MapShapeType,
+    MapSourceCapabilities,
+    MapSourceDecision,
+    MapSourceType,
+)
 from .manifest import ArtifactRecord, AssetManifest
 from .quality import QualityCheck, QualityReport, QualityStatus
 from .provider import (
@@ -29,6 +38,14 @@ from .sprite import (
     SpriteSourcePreference,
 )
 from .serialization import dump_json, load_json
+from .tilemap import (
+    TileColliderType,
+    TileDefinition,
+    TileFilterMode,
+    TileLayer,
+    TileMapRequest,
+    TilemapEngineTarget,
+)
 
 __all__ = [
     "ArtifactRecord",
@@ -42,6 +59,13 @@ __all__ = [
     "ExecutionPlan",
     "JobState",
     "JobStatus",
+    "MapPoint",
+    "MapRequest",
+    "MapShape",
+    "MapShapeType",
+    "MapSourceCapabilities",
+    "MapSourceDecision",
+    "MapSourceType",
     "PlanStep",
     "CliProviderProtocol",
     "CostEstimate",
@@ -66,4 +90,10 @@ __all__ = [
     "SpriteSourcePreference",
     "dump_json",
     "load_json",
+    "TileColliderType",
+    "TileDefinition",
+    "TileFilterMode",
+    "TileLayer",
+    "TileMapRequest",
+    "TilemapEngineTarget",
 ]

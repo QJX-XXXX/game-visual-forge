@@ -1,5 +1,32 @@
 # Game Visual Forge
 
+### Tile 模式与 Unity Tilemap
+
+Tile 模式把生成或已有的 Tileset PNG 作为视觉来源，并输出中立、带版本的交付包：
+`tileset.png`、`tileset-slices.json`、`tilemap-placement.json`、
+`unity-tilemap.json` 和 `tilemap-preview.png`。请求中的单元格数组采用左上角起点的
+逐行顺序；给 Unity 使用的切片矩形和摆放坐标采用左下角起点。
+
+```powershell
+python skills/forge-2d-map/scripts/run.py map tile plan `
+  --request <tilemap-request.json> --out-dir <output> --now <utc-rfc3339>
+python skills/forge-2d-map/scripts/run.py map tile route `
+  --request <output>/tilemap-request.json --capabilities <capabilities.json> `
+  --out <output>/source-decision.json --state <output>/job-state.json `
+  --now <utc-rfc3339>
+```
+
+随后执行 `map tile ingest`、`map tile process` 和 `map tile validate`。
+Unity 2022.3 LTS / Unity 6 导入器位于
+`integrations/unity/com.game-visual-forge.tilemap`，需要在 Unity Package Manager
+中通过 **Add package from disk** 明确安装。Package 声明依赖
+`com.unity.2d.sprite` 和 `com.unity.2d.tilemap`；导入器本身不会自动安装依赖，
+也不会修改当前打开的 Scene。安装后，从 **Tools > Game Visual Forge > Import
+Tilemap Bundle** 选择 `unity-tilemap.json`，它会在 `generated_root` 下创建或更新
+切片 Sprite、Tile 资源、Tile Palette 和多图层 Tilemap Prefab。默认使用 Point
+过滤、关闭纹理压缩；当 pixels-per-unit 等于 Tile 宽度时，一个 Tile 对应一个
+Unity 单位。
+
 ### 可选：标准化交付尺寸
 
 当游戏需要统一尺寸和锚点时，可在请求中设置 `delivery_normalization`。流程会保留原有的
@@ -27,6 +54,42 @@ Game Visual Forge 是一组独立的 Agent Skills，用于生成 2D Sprite、面
 
 M0 提供版本化数据契约、安全的任务状态、零网络执行计划和三个 Skill 基础骨架。
 M0 不调用真实生成 Provider，也不生成媒体文件。
+
+### M2 二维地图基础管线
+
+M2 增加结构化的 `MapRequest`，并为已有底图提供离线地图流程：
+`map plan -> map route -> map ingest -> map process -> map validate`。
+第一批输出 `base-map.png`、`map-runtime.json`、`walkable-mask.png`、
+`collision-mask.png` 和 `debug-preview.png`。
+
+地图几何使用与画布一致的整数像素坐标。可行走遮罩为
+`walk_bounds - blockers`，碰撞遮罩为可行走遮罩的反集。`zones` 会写入运行时
+元数据和调试预览，但不会改变碰撞。出生点必须位于画布内、可行走且不在阻挡物中，
+才能通过确定性质量检查；发布前仍需要人工完成视觉确认。
+
+```powershell
+python skills/forge-2d-map/scripts/run.py map plan `
+  --request <map-request.json> --out-dir <output> --now <utc-rfc3339>
+python skills/forge-2d-map/scripts/run.py map route `
+  --request <output>/map-request.json --capabilities <capabilities.json> `
+  --out <output>/source-decision.json --state <output>/job-state.json `
+  --now <utc-rfc3339>
+python skills/forge-2d-map/scripts/run.py map ingest `
+  --request <output>/map-request.json --decision <output>/source-decision.json `
+  --image <source.png> --repo-root <repo> --out <output>/raw-image.json `
+  --state <output>/job-state.json --now <utc-rfc3339>
+python skills/forge-2d-map/scripts/run.py map process `
+  --request <output>/map-request.json --raw-image <output>/raw-image.json `
+  --repo-root <repo> --out-dir <output> --state <output>/job-state.json `
+  --now <utc-rfc3339>
+python skills/forge-2d-map/scripts/run.py map validate `
+  --request <output>/map-request.json --raw-image <output>/raw-image.json `
+  --processing-result <staging>/processing-result.json --repo-root <repo> `
+  --staging-dir <staging> --final-dir <output>/final `
+  --state <output>/job-state.json --now <utc-rfc3339>
+```
+
+M2 仍要求显式确认服务商、模型、参数、数量和费用，不会静默重试未知提交状态。
 
 ### M1 二维精灵生成
 
@@ -75,7 +138,7 @@ BiRefNet 语义 alpha 与从画布边缘连通的色键证据，再根据已知�
 - 每次使用即梦或通义万相，都必须明确确认 Provider、模型、参数、数量、费用、币种和请求指纹。
 - 不得根据凭证、登录状态或历史选择自动选择服务商，不得静默重新提交付费任务。
 - `submission_unknown` 只能查询或人工核对。
-- M1 不包含地图、视频、MP4、FFmpeg、自动安装依赖或自动付费重试。
+- M2 不包含视频、MP4、FFmpeg、自动安装依赖或自动付费重试。
 
 ### 安装
 

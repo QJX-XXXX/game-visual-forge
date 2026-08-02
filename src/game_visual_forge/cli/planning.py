@@ -3,6 +3,8 @@ from __future__ import annotations
 from game_visual_forge.contracts.asset import AssetBrief, SourcePreference
 from game_visual_forge.contracts.execution import ExecutionPlan, PlanStep
 from game_visual_forge.contracts.sprite import SourceDecision, SourceType, SpriteRequest
+from game_visual_forge.contracts.map import MapRequest
+from game_visual_forge.contracts.tilemap import TileMapRequest
 
 
 SEQUENCES: dict[SourcePreference, tuple[tuple[str, str, bool], ...]] = {
@@ -117,4 +119,50 @@ def build_sprite_execution_plan(
             ("process-local-sprite", "local-runtime", False),
             ("validate-local-artifacts", "local-runtime", False),
         )
+    return execution_plan_from_actions(request.asset_id, request.source_preference.value, actions)
+
+
+def build_map_execution_plan(request: MapRequest) -> ExecutionPlan:
+    if request.source_preference in {SourcePreference.JIMENG, SourcePreference.WANXIANG}:
+        actions = (
+            ("route-map-source", "agent", False),
+            ("preflight-provider", "provider-cli", False),
+            ("estimate-provider-cost", "provider-cli", False),
+            ("confirm-paid-submit", "agent", True),
+            ("obtain-local-map", "provider-cli", False),
+            ("ingest-local-map", "local-runtime", False),
+            ("process-map-runtime-data", "local-runtime", False),
+            ("validate-map-artifacts", "local-runtime", False),
+        )
+    else:
+        actions = (
+            ("route-map-source", "agent", False),
+            ("obtain-local-map", "agent", False),
+            ("ingest-local-map", "local-runtime", False),
+            ("process-map-runtime-data", "local-runtime", False),
+            ("validate-map-artifacts", "local-runtime", False),
+        )
+    return execution_plan_from_actions(request.asset_id, request.source_preference.value, actions)
+
+
+def build_tilemap_execution_plan(request: TileMapRequest) -> ExecutionPlan:
+    if request.source_preference in {SourcePreference.JIMENG, SourcePreference.WANXIANG}:
+        source_actions = (
+            ("route-tileset-source", "agent", False),
+            ("preflight-provider", "provider-cli", False),
+            ("estimate-provider-cost", "provider-cli", False),
+            ("confirm-paid-submit", "agent", True),
+            ("obtain-local-tileset", "provider-cli", False),
+        )
+    else:
+        source_actions = (
+            ("route-tileset-source", "agent", False),
+            ("obtain-local-tileset", "agent", False),
+        )
+    actions = source_actions + (
+        ("ingest-local-tileset", "local-runtime", False),
+        ("slice-and-compose-tilemap", "local-runtime", False),
+        ("emit-unity-tilemap-bundle", "local-runtime", False),
+        ("validate-tilemap-artifacts", "local-runtime", False),
+    )
     return execution_plan_from_actions(request.asset_id, request.source_preference.value, actions)

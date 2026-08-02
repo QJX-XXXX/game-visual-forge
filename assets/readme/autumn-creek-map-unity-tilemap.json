@@ -1,0 +1,19 @@
+{
+  "asset_id": "autumn-creek-map",
+  "engine_target": "Unity_Tilemap",
+  "filter_mode": "point",
+  "generated_root": "Assets/GameVisualForgeMaps/autumn-creek-map",
+  "importer_version": "0.1.0",
+  "minimum_unity_version": "2022.3",
+  "palette_name": "Autumn Creek Map Palette",
+  "pixels_per_unit": 256,
+  "placement": "tilemap-placement.json",
+  "prefab_name": "autumn-creek-map-tilemap",
+  "required_packages": [
+    "com.unity.2d.sprite",
+    "com.unity.2d.tilemap"
+  ],
+  "schema_version": 1,
+  "slices": "tileset-slices.json",
+  "tileset": "tileset.png"
+}
