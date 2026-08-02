@@ -108,6 +108,15 @@ sliced Sprite texture, Tile assets, Tile Palette, and layered Tilemap Prefab
 under the bundle's `generated_root`. Defaults are Point filtering, uncompressed
 textures, and one tile per Unity unit when pixels-per-unit equals tile width.
 
+The package also includes opt-in Unity tests under `Tests/Editor` and
+`Tests/PlayMode`. In the consuming project's `Packages/manifest.json`, enable
+the package through `testables` and run the Unity Test Runner. EditMode checks
+the imported Tile count, palette population, layer order, used cells, and
+obstacle collider. PlayMode contains a runtime fixture check; the current demo
+scene was additionally verified through Unity MCP with three runtime Tilemaps,
+renderers, and a collider. Re-importing both example bundles twice kept 16
+Tiles and the same Tilemap Prefab GUID for each bundle.
+
 #### Unity success examples
 
 ##### Standard Simple Forest Map

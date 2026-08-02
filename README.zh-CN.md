@@ -27,6 +27,13 @@ Tilemap Bundle** 选择 `unity-tilemap.json`，它会在 `generated_root` 下创
 过滤、关闭纹理压缩；当 pixels-per-unit 等于 Tile 宽度时，一个 Tile 对应一个
 Unity 单位。
 
+Package 还提供了可选的 Unity 测试，位于 `Tests/Editor` 和 `Tests/PlayMode`。
+在消费项目的 `Packages/manifest.json` 中，把本 Package 加入 `testables` 后即可在
+Unity Test Runner 中运行。EditMode 会检查 Tile 数量、Palette 内容、图层顺序、有效
+单元格和障碍物碰撞器；PlayMode 提供运行时样例检查。本次还通过 Unity MCP 验证了当前
+示例场景：运行时包含 3 个 Tilemap、TilemapRenderer 和碰撞器。两套示例 Bundle 各自
+连续导入两次后，均保持 16 个 Tile，且 Tilemap Prefab GUID 不变。
+
 ### Unity 成功案例
 
 #### 标准简易森林地图

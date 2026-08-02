@@ -23,6 +23,15 @@ class UnityTilemapIntegrationTests(unittest.TestCase):
         self.assertNotIn("EditorSceneManager", source)
         self.assertIn("PrefabUtility.SaveAsPrefabAsset", source)
 
+    def test_optional_unity_runtime_checks_are_packaged(self) -> None:
+        package_root = ROOT / "integrations" / "unity" / "com.game-visual-forge.tilemap"
+        editor_tests = package_root / "Tests" / "Editor" / "TilemapBundleImporterEditModeTests.cs"
+        playmode_tests = package_root / "Tests" / "PlayMode" / "TilemapPrefabPlayModeTests.cs"
+        self.assertTrue(editor_tests.is_file())
+        self.assertTrue(playmode_tests.is_file())
+        self.assertIn("TilemapCollider2D", editor_tests.read_text(encoding="utf-8"))
+        self.assertIn("Object.Instantiate", playmode_tests.read_text(encoding="utf-8"))
+
 
 if __name__ == "__main__":
     unittest.main()
