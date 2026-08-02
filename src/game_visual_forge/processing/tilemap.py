@@ -8,6 +8,7 @@ from game_visual_forge.contracts import AtlasPageDefinition, RawImageRecord, Til
 from game_visual_forge.contracts.serialization import dump_json
 from game_visual_forge.errors import ErrorCode, ForgeError
 from game_visual_forge.processing.images import _load_pillow, verify_image_unchanged
+from game_visual_forge.processing.tilemap_quality import analyze_tilemap_quality, render_seam_preview, render_usage_preview, seam_samples, _tile_images
 
 
 @dataclass(frozen=True)
@@ -19,6 +20,9 @@ class TileMapProcessingResult:
     placement_path: str
     unity_manifest_path: str
     preview_path: str
+    quality_metrics_path: str
+    seam_preview_path: str
+    usage_preview_path: str
     processing_steps: tuple[str, ...]
     needs_attention: bool
 
@@ -38,6 +42,9 @@ class TileMapProcessingResult:
             "placement_path": self.placement_path,
             "unity_manifest_path": self.unity_manifest_path,
             "preview_path": self.preview_path,
+            "quality_metrics_path": self.quality_metrics_path,
+            "seam_preview_path": self.seam_preview_path,
+            "usage_preview_path": self.usage_preview_path,
             "processing_steps": list(self.processing_steps),
             "needs_attention": self.needs_attention,
         }
@@ -57,6 +64,9 @@ class TileMapProcessingResult:
             placement_path=str(value["placement_path"]),
             unity_manifest_path=str(value["unity_manifest_path"]),
             preview_path=str(value["preview_path"]),
+            quality_metrics_path=str(value.get("quality_metrics_path", "")),
+            seam_preview_path=str(value.get("seam_preview_path", "")),
+            usage_preview_path=str(value.get("usage_preview_path", "")),
             processing_steps=tuple(str(item) for item in value["processing_steps"]),
             needs_attention=bool(value["needs_attention"]),
         )
@@ -206,7 +216,12 @@ def process_tilemap(
         "prefab_name": f"{request.asset_id}-tilemap",
         "required_packages": ["com.unity.2d.sprite", "com.unity.2d.tilemap"],
     })
-    _compose_preview(atlases, request).save(staging / "tilemap-preview.png", format="PNG")
+    preview = _compose_preview(atlases, request)
+    preview.save(staging / "tilemap-preview.png", format="PNG")
+    metrics = analyze_tilemap_quality(atlases, request)
+    dump_json(staging / "tilemap-quality-metrics.json", metrics.to_dict())
+    render_seam_preview(preview, seam_samples(atlases, request), request).save(staging / "tile-seam-preview.png", format="PNG")
+    render_usage_preview(_tile_images(atlases, request), metrics.usage_counts, request).save(staging / "tile-usage-preview.png", format="PNG")
 
     return TileMapProcessingResult(
         schema_version=1,
@@ -216,6 +231,9 @@ def process_tilemap(
         placement_path="tilemap-placement.json",
         unity_manifest_path="unity-tilemap.json",
         preview_path="tilemap-preview.png",
+        quality_metrics_path="tilemap-quality-metrics.json",
+        seam_preview_path="tile-seam-preview.png",
+        usage_preview_path="tile-usage-preview.png",
         processing_steps=(
             "verify-tileset-source",
             "validate-atlas-grid",
@@ -224,5 +242,5 @@ def process_tilemap(
             "emit-unity-import-manifest",
             "compose-tilemap-preview",
         ),
-        needs_attention=False,
+        needs_attention=metrics.needs_attention,
     )
