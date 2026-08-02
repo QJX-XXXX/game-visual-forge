@@ -23,6 +23,8 @@ class UnityTilemapIntegrationTests(unittest.TestCase):
         self.assertIn("PrefabUtility.SaveAsPrefabAsset", source)
         self.assertIn("tilesets", source)
         self.assertIn("atlas_id", source)
+        self.assertIn('atlas_id = "page-01"', source)
+        self.assertIn("path = manifest.tileset", source)
         self.assertIn("ImportMode.AssetsOnly", source)
 
     def test_optional_unity_runtime_checks_are_packaged(self) -> None:

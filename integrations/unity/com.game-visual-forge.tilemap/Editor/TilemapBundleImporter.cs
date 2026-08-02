@@ -12,106 +12,6 @@ namespace GameVisualForge.Unity
 {
     public static partial class TilemapBundleImporter
     {
-        [Serializable]
-        private sealed class BundleManifest
-        {
-            public int schema_version;
-            public string asset_id;
-            public string engine_target;
-            public string tileset;
-            public AtlasPage[] tilesets;
-            public string slices;
-            public string placement;
-            public string quality_report;
-            public string quality_report_sha256;
-            public string palette_name;
-            public string generated_root;
-            public int pixels_per_unit;
-            public string filter_mode;
-            public string prefab_name;
-        }
-
-        [Serializable]
-        private sealed class SliceManifest
-        {
-            public int schema_version;
-            public TileSlice[] tiles;
-        }
-
-        [Serializable]
-        private sealed class TileSlice
-        {
-            public string id;
-            public string atlas_id;
-            public RectData rect;
-            public PointData palette;
-            public string collider_type;
-        }
-
-        [Serializable]
-        private sealed class RectData
-        {
-            public int x;
-            public int y;
-            public int width;
-            public int height;
-        }
-
-        [Serializable]
-        private sealed class PointData
-        {
-            public int x;
-            public int y;
-        }
-
-        [Serializable]
-        private sealed class PlacementManifest
-        {
-            public int schema_version;
-            public MapSize map_size;
-            public PlacementLayer[] layers;
-        }
-
-        [Serializable]
-        private sealed class MapSize
-        {
-            public int width;
-            public int height;
-        }
-
-        [Serializable]
-        private sealed class PlacementLayer
-        {
-            public string id;
-            public int sorting_order;
-            public bool has_collider;
-            public Placement[] placements;
-        }
-
-        [Serializable]
-        private sealed class Placement
-        {
-            public int x;
-            public int y;
-            public string tile_id;
-        }
-
-        [Serializable]
-        public sealed class ImportResult
-        {
-            public string asset_id;
-            public string generated_root;
-            public string tileset_asset;
-            public string[] tileset_assets;
-            public string palette_prefab;
-            public string tilemap_prefab;
-            public int tile_count;
-            public int layer_count;
-            public string scene_action;
-            public string scene_path;
-            public bool scene_dirty;
-        }
-
         [MenuItem("Tools/Game Visual Forge/Import Tilemap Bundle...")]
         private static void ImportFromMenu()
         {
@@ -185,7 +85,7 @@ namespace GameVisualForge.Unity
             {
                 var tilesetAssetPath = $"{textureFolder}/{page.atlas_id}.png";
                 CopyToAsset(Path.Combine(bundleDirectory, page.path), tilesetAssetPath);
-                var pageSlices = slices.tiles.Where(slice => string.IsNullOrEmpty(slice.atlas_id) ? page.atlas_id == "page-01" : slice.atlas_id == page.atlas_id).ToArray();
+                var pageSlices = slices.tiles.Where(slice => slice.atlas_id == page.atlas_id).ToArray();
                 ConfigureAndSliceTexture(tilesetAssetPath, manifest, pageSlices);
                 foreach (var sprite in AssetDatabase.LoadAllAssetsAtPath(tilesetAssetPath).OfType<Sprite>())
                 {
@@ -229,9 +129,16 @@ namespace GameVisualForge.Unity
 
         private static AtlasPage[] NormalizeAtlasPages(BundleManifest manifest)
         {
-            if (manifest.tilesets != null && manifest.tilesets.Length > 0)
-                return manifest.tilesets;
-            return new[] { new AtlasPage { atlas_id = "page-01", path = manifest.tileset } };
+            var atlasPages = manifest.tilesets != null && manifest.tilesets.Length > 0
+                ? manifest.tilesets
+                : new[] { new AtlasPage { atlas_id = "page-01", path = manifest.tileset } };
+            if (atlasPages.Length < 1 || atlasPages.Length > 3)
+                throw new InvalidOperationException("Unity tilemap bundles must contain one to three atlas pages.");
+            if (atlasPages.Any(page => string.IsNullOrWhiteSpace(page.atlas_id) || string.IsNullOrWhiteSpace(page.path)))
+                throw new InvalidOperationException("Every atlas page must define atlas_id and path.");
+            if (atlasPages.Select(page => page.atlas_id).Distinct(StringComparer.Ordinal).Count() != atlasPages.Length)
+                throw new InvalidOperationException("Atlas page IDs must be unique.");
+            return atlasPages;
         }
 
         private static T ReadJson<T>(string path)

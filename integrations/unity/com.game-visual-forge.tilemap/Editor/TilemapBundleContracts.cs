@@ -9,6 +9,109 @@ namespace GameVisualForge.Unity
         public string path;
     }
 
+    [Serializable]
+    internal sealed class BundleManifest
+    {
+        public int schema_version;
+        public string asset_id;
+        public string engine_target;
+        public string tileset;
+        public AtlasPage[] tilesets;
+        public string slices;
+        public string placement;
+        public string quality_report;
+        public string quality_report_sha256;
+        public string generated_root;
+        public int pixels_per_unit;
+        public string filter_mode;
+        public string palette_name;
+        public string prefab_name;
+    }
+
+    [Serializable]
+    internal sealed class SliceManifest
+    {
+        public int schema_version;
+        public TileSlice[] tiles;
+    }
+
+    [Serializable]
+    internal sealed class TileSlice
+    {
+        public string id;
+        public string atlas_id;
+        public RectData rect;
+        public PointData palette;
+        public string collider_type;
+    }
+
+    [Serializable]
+    internal sealed class RectData
+    {
+        public int x;
+        public int y;
+        public int width;
+        public int height;
+    }
+
+    [Serializable]
+    internal sealed class PointData
+    {
+        public int x;
+        public int y;
+    }
+
+    [Serializable]
+    internal sealed class PlacementManifest
+    {
+        public int schema_version;
+        public MapSize map_size;
+        public PlacementLayer[] layers;
+    }
+
+    [Serializable]
+    internal sealed class MapSize
+    {
+        public int width;
+        public int height;
+    }
+
+    [Serializable]
+    internal sealed class PlacementLayer
+    {
+        public string id;
+        public int sorting_order;
+        public bool has_collider;
+        public Placement[] placements;
+    }
+
+    [Serializable]
+    internal sealed class Placement
+    {
+        public int x;
+        public int y;
+        public string tile_id;
+    }
+
+    public static partial class TilemapBundleImporter
+    {
+        [Serializable]
+        public sealed class ImportResult
+        {
+            public string asset_id;
+            public string generated_root;
+            public string tileset_asset;
+            public string[] tileset_assets;
+            public string palette_prefab;
+            public string tilemap_prefab;
+            public int tile_count;
+            public int layer_count;
+            public string scene_action;
+            public string scene_path;
+            public bool scene_dirty;
+        }
+    }
+
     public enum ImportMode
     {
         AssetsOnly,

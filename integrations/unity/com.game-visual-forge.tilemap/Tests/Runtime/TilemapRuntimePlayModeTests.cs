@@ -1,5 +1,4 @@
 using System.Collections;
-using System.Linq;
 using NUnit.Framework;
 using UnityEngine;
 using UnityEngine.TestTools;
@@ -10,15 +9,29 @@ namespace GameVisualForge.Unity.Tests
     public sealed class TilemapRuntimePlayModeTests
     {
         [UnityTest]
-        public IEnumerator ImportedTilemapsRemainRenderableAtRuntime()
+        public IEnumerator RuntimeTilemapCanRenderTiles()
         {
-            var tilemaps = Object.FindObjectsOfType<Tilemap>();
-            if (tilemaps.Length == 0)
-                Assert.Ignore("The active Unity scene has no Tilemap fixture loaded.");
+            var root = new GameObject("GameVisualForge Runtime Tilemap Fixture");
+            var tilemapObject = new GameObject("Runtime Tilemap");
+            tilemapObject.transform.SetParent(root.transform, false);
+            var tilemap = tilemapObject.AddComponent<Tilemap>();
+            var renderer = tilemapObject.AddComponent<TilemapRenderer>();
+            var tile = ScriptableObject.CreateInstance<Tile>();
 
-            Assert.That(tilemaps.Any(tilemap => tilemap.GetUsedTilesCount() > 0), Is.True);
-            Assert.That(tilemaps.Any(tilemap => tilemap.GetComponent<TilemapRenderer>() != null), Is.True);
-            yield return null;
+            try
+            {
+                tilemap.SetTile(Vector3Int.zero, tile);
+
+                Assert.That(tilemap.GetUsedTilesCount(), Is.EqualTo(1));
+                Assert.That(renderer, Is.Not.Null);
+
+                yield return null;
+            }
+            finally
+            {
+                Object.Destroy(root);
+                Object.Destroy(tile);
+            }
         }
     }
 }
