@@ -1,4 +1,5 @@
 using System.Collections;
+using System.Linq;
 using NUnit.Framework;
 using UnityEditor;
 using UnityEngine;
@@ -40,6 +41,19 @@ namespace GameVisualForge.Unity.Tests
             {
                 Object.Destroy(root);
             }
+        }
+
+        [UnityTest]
+        public IEnumerator ActiveSceneTilemapsRemainRenderableAtRuntime()
+        {
+            var tilemaps = Object.FindObjectsOfType<Tilemap>();
+            if (tilemaps.Length == 0)
+            {
+                Assert.Ignore("The active Unity scene has no Tilemap fixture loaded.");
+            }
+
+            Assert.That(tilemaps.Any(tilemap => tilemap.GetUsedTilesCount() > 0), Is.True);
+            yield return null;
         }
     }
 }

@@ -223,7 +223,7 @@ namespace GameVisualForge.Unity
                 result.scene_path = placementResult.scene_path;
                 result.scene_dirty = placementResult.scene_dirty;
             }
-            var report = TilemapImportReportWriter.Write(manifestFullPath, manifest, result, atlasPages.Length, mode);
+            var report = TilemapImportReportWriter.Write(manifestFullPath, result, atlasPages.Length, mode);
             return result;
         }
 
