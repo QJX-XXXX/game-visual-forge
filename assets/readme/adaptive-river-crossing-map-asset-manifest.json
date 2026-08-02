@@ -1,0 +1,74 @@
+{
+  "artifacts": [
+    {
+      "path": "outputs/adaptive-river-crossing-map-v2/source/tileset-page-01.png",
+      "role": "source",
+      "sha256": "297a40b16df67f404454fda383505a33416f332b3477c56e4fffb807812bfd2c"
+    },
+    {
+      "path": "outputs/adaptive-river-crossing-map-v2/source/tileset-page-02.png",
+      "role": "source",
+      "sha256": "51e5e2683b6e63bfe3e2070711fa826d547f8f96584ceae8a72da54058bacc6e"
+    },
+    {
+      "path": "outputs/adaptive-river-crossing-map-v2/final-v7/tileset-page-01.png",
+      "role": "tileset",
+      "sha256": "297a40b16df67f404454fda383505a33416f332b3477c56e4fffb807812bfd2c"
+    },
+    {
+      "path": "outputs/adaptive-river-crossing-map-v2/final-v7/tileset-page-02.png",
+      "role": "tileset",
+      "sha256": "87508f7fbb7501c16067fa71e7e2a9368e59c16c9217cfae784b49b2ab95dd3b"
+    },
+    {
+      "path": "outputs/adaptive-river-crossing-map-v2/final-v7/tileset-slices.json",
+      "role": "sprite-slices",
+      "sha256": "03629a71672590083d7225a7e8a12446c116794f2e43804da80a0d1d26f938c1"
+    },
+    {
+      "path": "outputs/adaptive-river-crossing-map-v2/final-v7/tilemap-placement.json",
+      "role": "tilemap-placement",
+      "sha256": "f61b2cf7a1c875c5afa559fb2df218638ce891d0da5a4a874ac79800dc1e69d2"
+    },
+    {
+      "path": "outputs/adaptive-river-crossing-map-v2/final-v7/unity-tilemap.json",
+      "role": "unity-import-manifest",
+      "sha256": "a16c5236f75c9ed2caa60fe0b604f93147dc3525c0fb29a440fe089a8719a8ef"
+    },
+    {
+      "path": "outputs/adaptive-river-crossing-map-v2/final-v7/tilemap-preview.png",
+      "role": "tilemap-preview",
+      "sha256": "6af40f3af049a56adb7776be8549d57bd958baadb1edd4547fcd0c15c0221deb"
+    },
+    {
+      "path": "outputs/adaptive-river-crossing-map-v2/final-v7/tilemap-quality-metrics.json",
+      "role": "tilemap-quality-metrics",
+      "sha256": "2edd27360bb94ffd7f8352d033d3994cdff26c41973143b123d1c7ac96ae0a99"
+    },
+    {
+      "path": "outputs/adaptive-river-crossing-map-v2/final-v7/tile-seam-preview.png",
+      "role": "tile-seam-preview",
+      "sha256": "fdddf673a7377a79637ba02a7e73072bb596af691223910445883b6a8f74e1dd"
+    },
+    {
+      "path": "outputs/adaptive-river-crossing-map-v2/final-v7/tile-usage-preview.png",
+      "role": "tile-usage-preview",
+      "sha256": "4ae818610acf9364d7b90c0060352795b4e5983f384f66c238347ea6656bf60e"
+    }
+  ],
+  "asset_id": "adaptive-river-crossing-map",
+  "delivery_normalization": null,
+  "model": null,
+  "processing_steps": [
+    "verify-tileset-source",
+    "validate-atlas-grid",
+    "emit-unity-sprite-slices",
+    "emit-tilemap-placement",
+    "emit-unity-import-manifest",
+    "compose-tilemap-preview"
+  ],
+  "provider": null,
+  "quality_status": "passed",
+  "schema_version": 1,
+  "source_type": "existing-file"
+}

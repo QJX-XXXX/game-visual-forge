@@ -153,7 +153,16 @@ def render_seam_preview(preview: Any, samples: tuple[tuple[int, int, int, int, f
     draw = ImageDraw.Draw(result)
     for x1, y1, x2, y2, score in samples:
         if score > SEAM_ATTENTION_THRESHOLD:
-            draw.line((x1 * request.tile_width, y1 * request.tile_height, x2 * request.tile_width, y2 * request.tile_height), fill=(255, 40, 40, 255), width=1)
+            color = (255, 40, 40, 230)
+        elif score > SEAM_ATTENTION_THRESHOLD * 0.65:
+            color = (255, 180, 40, 220)
+        else:
+            color = (40, 220, 120, 180)
+        draw.line(
+            (x1 * request.tile_width, y1 * request.tile_height, x2 * request.tile_width, y2 * request.tile_height),
+            fill=color,
+            width=max(2, min(request.tile_width, request.tile_height) // 64),
+        )
     return result
 
 

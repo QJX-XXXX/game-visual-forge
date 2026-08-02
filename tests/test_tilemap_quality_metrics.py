@@ -14,7 +14,7 @@ from game_visual_forge.contracts import (
     TileMapRequest,
     TileSemanticRole,
 )
-from game_visual_forge.processing.tilemap_quality import analyze_tilemap_quality
+from game_visual_forge.processing.tilemap_quality import analyze_tilemap_quality, render_seam_preview, seam_samples
 
 
 def request_for_tiles(*tiles: TileDefinition, cells: tuple[str | None, ...]) -> TileMapRequest:
@@ -47,6 +47,14 @@ class TileMapQualityMetricsTests(unittest.TestCase):
         request = TileMapRequest(**{**request.__dict__, "adjacency_rules": (TileAdjacencyRule("road-east", TileDirection.EAST, ("road-east",)),)})
         metrics = analyze_tilemap_quality({"page-01": Image.new("RGBA", (32, 16), (0, 0, 0, 255))}, request)
         self.assertEqual(metrics.invalid_adjacencies[0].tile_id, "road-east")
+
+    def test_seam_preview_is_distinct_even_when_all_seams_pass(self) -> None:
+        request = request_for_tiles(TileDefinition("grass", 0, 0), cells=("grass", "grass"))
+        atlas = Image.new("RGBA", (16, 16), (40, 80, 40, 255))
+        preview = Image.new("RGBA", (32, 16), (40, 80, 40, 255))
+        samples = seam_samples({"page-01": atlas}, request)
+        rendered = render_seam_preview(preview, samples, request)
+        self.assertNotEqual(rendered.tobytes(), preview.tobytes())
 
 
 if __name__ == "__main__":

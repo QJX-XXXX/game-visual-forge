@@ -167,6 +167,51 @@ Artifacts: [Unity bundle](assets/readme/autumn-creek-map-unity-tilemap.json),
 [tree replacement prompt](assets/readme/tree-canopy-replacement.prompt.txt),
 and [tilemap placement data](assets/readme/autumn-creek-map-tilemap-placement.json).
 
+##### Adaptive River Crossing Map (32-Tile / 2-page HD)
+
+This is the accepted `adaptive-river-crossing-map-tilemap` validation case. It is
+separate from `AutumnCreekMapDemo` and `StandardSimpleMapDemo`; those existing
+maps remain reference examples. The adaptive case reuses the validated Autumn
+Creek Tile grammar intentionally, so the multi-page and dynamic Tile-count
+contract is tested without introducing incompatible visual semantics.
+
+The 24x16 map contains a four-cell-wide horizontal creek, a vertical stone path
+and bridge crossing, a small upper-right pond, and coherent grass, leaf, tree,
+rock, and lantern details. It exports 32 Tile assets across two 4x4 atlas pages
+and three layers (`ground`, `details`, and `obstacles`). Page 02 uses alternate
+Tile IDs with the same visual grammar to validate page binding and idempotent
+multi-page import. Page 02 is a deterministic, subtly color-shifted variant of
+the same atlas grammar, so the two page files are distinct while remaining
+visually compatible; this is not presented as 32 unique visual motifs.
+
+![Adaptive River Crossing map preview](assets/readme/adaptive-river-crossing-map-preview.png)
+
+![Adaptive River Crossing seam preview](assets/readme/adaptive-river-crossing-map-seam-preview.png)
+
+![Adaptive River Crossing Tile usage](assets/readme/adaptive-river-crossing-map-tile-usage-preview.png)
+
+![Adaptive River Crossing in Unity Game View](assets/readme/adaptive-river-crossing-map-unity-game-view.png)
+
+![Adaptive River Crossing in Unity Scene View](assets/readme/adaptive-river-crossing-map-unity-scene-view.png)
+
+Validation result:
+
+- Python deterministic and manual visual checks passed: seams, readability, layer order, collision layer, adjacency, clipping, and no text/watermark.
+- All 32 declared Tile IDs are used; no unused, clipped, or invalid-adjacency Tile IDs remain.
+- Assets-only Unity import created two atlas textures, 32 Tile assets, a Palette prefab, and a Tilemap prefab without changing the Scene layout.
+- The Assets-only report's `scene_dirty=true` reflects the editor's pre-existing dirty state; the importer itself reported `scene_action=unchanged`.
+- Repeated Import and Place was idempotent: the first placement reported `scene_action=placed`, the second reported `scene_action=updated`; both reported stable resource GUIDs and one adaptive scene instance.
+- The Unity import report records the two atlas pages, 32 Tiles, three layers, and generated prefab paths. The editor scene was intentionally left dirty by the explicit placement test; the Scene was not auto-saved.
+- The [Unity acceptance summary](assets/readme/adaptive-river-crossing-map-unity-acceptance-summary.json) preserves the clean Assets-only result (`had_existing_assets=false`, `scene_action=unchanged`), the first placement (`placed`), the second idempotent update (`updated`), stable GUIDs, and the final one-instance hierarchy check.
+
+Artifacts: [map preview](assets/readme/adaptive-river-crossing-map-preview.png),
+[seam preview](assets/readme/adaptive-river-crossing-map-seam-preview.png),
+[Tile usage](assets/readme/adaptive-river-crossing-map-tile-usage-preview.png),
+[map quality report](assets/readme/adaptive-river-crossing-map-map-quality-report.json),
+[asset manifest](assets/readme/adaptive-river-crossing-map-asset-manifest.json),
+and [Unity import report](assets/readme/adaptive-river-crossing-map-unity-import-report.json),
+plus the [Unity acceptance summary](assets/readme/adaptive-river-crossing-map-unity-acceptance-summary.json).
+
 ### Adaptive Tilemap quality workflow
 
 Tile mode has two profiles: `standard_16` keeps the legacy single 4x4 atlas

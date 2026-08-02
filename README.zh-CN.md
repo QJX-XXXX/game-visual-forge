@@ -82,6 +82,49 @@ Tilemap 图层。
 [树木修复提示词](assets/readme/tree-canopy-replacement.prompt.txt) 和
 [Tilemap 摆放数据](assets/readme/autumn-creek-map-tilemap-placement.json)。
 
+#### 自适应河流穿越地图（32 Tile / 双图集页 HD）
+
+这是当前验收通过的 `adaptive-river-crossing-map-tilemap` 测试案例，独立于
+`AutumnCreekMapDemo` 和 `StandardSimpleMapDemo`；后两者仍作为已有参考案例保留。
+本案例有意复用已经验证过的枫叶溪谷 Tile 语义，先验证多图集页和动态 Tile 数量
+契约，同时避免不同图集之间出现不兼容的视觉语义。
+
+地图尺寸为 24×16，包含四格宽的横向溪流、纵向石路和木桥穿越、右上角小池塘，
+以及连贯的草地、落叶、树木、岩石和灯笼细节。交付包包含 32 个 Tile 资源、两张
+4×4 图集页和三个图层（`ground`、`details`、`obstacles`）。第二页使用相同视觉
+语义的备用 Tile ID，用于验证图集页绑定和重复导入；这不是宣称有 32 种完全不同的
+视觉图案。
+第二页相对于第一页采用确定性的轻微色彩变化，因此两个图集页是真实不同的文件，
+但仍保持相同的视觉语法和可读性。
+
+![自适应河流穿越地图预览](assets/readme/adaptive-river-crossing-map-preview.png)
+
+![自适应河流穿越接缝预览](assets/readme/adaptive-river-crossing-map-seam-preview.png)
+
+![自适应河流穿越 Tile 使用率](assets/readme/adaptive-river-crossing-map-tile-usage-preview.png)
+
+![自适应河流穿越 Unity Game View](assets/readme/adaptive-river-crossing-map-unity-game-view.png)
+
+![自适应河流穿越 Unity Scene View](assets/readme/adaptive-river-crossing-map-unity-scene-view.png)
+
+验收结果：
+
+- Python 确定性检查和人工视觉检查全部通过：接缝、可读性、图层顺序、碰撞层、邻接关系、裁切和无文字/水印。
+- 声明的 32 个 Tile ID 全部被使用，没有未使用、被裁切或非法邻接的 Tile。
+- Assets-only Unity 导入生成两张图集纹理、32 个 Tile 资源、Palette Prefab 和 Tilemap Prefab，且不改变场景布局。
+- Assets-only 报告中的 `scene_dirty=true` 来自编辑器原本的 dirty 状态；导入器自身报告的场景操作仍为 `scene_action=unchanged`。
+- 重复 Import and Place 具备幂等性：第一次结果为 `scene_action=placed`，第二次为 `scene_action=updated`；两次都确认资源 GUID 稳定，场景中只有一个 adaptive 实例。
+- Unity 导入报告记录了两张图集页、32 个 Tile、三个图层和生成的 Prefab 路径。显式摆放测试会让编辑器场景保持 dirty，但流程不会自动保存 Scene。
+- [Unity 验收汇总](assets/readme/adaptive-river-crossing-map-unity-acceptance-summary.json) 保留了干净的 Assets-only 结果（`had_existing_assets=false`、`scene_action=unchanged`）、第一次摆放（`placed`）、第二次幂等更新（`updated`）、稳定 GUID 和最终单实例层级检查。
+
+结果文件：[地图预览](assets/readme/adaptive-river-crossing-map-preview.png)、
+[接缝预览](assets/readme/adaptive-river-crossing-map-seam-preview.png)、
+[Tile 使用率](assets/readme/adaptive-river-crossing-map-tile-usage-preview.png)、
+[地图质量报告](assets/readme/adaptive-river-crossing-map-map-quality-report.json)、
+[资产清单](assets/readme/adaptive-river-crossing-map-asset-manifest.json)、
+[Unity 导入报告](assets/readme/adaptive-river-crossing-map-unity-import-report.json) 和
+[Unity 验收汇总](assets/readme/adaptive-river-crossing-map-unity-acceptance-summary.json)。
+
 ### 可选：标准化交付尺寸
 
 当游戏需要统一尺寸和锚点时，可在请求中设置 `delivery_normalization`。流程会保留原有的
