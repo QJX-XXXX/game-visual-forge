@@ -32,6 +32,32 @@ python skills/forge-2d-map/scripts/run.py dry-run `
   --brief <brief.json> --out-dir <output> --now <utc-rfc3339>
 ```
 
+## Adaptive Tilemap quality workflow
+
+Tile mode supports two explicit profiles:
+
+- `standard_16`: one legacy atlas page and up to 16 Tiles.
+- `adaptive_hd`: 16, 32, or 48 Tiles across one to three 4x4 atlas pages.
+
+Before image generation, infer the semantic Tile requirements, choose the
+profile, show the page count, ordered slots, and prompt for every page, then
+wait for user confirmation. After confirmation, generate all pages and ingest
+them with explicit IDs:
+
+```text
+--atlas-page page-01=outputs/adaptive-map/raw/tileset-page-01.png
+--atlas-page page-02=outputs/adaptive-map/raw/tileset-page-02.png
+```
+
+Run `map tile plan -> route -> ingest -> process -> validate`; inspect the map,
+seam, and usage previews. If quality is `needs_attention`, show the evidence
+and request confirmation before changing prompts or regenerating pages. Choose
+Unity **Assets-only** import by default, or explicitly choose **Import and
+Place** when the user wants a prefab instance placed in the active Scene.
+Collision/mask layers are optional spatial data; gameplay objects, NPCs,
+exits, quests, interaction systems, and runtime game logic are outside this
+Skill's scope. Routine runs write JSON reports and never rewrite README files.
+
 ## M2 本地地图管线
 
 地图请求使用整数像素坐标描述 `spawn`、`walk_bounds`、`blockers` 和 `zones`。处理器不修改原始底图，输出 `base-map.png`、`map-runtime.json`、`walkable-mask.png`、`collision-mask.png` 和 `debug-preview.png`。其中可行走区域为 `walk_bounds - blockers`，碰撞区域为其反集；`zones` 只写入运行时元数据和调试预览。

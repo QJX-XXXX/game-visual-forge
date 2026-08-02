@@ -207,3 +207,15 @@ python -m unittest discover -s tests -v
 python skills/forge-2d-sprite/scripts/run.py sprite plan `
   --request <request.json> --out-dir <output> --now <utc-rfc3339>
 ```
+
+### 自适应 Tilemap 质量流程
+
+Tile 模式提供两个配置：`standard_16` 保持旧版单个 4×4 图集、最多 16 个
+Tile；`adaptive_hd` 支持 16、32 或 48 个 Tile，并使用 1–3 个 4×4 图集页。
+使用重复的 `--atlas-page page-01=path.png` 参数显式绑定每个图集页。
+
+处理器会输出地图、接缝、使用率预览、质量指标和 `map-quality-report.json`。
+Unity 提供 **Assets-only** 和显式 **Import and Place** 两种导入方式；后者会复用
+Prefab 实例，但不会自动保存 Scene。`Reports/unity-import-report.json` 记录 Python
+报告 SHA-256、图集页数、Tile 数量、Palette、Prefab 和场景操作。碰撞层/遮罩是可选的
+地图空间数据；游戏逻辑不在本项目范围内。普通运行不会自动改写 README。

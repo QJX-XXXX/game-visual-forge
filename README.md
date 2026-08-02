@@ -167,6 +167,19 @@ Artifacts: [Unity bundle](assets/readme/autumn-creek-map-unity-tilemap.json),
 [tree replacement prompt](assets/readme/tree-canopy-replacement.prompt.txt),
 and [tilemap placement data](assets/readme/autumn-creek-map-tilemap-placement.json).
 
+### Adaptive Tilemap quality workflow
+
+Tile mode has two profiles: `standard_16` keeps the legacy single 4x4 atlas
+and up to 16 Tiles; `adaptive_hd` supports 16, 32, or 48 Tiles across one to
+three 4x4 atlas pages. Use repeated `--atlas-page page-01=path.png` arguments
+to bind each page explicitly. The processor emits map, seam, usage, metrics,
+and `map-quality-report.json` artifacts. Unity provides **Assets-only** import
+and explicit **Import and Place**; the latter reuses prefab instances and does
+not save the Scene automatically. `Reports/unity-import-report.json` records
+the Python report SHA-256, page count, Tile count, Palette, Prefab, and scene
+action. Collision/mask data is optional spatial map data; gameplay logic is
+outside scope. Routine runs never rewrite README files.
+
 ### HD background removal
 
 For HD sprites generated on solid `#FF00FF`, install the default high-quality
