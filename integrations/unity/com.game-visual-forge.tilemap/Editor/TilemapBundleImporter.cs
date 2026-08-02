@@ -10,7 +10,7 @@ using UnityEngine.Tilemaps;
 
 namespace GameVisualForge.Unity
 {
-    public static class TilemapBundleImporter
+    public static partial class TilemapBundleImporter
     {
         [Serializable]
         private sealed class BundleManifest
@@ -19,8 +19,11 @@ namespace GameVisualForge.Unity
             public string asset_id;
             public string engine_target;
             public string tileset;
+            public AtlasPage[] tilesets;
             public string slices;
             public string placement;
+            public string quality_report;
+            public string quality_report_sha256;
             public string palette_name;
             public string generated_root;
             public int pixels_per_unit;
@@ -39,6 +42,7 @@ namespace GameVisualForge.Unity
         private sealed class TileSlice
         {
             public string id;
+            public string atlas_id;
             public RectData rect;
             public PointData palette;
             public string collider_type;
@@ -98,14 +102,29 @@ namespace GameVisualForge.Unity
             public string asset_id;
             public string generated_root;
             public string tileset_asset;
+            public string[] tileset_assets;
             public string palette_prefab;
             public string tilemap_prefab;
             public int tile_count;
             public int layer_count;
+            public string scene_action;
+            public string scene_path;
+            public bool scene_dirty;
         }
 
         [MenuItem("Tools/Game Visual Forge/Import Tilemap Bundle...")]
         private static void ImportFromMenu()
+        {
+            ImportFromMenu(ImportMode.AssetsOnly);
+        }
+
+        [MenuItem("Tools/Game Visual Forge/Import and Place Tilemap Bundle...")]
+        private static void ImportAndPlaceFromMenu()
+        {
+            ImportFromMenu(ImportMode.ImportAndPlace);
+        }
+
+        private static void ImportFromMenu(ImportMode mode)
         {
             var manifestPath = EditorUtility.OpenFilePanel("Import Game Visual Forge Tilemap Bundle", "", "json");
             if (string.IsNullOrEmpty(manifestPath))
@@ -113,7 +132,7 @@ namespace GameVisualForge.Unity
 
             try
             {
-                var result = ImportBundle(manifestPath);
+                var result = ImportBundle(manifestPath, mode);
                 EditorUtility.DisplayDialog("Game Visual Forge", $"Imported {result.asset_id}\n{result.tilemap_prefab}", "OK");
             }
             catch (Exception exception)
@@ -125,10 +144,20 @@ namespace GameVisualForge.Unity
 
         public static string ImportBundleForAutomation(string manifestPath)
         {
-            return JsonUtility.ToJson(ImportBundle(manifestPath));
+            return JsonUtility.ToJson(ImportBundle(manifestPath, ImportMode.AssetsOnly));
+        }
+
+        public static string ImportAndPlaceBundleForAutomation(string manifestPath)
+        {
+            return JsonUtility.ToJson(ImportBundle(manifestPath, ImportMode.ImportAndPlace));
         }
 
         public static ImportResult ImportBundle(string manifestPath)
+        {
+            return ImportBundle(manifestPath, ImportMode.AssetsOnly);
+        }
+
+        public static ImportResult ImportBundle(string manifestPath, ImportMode mode)
         {
             var manifestFullPath = ResolveInputPath(manifestPath);
             var manifest = ReadJson<BundleManifest>(manifestFullPath);
@@ -138,6 +167,7 @@ namespace GameVisualForge.Unity
             var slices = ReadJson<SliceManifest>(Path.Combine(bundleDirectory, manifest.slices));
             var placement = ReadJson<PlacementManifest>(Path.Combine(bundleDirectory, manifest.placement));
             ValidateBundleData(slices, placement);
+            var atlasPages = NormalizeAtlasPages(manifest);
 
             EnsureAssetFolder(manifest.generated_root);
             var textureFolder = $"{manifest.generated_root}/Textures";
@@ -149,13 +179,22 @@ namespace GameVisualForge.Unity
             EnsureAssetFolder(paletteFolder);
             EnsureAssetFolder(prefabFolder);
 
-            var tilesetAssetPath = $"{textureFolder}/tileset.png";
-            CopyToAsset(Path.Combine(bundleDirectory, manifest.tileset), tilesetAssetPath);
-            ConfigureAndSliceTexture(tilesetAssetPath, manifest, slices.tiles);
-
-            var sprites = AssetDatabase.LoadAllAssetsAtPath(tilesetAssetPath)
-                .OfType<Sprite>()
-                .ToDictionary(sprite => sprite.name, StringComparer.Ordinal);
+            var tilesetAssets = new List<string>();
+            var sprites = new Dictionary<string, Sprite>(StringComparer.Ordinal);
+            foreach (var page in atlasPages)
+            {
+                var tilesetAssetPath = $"{textureFolder}/{page.atlas_id}.png";
+                CopyToAsset(Path.Combine(bundleDirectory, page.path), tilesetAssetPath);
+                var pageSlices = slices.tiles.Where(slice => string.IsNullOrEmpty(slice.atlas_id) ? page.atlas_id == "page-01" : slice.atlas_id == page.atlas_id).ToArray();
+                ConfigureAndSliceTexture(tilesetAssetPath, manifest, pageSlices);
+                foreach (var sprite in AssetDatabase.LoadAllAssetsAtPath(tilesetAssetPath).OfType<Sprite>())
+                {
+                    if (sprites.ContainsKey(sprite.name))
+                        throw new InvalidOperationException($"Duplicate Sprite ID across atlas pages: {sprite.name}");
+                    sprites.Add(sprite.name, sprite);
+                }
+                tilesetAssets.Add(tilesetAssetPath);
+            }
             var tiles = CreateOrUpdateTiles(tileFolder, slices.tiles, sprites);
             var palettePath = CreateOrUpdatePalette(paletteFolder, manifest.palette_name, slices.tiles, tiles);
             var prefabPath = CreateOrUpdateTilemapPrefab(prefabFolder, manifest.prefab_name, placement.layers, tiles);
@@ -163,16 +202,36 @@ namespace GameVisualForge.Unity
             AssetDatabase.SaveAssets();
             AssetDatabase.Refresh();
             Debug.Log($"[Game Visual Forge] Imported tilemap bundle '{manifest.asset_id}' to '{manifest.generated_root}'.");
-            return new ImportResult
+            var result = new ImportResult
             {
                 asset_id = manifest.asset_id,
                 generated_root = manifest.generated_root,
-                tileset_asset = tilesetAssetPath,
+                tileset_asset = tilesetAssets[0],
+                tileset_assets = tilesetAssets.ToArray(),
                 palette_prefab = palettePath,
                 tilemap_prefab = prefabPath,
                 tile_count = tiles.Count,
                 layer_count = placement.layers.Length,
+                scene_action = "unchanged",
+                scene_path = UnityEditor.SceneManagement.EditorSceneManager.GetActiveScene().path,
+                scene_dirty = false,
             };
+            if (mode == ImportMode.ImportAndPlace)
+            {
+                var placementResult = TilemapScenePlacer.PlaceOrUpdate(prefabPath);
+                result.scene_action = placementResult.scene_action;
+                result.scene_path = placementResult.scene_path;
+                result.scene_dirty = placementResult.scene_dirty;
+            }
+            var report = TilemapImportReportWriter.Write(manifestFullPath, manifest, result, atlasPages.Length, mode);
+            return result;
+        }
+
+        private static AtlasPage[] NormalizeAtlasPages(BundleManifest manifest)
+        {
+            if (manifest.tilesets != null && manifest.tilesets.Length > 0)
+                return manifest.tilesets;
+            return new[] { new AtlasPage { atlas_id = "page-01", path = manifest.tileset } };
         }
 
         private static T ReadJson<T>(string path)
@@ -187,7 +246,7 @@ namespace GameVisualForge.Unity
         {
             if (manifest.schema_version != 1 || manifest.engine_target != "Unity_Tilemap")
                 throw new InvalidOperationException("Only schema_version 1 Unity_Tilemap bundles are supported.");
-            if (string.IsNullOrWhiteSpace(manifest.asset_id) || string.IsNullOrWhiteSpace(manifest.tileset) || string.IsNullOrWhiteSpace(manifest.slices) || string.IsNullOrWhiteSpace(manifest.placement))
+            if (string.IsNullOrWhiteSpace(manifest.asset_id) || (string.IsNullOrWhiteSpace(manifest.tileset) && (manifest.tilesets == null || manifest.tilesets.Length == 0)) || string.IsNullOrWhiteSpace(manifest.slices) || string.IsNullOrWhiteSpace(manifest.placement))
                 throw new InvalidOperationException("The bundle manifest is missing required fields.");
             if (manifest.pixels_per_unit <= 0)
                 throw new InvalidOperationException("pixels_per_unit must be positive.");
@@ -221,14 +280,14 @@ namespace GameVisualForge.Unity
                 throw new InvalidOperationException("generated_root must be a safe forward-slash path below Assets/.");
         }
 
-        private static string AssetPathToFullPath(string assetPath)
+        internal static string AssetPathToFullPath(string assetPath)
         {
             ValidateAssetPath(assetPath);
             var projectRoot = Directory.GetParent(Application.dataPath)?.FullName ?? throw new InvalidOperationException("Could not resolve the Unity project root.");
             return Path.Combine(projectRoot, assetPath.Replace('/', Path.DirectorySeparatorChar));
         }
 
-        private static void EnsureAssetFolder(string assetPath)
+        internal static void EnsureAssetFolder(string assetPath)
         {
             ValidateAssetPath(assetPath);
             var parts = assetPath.Split('/');

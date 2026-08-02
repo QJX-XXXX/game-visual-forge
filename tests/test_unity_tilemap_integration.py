@@ -20,8 +20,10 @@ class UnityTilemapIntegrationTests(unittest.TestCase):
         self.assertIn("SetSpriteRects", source)
         self.assertIn("ISpriteNameFileIdDataProvider", source)
         self.assertNotIn("TextureImporter.spritesheet", source)
-        self.assertNotIn("EditorSceneManager", source)
         self.assertIn("PrefabUtility.SaveAsPrefabAsset", source)
+        self.assertIn("tilesets", source)
+        self.assertIn("atlas_id", source)
+        self.assertIn("ImportMode.AssetsOnly", source)
 
     def test_optional_unity_runtime_checks_are_packaged(self) -> None:
         package_root = ROOT / "integrations" / "unity" / "com.game-visual-forge.tilemap"
@@ -31,6 +33,16 @@ class UnityTilemapIntegrationTests(unittest.TestCase):
         self.assertTrue(playmode_tests.is_file())
         self.assertIn("TilemapCollider2D", editor_tests.read_text(encoding="utf-8"))
         self.assertIn("Object.Instantiate", playmode_tests.read_text(encoding="utf-8"))
+
+    def test_multi_page_import_and_report_sources_are_packaged(self) -> None:
+        package_root = ROOT / "integrations" / "unity" / "com.game-visual-forge.tilemap"
+        contracts = (package_root / "Editor" / "TilemapBundleContracts.cs").read_text(encoding="utf-8")
+        placer = (package_root / "Editor" / "TilemapScenePlacer.cs").read_text(encoding="utf-8")
+        writer = (package_root / "Editor" / "TilemapImportReportWriter.cs").read_text(encoding="utf-8")
+        self.assertIn("AssetsOnly", contracts)
+        self.assertIn("ImportAndPlace", contracts)
+        self.assertIn("PlaceOrUpdate", placer)
+        self.assertIn("quality_report_sha256", writer)
 
 
 if __name__ == "__main__":
