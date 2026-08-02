@@ -53,7 +53,7 @@
     }
   ],
   "deterministic_status": "passed",
-  "request_fingerprint": "a35ca1de9a9ee797f628a9bdb1d9a9ca1ac04f4d6374e8fac2e46230357ad6c8",
+  "request_fingerprint": "ddad67380961a96ccd624470006aeaa9311e1e08e8ae8f33d2f8200ed3655c33",
   "schema_version": 1,
   "visual_checks": [
     {

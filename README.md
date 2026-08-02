@@ -223,10 +223,10 @@ Validation result:
 - Python deterministic and manual visual checks passed: seams, readability, layer order, collision layer, adjacency, clipping, and no text/watermark.
 - All 32 declared Tile IDs are used; no unused, clipped, or invalid-adjacency Tile IDs remain.
 - Assets-only Unity import created two atlas textures, 32 Tile assets, a Palette prefab, and a Tilemap prefab without changing the Scene layout.
-- The Assets-only report's `scene_dirty=true` reflects the editor's pre-existing dirty state; the importer itself reported `scene_action=unchanged`.
-- Repeated Import and Place was idempotent: the first placement reported `scene_action=placed`, the second reported `scene_action=updated`; both reported stable resource GUIDs and one adaptive scene instance.
-- The Unity import report records the two atlas pages, 32 Tiles, three layers, and generated prefab paths. The editor scene was intentionally left dirty by the explicit placement test; the Scene was not auto-saved.
-- The [Unity acceptance summary](assets/readme/adaptive-river-crossing-map-unity-acceptance-summary.json) preserves the clean Assets-only result (`had_existing_assets=false`, `scene_action=unchanged`), the first placement (`placed`), the second idempotent update (`updated`), stable GUIDs, and the final one-instance hierarchy check.
+- The clean Assets-only run reported `scene_action=unchanged` and `scene_dirty=false`.
+- Repeated Import and Place was idempotent: the first placement reported `scene_action=placed`, the second reported `scene_action=updated`; both reported stable resource GUIDs and the final hierarchy contains one v8 adaptive scene instance.
+- The Unity import report records the two atlas pages, 32 Tiles, three layers, and generated v8 prefab paths. The explicit placement test leaves the editor Scene dirty; the Scene is not auto-saved.
+- The [Unity acceptance summary](assets/readme/adaptive-river-crossing-map-unity-acceptance-summary.json) preserves the clean Assets-only result (`had_existing_assets=false`, `scene_action=unchanged`), the first placement (`placed`), the second idempotent update (`updated`), stable GUIDs, and the final live hierarchy check (`AutumnCreekMapDemo=false`, `StandardSimpleMapDemo=false`, one adaptive instance).
 
 Artifacts: [map preview](assets/readme/adaptive-river-crossing-map-preview.png),
 [seam preview](assets/readme/adaptive-river-crossing-map-seam-preview.png),

@@ -134,10 +134,10 @@ Tilemap 图层。
 - Python 确定性检查和人工视觉检查全部通过：接缝、可读性、图层顺序、碰撞层、邻接关系、裁切和无文字/水印。
 - 声明的 32 个 Tile ID 全部被使用，没有未使用、被裁切或非法邻接的 Tile。
 - Assets-only Unity 导入生成两张图集纹理、32 个 Tile 资源、Palette Prefab 和 Tilemap Prefab，且不改变场景布局。
-- Assets-only 报告中的 `scene_dirty=true` 来自编辑器原本的 dirty 状态；导入器自身报告的场景操作仍为 `scene_action=unchanged`。
-- 重复 Import and Place 具备幂等性：第一次结果为 `scene_action=placed`，第二次为 `scene_action=updated`；两次都确认资源 GUID 稳定，场景中只有一个 adaptive 实例。
-- Unity 导入报告记录了两张图集页、32 个 Tile、三个图层和生成的 Prefab 路径。显式摆放测试会让编辑器场景保持 dirty，但流程不会自动保存 Scene。
-- [Unity 验收汇总](assets/readme/adaptive-river-crossing-map-unity-acceptance-summary.json) 保留了干净的 Assets-only 结果（`had_existing_assets=false`、`scene_action=unchanged`）、第一次摆放（`placed`）、第二次幂等更新（`updated`）、稳定 GUID 和最终单实例层级检查。
+- 干净的 Assets-only 运行结果为 `scene_action=unchanged`、`scene_dirty=false`，没有改变场景布局。
+- 重复 Import and Place 具备幂等性：第一次结果为 `scene_action=placed`，第二次为 `scene_action=updated`；两次都确认资源 GUID 稳定，最终层级中只有一个 v8 adaptive 实例。
+- Unity 导入报告记录了两张图集页、32 个 Tile、三个图层和 v8 Prefab 路径。显式摆放测试会让编辑器场景保持 dirty，但流程不会自动保存 Scene。
+- [Unity 验收汇总](assets/readme/adaptive-river-crossing-map-unity-acceptance-summary.json) 保留了 Assets-only 结果（`had_existing_assets=false`、`scene_action=unchanged`）、第一次摆放（`placed`）、第二次幂等更新（`updated`）、稳定 GUID 和最终实时层级检查（`AutumnCreekMapDemo=false`、`StandardSimpleMapDemo=false`、adaptive 实例数为 1）。
 
 结果文件：[地图预览](assets/readme/adaptive-river-crossing-map-preview.png)、
 [接缝预览](assets/readme/adaptive-river-crossing-map-seam-preview.png)、
