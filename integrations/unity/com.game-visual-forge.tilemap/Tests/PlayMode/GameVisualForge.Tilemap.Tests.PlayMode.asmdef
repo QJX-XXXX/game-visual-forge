@@ -1,9 +1,7 @@
 {
   "name": "GameVisualForge.Tilemap.Tests.PlayMode",
   "rootNamespace": "GameVisualForge.Unity.Tests",
-  "references": [
-    "UnityEngine.TestRunner"
-  ],
+  "references": [],
   "overrideReferences": true,
   "optionalUnityReferences": [
     "TestAssemblies"
