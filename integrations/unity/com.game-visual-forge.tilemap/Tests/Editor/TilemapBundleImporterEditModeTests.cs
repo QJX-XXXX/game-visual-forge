@@ -24,6 +24,9 @@ namespace GameVisualForge.Unity.Tests
         private const string MultiPageGeneratedRoot = TestGeneratedRoot + "/MultiPage";
         private const string LegacyBundleRoot = TestGeneratedRoot + "/LegacyBundle";
         private const string LegacyGeneratedRoot = TestGeneratedRoot + "/LegacySinglePage";
+        private string _task3Root;
+        private string _task3BundleRoot;
+        private string _task3GeneratedRoot;
         private string _task7Root;
         private string _task7BundleRoot;
         private string _task7GeneratedRoot;
@@ -32,6 +35,10 @@ namespace GameVisualForge.Unity.Tests
         [SetUp]
         public void SetUp()
         {
+            _task3Root = "Assets/GameVisualForgeTask3_" + SafeAssetName(TestContext.CurrentContext.Test.Name) + "_" + Guid.NewGuid().ToString("N");
+            _task3BundleRoot = _task3Root + "/Bundle";
+            _task3GeneratedRoot = _task3Root + "/Generated";
+            DeleteTask3Fixtures();
             _task7Root = "Assets/GameVisualForgeTask7_" + SafeAssetName(TestContext.CurrentContext.Test.Name) + "_" + Guid.NewGuid().ToString("N");
             _task7BundleRoot = _task7Root + "/Bundle";
             _task7GeneratedRoot = _task7Root + "/Generated";
@@ -43,6 +50,7 @@ namespace GameVisualForge.Unity.Tests
         [TearDown]
         public void TearDown()
         {
+            DeleteTask3Fixtures();
             RemoveTask7SceneInstances();
             DeleteTask7Fixtures();
         }
@@ -54,6 +62,7 @@ namespace GameVisualForge.Unity.Tests
             DeleteAssetIfExists(MultiPageGeneratedRoot);
             DeleteAssetIfExists(LegacyBundleRoot);
             DeleteAssetIfExists(LegacyGeneratedRoot);
+            DeleteTask3Fixtures();
             DeleteTask7Fixtures();
         }
 
@@ -121,7 +130,36 @@ namespace GameVisualForge.Unity.Tests
             Assert.That(result.tile_count, Is.EqualTo(16));
             Assert.That(AssetDatabase.FindAssets("t:Tile", new[] { result.generated_root + "/Tiles" }), Has.Length.EqualTo(16));
             var palette = AssetDatabase.LoadAssetAtPath<GameObject>(result.palette_prefab);
+            var prefab = AssetDatabase.LoadAssetAtPath<GameObject>(result.tilemap_prefab);
             Assert.That(palette.GetComponentInChildren<Tilemap>(true).GetUsedTilesCount(), Is.EqualTo(16));
+            Assert.That(palette.GetComponent<Grid>().cellSize, Is.EqualTo(Vector3.one));
+            Assert.That(prefab.GetComponent<Grid>().cellSize, Is.EqualTo(Vector3.one));
+        }
+
+        [TestCase(16, 16, 16, 1f, 1f)]
+        [TestCase(32, 32, 32, 1f, 1f)]
+        [TestCase(16, 18, 16, 1f, 1.125f)]
+        public void ImportBundleUsesDeclaredTileDimensionsForPaletteAndPrefabGrids(int tileWidth, int tileHeight, int pixelsPerUnit, float expectedCellWidth, float expectedCellHeight)
+        {
+            var result = TilemapBundleImporter.ImportBundle(CreateTileSizeBundleFixture(tileWidth, tileHeight, pixelsPerUnit, false));
+            var expectedCellSize = new Vector3(expectedCellWidth, expectedCellHeight, 1f);
+
+            var palette = AssetDatabase.LoadAssetAtPath<GameObject>(result.palette_prefab);
+            var prefab = AssetDatabase.LoadAssetAtPath<GameObject>(result.tilemap_prefab);
+
+            Assert.That(palette.GetComponent<Grid>().cellSize, Is.EqualTo(expectedCellSize));
+            Assert.That(prefab.GetComponent<Grid>().cellSize, Is.EqualTo(expectedCellSize));
+        }
+
+        [Test]
+        public void ImportBundleRejectsMismatchedSliceDimensionsBeforeCreatingGeneratedRoot()
+        {
+            var manifestPath = CreateTileSizeBundleFixture(16, 18, 16, true);
+
+            var exception = Assert.Throws<InvalidOperationException>(() => TilemapBundleImporter.ImportBundle(manifestPath));
+
+            Assert.That(exception.Message, Is.EqualTo("All Tile slices must use the same dimensions."));
+            Assert.That(AssetDatabase.IsValidFolder(_task3GeneratedRoot), Is.False);
         }
 
         [Test]
@@ -212,6 +250,63 @@ namespace GameVisualForge.Unity.Tests
   ""filter_mode"": ""point"",
   ""palette_name"": ""Task 6 Multi Page Palette"",
   ""prefab_name"": ""task-6-multi-page-tilemap""
+}");
+
+            AssetDatabase.Refresh();
+            return manifestPath;
+        }
+
+        private string CreateTileSizeBundleFixture(int tileWidth, int tileHeight, int pixelsPerUnit, bool includeMismatchedSlice)
+        {
+            var bundleFullPath = ToFullPath(_task3BundleRoot);
+            Directory.CreateDirectory(bundleFullPath);
+
+            var texture = new Texture2D(tileWidth * 2, tileHeight, TextureFormat.RGBA32, false);
+            try
+            {
+                for (var y = 0; y < texture.height; y++)
+                {
+                    for (var x = 0; x < texture.width; x++)
+                        texture.SetPixel(x, y, new Color32(64, 128, 192, 255));
+                }
+                texture.Apply();
+                File.WriteAllBytes(Path.Combine(bundleFullPath, "tileset.png"), texture.EncodeToPNG());
+            }
+            finally
+            {
+                UnityEngine.Object.DestroyImmediate(texture);
+            }
+
+            var secondWidth = includeMismatchedSlice ? tileWidth - 1 : tileWidth;
+            File.WriteAllText(Path.Combine(bundleFullPath, "slices.json"), @"{
+  ""schema_version"": 1,
+  ""tiles"": [
+    { ""id"": ""tile-00"", ""rect"": { ""x"": 0, ""y"": 0, ""width"": " + tileWidth + @", ""height"": " + tileHeight + @" }, ""palette"": { ""x"": 0, ""y"": 0 }, ""collider_type"": ""none"" },
+    { ""id"": ""tile-01"", ""rect"": { ""x"": " + tileWidth + @", ""y"": 0, ""width"": " + secondWidth + @", ""height"": " + tileHeight + @" }, ""palette"": { ""x"": 1, ""y"": 0 }, ""collider_type"": ""none"" }
+  ]
+}");
+            File.WriteAllText(Path.Combine(bundleFullPath, "placement.json"), @"{
+  ""schema_version"": 1,
+  ""map_size"": { ""width"": 1, ""height"": 1 },
+  ""layers"": [
+    { ""id"": ""ground"", ""sorting_order"": 0, ""has_collider"": false, ""placements"": [ { ""x"": 0, ""y"": 0, ""tile_id"": ""tile-00"" } ] }
+  ]
+}");
+            var manifestPath = Path.Combine(bundleFullPath, "manifest.json");
+            File.WriteAllText(manifestPath, @"{
+  ""schema_version"": 1,
+  ""asset_id"": ""task-3-tile-size-fixture"",
+  ""engine_target"": ""Unity_Tilemap"",
+  ""tileset"": ""tileset.png"",
+  ""slices"": ""slices.json"",
+  ""placement"": ""placement.json"",
+  ""generated_root"": """ + _task3GeneratedRoot + @""",
+  ""pixels_per_unit"": " + pixelsPerUnit + @",
+  ""tile_width"": " + tileWidth + @",
+  ""tile_height"": " + tileHeight + @",
+  ""filter_mode"": ""point"",
+  ""palette_name"": ""Task 3 Palette"",
+  ""prefab_name"": ""task-3-tilemap""
 }");
 
             AssetDatabase.Refresh();
@@ -462,6 +557,12 @@ namespace GameVisualForge.Unity.Tests
                 if (PrefabUtility.GetPrefabAssetPathOfNearestInstanceRoot(root) == _task7PlacementPrefabPath)
                     UnityEngine.Object.DestroyImmediate(root);
             }
+        }
+
+        private void DeleteTask3Fixtures()
+        {
+            if (!string.IsNullOrEmpty(_task3Root))
+                DeleteAssetIfExists(_task3Root);
         }
 
         private void DeleteTask7Fixtures()

@@ -67,6 +67,7 @@ namespace GameVisualForge.Unity
             var slices = ReadJson<SliceManifest>(Path.Combine(bundleDirectory, manifest.slices));
             var placement = ReadJson<PlacementManifest>(Path.Combine(bundleDirectory, manifest.placement));
             ValidateBundleData(slices, placement);
+            var gridCellSize = ResolveGridCellSize(manifest, slices.tiles);
             var isLegacySinglePage = manifest.tilesets == null || manifest.tilesets.Length == 0;
             var atlasPages = NormalizeAtlasPages(manifest);
 
@@ -105,8 +106,8 @@ namespace GameVisualForge.Unity
                 tilesetAssets.Add(tilesetAssetPath);
             }
             var tiles = CreateOrUpdateTiles(tileFolder, slices.tiles, sprites);
-            var palettePath = CreateOrUpdatePalette(paletteFolder, manifest.palette_name, slices.tiles, tiles);
-            var prefabPath = CreateOrUpdateTilemapPrefab(prefabFolder, manifest.prefab_name, placement.layers, tiles, palettePath);
+            var palettePath = CreateOrUpdatePalette(paletteFolder, manifest.palette_name, slices.tiles, tiles, gridCellSize);
+            var prefabPath = CreateOrUpdateTilemapPrefab(prefabFolder, manifest.prefab_name, placement.layers, tiles, palettePath, gridCellSize);
 
             AssetDatabase.SaveAssets();
             AssetDatabase.Refresh();
@@ -211,6 +212,19 @@ namespace GameVisualForge.Unity
                 if (layer.placements == null || layer.placements.Any(item => !tileIds.Contains(item.tile_id)))
                     throw new InvalidOperationException($"Layer '{layer.id}' references an unknown tile.");
             }
+        }
+
+        private static Vector3 ResolveGridCellSize(BundleManifest manifest, TileSlice[] slices)
+        {
+            var widths = slices.Select(item => item.rect.width).Distinct().ToArray();
+            var heights = slices.Select(item => item.rect.height).Distinct().ToArray();
+            if (widths.Length != 1 || heights.Length != 1)
+                throw new InvalidOperationException("All Tile slices must use the same dimensions.");
+            var width = manifest.tile_width > 0 ? manifest.tile_width : widths[0];
+            var height = manifest.tile_height > 0 ? manifest.tile_height : heights[0];
+            if (width != widths[0] || height != heights[0])
+                throw new InvalidOperationException("Bundle Tile dimensions do not match slice rectangles.");
+            return new Vector3((float)width / manifest.pixels_per_unit, (float)height / manifest.pixels_per_unit, 1f);
         }
 
         private static string ResolveInputPath(string path)
@@ -327,12 +341,12 @@ namespace GameVisualForge.Unity
             }
         }
 
-        private static string CreateOrUpdatePalette(string folder, string paletteName, TileSlice[] slices, IReadOnlyDictionary<string, Tile> tiles)
+        private static string CreateOrUpdatePalette(string folder, string paletteName, TileSlice[] slices, IReadOnlyDictionary<string, Tile> tiles, Vector3 gridCellSize)
         {
             var path = $"{folder}/{paletteName}.prefab";
             if (AssetDatabase.LoadAssetAtPath<GameObject>(path) == null)
             {
-                GridPaletteUtility.CreateNewPalette(folder, paletteName, GridLayout.CellLayout.Rectangle, GridPalette.CellSizing.Manual, Vector3.one, GridLayout.CellSwizzle.XYZ);
+                GridPaletteUtility.CreateNewPalette(folder, paletteName, GridLayout.CellLayout.Rectangle, GridPalette.CellSizing.Manual, gridCellSize, GridLayout.CellSwizzle.XYZ);
             }
             if (AssetDatabase.LoadAssetAtPath<GameObject>(path) == null)
                 throw new InvalidOperationException($"Unity did not create the Tile Palette at '{path}'.");
@@ -340,6 +354,8 @@ namespace GameVisualForge.Unity
             var root = PrefabUtility.LoadPrefabContents(path);
             try
             {
+                var grid = root.GetComponent<Grid>() ?? throw new InvalidOperationException("The Tile Palette prefab has no Grid.");
+                grid.cellSize = gridCellSize;
                 var tilemap = root.GetComponentInChildren<Tilemap>(true) ?? throw new InvalidOperationException("The Tile Palette prefab has no Tilemap.");
                 tilemap.ClearAllTiles();
                 foreach (var slice in slices)
@@ -354,7 +370,7 @@ namespace GameVisualForge.Unity
             return path;
         }
 
-        private static string CreateOrUpdateTilemapPrefab(string folder, string prefabName, PlacementLayer[] layers, IReadOnlyDictionary<string, Tile> tiles, string seedPrefabPath)
+        private static string CreateOrUpdateTilemapPrefab(string folder, string prefabName, PlacementLayer[] layers, IReadOnlyDictionary<string, Tile> tiles, string seedPrefabPath, Vector3 gridCellSize)
         {
             var path = $"{folder}/{prefabName}.prefab";
             if (AssetDatabase.LoadAssetAtPath<GameObject>(path) == null && !AssetDatabase.CopyAsset(seedPrefabPath, path))
@@ -364,6 +380,7 @@ namespace GameVisualForge.Unity
             {
                 root.name = prefabName;
                 EnsureOnlyGridRoot(root);
+                root.GetComponent<Grid>().cellSize = gridCellSize;
                 var orderedLayers = layers.OrderBy(item => item.sorting_order).ToArray();
                 var children = root.transform.Cast<Transform>().Select(child => child.gameObject).ToList();
                 if (children.Count == 0)

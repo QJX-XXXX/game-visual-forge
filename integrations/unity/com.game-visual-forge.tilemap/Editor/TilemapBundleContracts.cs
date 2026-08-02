@@ -23,6 +23,8 @@ namespace GameVisualForge.Unity
         public string quality_report_sha256;
         public string generated_root;
         public int pixels_per_unit;
+        public int tile_width;
+        public int tile_height;
         public string filter_mode;
         public string palette_name;
         public string prefab_name;
