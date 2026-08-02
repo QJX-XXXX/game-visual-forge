@@ -32,7 +32,7 @@ class UnityTilemapIntegrationTests(unittest.TestCase):
         self.assertTrue(editor_tests.is_file())
         self.assertTrue(playmode_tests.is_file())
         self.assertIn("TilemapCollider2D", editor_tests.read_text(encoding="utf-8"))
-        self.assertIn("Object.Instantiate", playmode_tests.read_text(encoding="utf-8"))
+        self.assertIn("TilemapRenderer", playmode_tests.read_text(encoding="utf-8"))
 
     def test_multi_page_import_and_report_sources_are_packaged(self) -> None:
         package_root = ROOT / "integrations" / "unity" / "com.game-visual-forge.tilemap"
