@@ -45,12 +45,75 @@ class TilemapEngineTarget(StrEnum):
     UNITY_TILEMAP = "Unity_Tilemap"
 
 
+class TileSetProfile(StrEnum):
+    STANDARD_16 = "standard_16"
+    ADAPTIVE_HD = "adaptive_hd"
+
+
+class TileSemanticRole(StrEnum):
+    UNSPECIFIED = "unspecified"
+    TERRAIN = "terrain"
+    TERRAIN_TRANSITION = "terrain-transition"
+    ROAD = "road"
+    WATER = "water"
+    BRIDGE = "bridge"
+    DECORATION = "decoration"
+    PROP = "prop"
+
+
+class TileDirection(StrEnum):
+    NORTH = "north"
+    EAST = "east"
+    SOUTH = "south"
+    WEST = "west"
+
+
+@dataclass(frozen=True)
+class AtlasPageDefinition:
+    atlas_id: str
+    columns: int
+    rows: int
+    tile_width: int
+    tile_height: int
+    prompt: str
+
+    def __post_init__(self) -> None:
+        if not _SLUG_PATTERN.fullmatch(self.atlas_id):
+            raise ValueError("atlas_id must be a lowercase slug")
+        for field_name in ("columns", "rows", "tile_width", "tile_height"):
+            _positive_int(getattr(self, field_name), field_name)
+        _non_empty(self.prompt, "prompt")
+
+    def to_dict(self) -> dict[str, Any]:
+        return {
+            "id": self.atlas_id,
+            "columns": self.columns,
+            "rows": self.rows,
+            "tile_width": self.tile_width,
+            "tile_height": self.tile_height,
+            "prompt": self.prompt,
+        }
+
+    @classmethod
+    def from_dict(cls, value: dict[str, Any]) -> "AtlasPageDefinition":
+        return cls(
+            atlas_id=str(value["id"]),
+            columns=int(value["columns"]),
+            rows=int(value["rows"]),
+            tile_width=int(value["tile_width"]),
+            tile_height=int(value["tile_height"]),
+            prompt=str(value["prompt"]),
+        )
+
+
 @dataclass(frozen=True)
 class TileDefinition:
     tile_id: str
     atlas_column: int
     atlas_row: int
     collider_type: TileColliderType = TileColliderType.NONE
+    atlas_id: str = "page-01"
+    semantic_role: TileSemanticRole = TileSemanticRole.UNSPECIFIED
 
     def __post_init__(self) -> None:
         if not _SLUG_PATTERN.fullmatch(self.tile_id):
@@ -59,6 +122,10 @@ class TileDefinition:
         _non_negative_int(self.atlas_row, "atlas_row")
         if not isinstance(self.collider_type, TileColliderType):
             raise TypeError("collider_type must be TileColliderType")
+        if not _SLUG_PATTERN.fullmatch(self.atlas_id):
+            raise ValueError("atlas_id must be a lowercase slug")
+        if not isinstance(self.semantic_role, TileSemanticRole):
+            raise TypeError("semantic_role must be TileSemanticRole")
 
     def to_dict(self) -> dict[str, Any]:
         return {
@@ -66,6 +133,8 @@ class TileDefinition:
             "atlas_column": self.atlas_column,
             "atlas_row": self.atlas_row,
             "collider_type": self.collider_type.value,
+            "atlas_id": self.atlas_id,
+            "semantic_role": self.semantic_role.value,
         }
 
     @classmethod
@@ -75,6 +144,43 @@ class TileDefinition:
             atlas_column=_non_negative_int(value["atlas_column"], "atlas_column"),
             atlas_row=_non_negative_int(value["atlas_row"], "atlas_row"),
             collider_type=TileColliderType(value.get("collider_type", "none")),
+            atlas_id=str(value.get("atlas_id", "page-01")),
+            semantic_role=TileSemanticRole(value.get("semantic_role", "unspecified")),
+        )
+
+
+@dataclass(frozen=True)
+class TileAdjacencyRule:
+    tile_id: str
+    direction: TileDirection
+    allowed_neighbors: tuple[str, ...]
+
+    def __post_init__(self) -> None:
+        if not _SLUG_PATTERN.fullmatch(self.tile_id):
+            raise ValueError("tile_id must be a lowercase slug")
+        if not isinstance(self.direction, TileDirection):
+            raise TypeError("direction must be TileDirection")
+        if not self.allowed_neighbors or not all(_SLUG_PATTERN.fullmatch(item) for item in self.allowed_neighbors):
+            raise ValueError("allowed_neighbors must contain lowercase slugs")
+        if len(self.allowed_neighbors) != len(set(self.allowed_neighbors)):
+            raise ValueError("allowed_neighbors must be unique")
+
+    def to_dict(self) -> dict[str, Any]:
+        return {
+            "tile_id": self.tile_id,
+            "direction": self.direction.value,
+            "allowed_neighbors": list(self.allowed_neighbors),
+        }
+
+    @classmethod
+    def from_dict(cls, value: dict[str, Any]) -> "TileAdjacencyRule":
+        neighbors = value["allowed_neighbors"]
+        if not isinstance(neighbors, list):
+            raise TypeError("allowed_neighbors must be a JSON array")
+        return cls(
+            tile_id=str(value["tile_id"]),
+            direction=TileDirection(value["direction"]),
+            allowed_neighbors=tuple(str(item) for item in neighbors),
         )
 
 
@@ -139,6 +245,10 @@ class TileMapRequest:
     filter_mode: TileFilterMode = TileFilterMode.POINT
     engine_target: TilemapEngineTarget = TilemapEngineTarget.UNITY_TILEMAP
     reference_paths: tuple[str, ...] = ()
+    tileset_profile: TileSetProfile = TileSetProfile.STANDARD_16
+    max_tile_count: int = 16
+    atlas_pages: tuple[AtlasPageDefinition, ...] = ()
+    adjacency_rules: tuple[TileAdjacencyRule, ...] = ()
 
     def __post_init__(self) -> None:
         if self.schema_version != 1:
@@ -157,6 +267,15 @@ class TileMapRequest:
             raise TypeError("filter_mode must be TileFilterMode")
         if self.engine_target is not TilemapEngineTarget.UNITY_TILEMAP:
             raise ValueError("engine_target must be Unity_Tilemap")
+        if not isinstance(self.tileset_profile, TileSetProfile):
+            raise TypeError("tileset_profile must be TileSetProfile")
+        if not isinstance(self.atlas_pages, tuple) or not all(isinstance(page, AtlasPageDefinition) for page in self.atlas_pages):
+            raise TypeError("atlas_pages must contain AtlasPageDefinition values")
+        if not isinstance(self.adjacency_rules, tuple) or not all(isinstance(rule, TileAdjacencyRule) for rule in self.adjacency_rules):
+            raise TypeError("adjacency_rules must contain TileAdjacencyRule values")
+        _positive_int(self.max_tile_count, "max_tile_count")
+        if self.max_tile_count not in {16, 32, 48}:
+            raise ValueError("max_tile_count must be one of 16, 32, or 48")
         _non_empty(self.palette_name, "palette_name")
         if "/" in self.palette_name or "\\" in self.palette_name:
             raise ValueError("palette_name must not contain path separators")
@@ -164,14 +283,31 @@ class TileMapRequest:
             raise ValueError("unity_generated_root must be a forward-slash Assets path")
         if not self.tiles or not all(isinstance(tile, TileDefinition) for tile in self.tiles):
             raise ValueError("tiles must contain at least one TileDefinition")
+        pages = self.resolved_atlas_pages
+        page_ids = [page.atlas_id for page in pages]
+        if len(page_ids) != len(set(page_ids)):
+            raise ValueError("atlas page ids must be unique")
+        if self.tileset_profile is TileSetProfile.ADAPTIVE_HD:
+            if not 1 <= len(pages) <= 3:
+                raise ValueError("adaptive_hd must contain one to three atlas pages")
+            if any(page.columns != 4 or page.rows != 4 for page in pages):
+                raise ValueError("adaptive_hd atlas pages must use a 4x4 grid")
+        elif len(pages) != 1:
+            raise ValueError("standard_16 must contain exactly one atlas page")
+        if len(self.tiles) > self.max_tile_count:
+            raise ValueError("tiles must not exceed max_tile_count")
         tile_ids = [tile.tile_id for tile in self.tiles]
         if len(tile_ids) != len(set(tile_ids)):
             raise ValueError("tile ids must be unique")
-        atlas_cells = [(tile.atlas_column, tile.atlas_row) for tile in self.tiles]
+        known_page_ids = set(page_ids)
+        atlas_cells = [(tile.atlas_id, tile.atlas_column, tile.atlas_row) for tile in self.tiles]
         if len(atlas_cells) != len(set(atlas_cells)):
             raise ValueError("tile atlas cells must be unique")
         for tile in self.tiles:
-            if tile.atlas_column >= self.atlas_columns or tile.atlas_row >= self.atlas_rows:
+            if tile.atlas_id not in known_page_ids:
+                raise ValueError(f"tile references unknown atlas page: {tile.tile_id}")
+            page = next(item for item in pages if item.atlas_id == tile.atlas_id)
+            if tile.atlas_column >= page.columns or tile.atlas_row >= page.rows:
                 raise ValueError(f"tile is outside the atlas grid: {tile.tile_id}")
         if not self.layers or not all(isinstance(layer, TileLayer) for layer in self.layers):
             raise ValueError("layers must contain at least one TileLayer")
@@ -186,14 +322,35 @@ class TileMapRequest:
             unknown = {item for item in layer.cells if item is not None and item not in known_tiles}
             if unknown:
                 raise ValueError(f"layer references unknown tiles: {layer.layer_id}: {sorted(unknown)}")
+        adjacency_keys = [(rule.tile_id, rule.direction) for rule in self.adjacency_rules]
+        if len(adjacency_keys) != len(set(adjacency_keys)):
+            raise ValueError("adjacency rules must be unique per tile and direction")
+        for rule in self.adjacency_rules:
+            if rule.tile_id not in known_tiles or any(item not in known_tiles for item in rule.allowed_neighbors):
+                raise ValueError("adjacency rules must reference known tiles")
         object.__setattr__(self, "reference_paths", tuple(normalize_repo_relative_path(path, field_name="reference_paths") for path in self.reference_paths))
 
     @property
+    def resolved_atlas_pages(self) -> tuple[AtlasPageDefinition, ...]:
+        if self.atlas_pages:
+            return self.atlas_pages
+        return (AtlasPageDefinition("page-01", self.atlas_columns, self.atlas_rows, self.tile_width, self.tile_height, self.prompt),)
+
+    @property
+    def expected_atlas_sizes(self) -> dict[str, tuple[int, int]]:
+        return {
+            page.atlas_id: (
+                self.atlas_margin * 2 + page.columns * page.tile_width + (page.columns - 1) * self.atlas_spacing,
+                self.atlas_margin * 2 + page.rows * page.tile_height + (page.rows - 1) * self.atlas_spacing,
+            )
+            for page in self.resolved_atlas_pages
+        }
+
+    @property
     def expected_atlas_size(self) -> tuple[int, int]:
-        return (
-            self.atlas_margin * 2 + self.atlas_columns * self.tile_width + (self.atlas_columns - 1) * self.atlas_spacing,
-            self.atlas_margin * 2 + self.atlas_rows * self.tile_height + (self.atlas_rows - 1) * self.atlas_spacing,
-        )
+        if len(self.resolved_atlas_pages) != 1:
+            raise ValueError("expected_atlas_size is only available for single-page requests")
+        return next(iter(self.expected_atlas_sizes.values()))
 
     def to_dict(self) -> dict[str, Any]:
         return {
@@ -218,6 +375,10 @@ class TileMapRequest:
             "tiles": [tile.to_dict() for tile in self.tiles],
             "layers": [layer.to_dict() for layer in self.layers],
             "reference_paths": list(self.reference_paths),
+            "tileset_profile": self.tileset_profile.value,
+            "max_tile_count": self.max_tile_count,
+            "atlas_pages": [page.to_dict() for page in self.atlas_pages],
+            "adjacency_rules": [rule.to_dict() for rule in self.adjacency_rules],
         }
 
     @classmethod
@@ -244,4 +405,8 @@ class TileMapRequest:
             tiles=tuple(TileDefinition.from_dict(item) for item in value["tiles"]),
             layers=tuple(TileLayer.from_dict(item) for item in value["layers"]),
             reference_paths=tuple(str(item) for item in value.get("reference_paths", [])),
+            tileset_profile=TileSetProfile(value.get("tileset_profile", "standard_16")),
+            max_tile_count=int(value.get("max_tile_count", 16)),
+            atlas_pages=tuple(AtlasPageDefinition.from_dict(item) for item in value.get("atlas_pages", [])),
+            adjacency_rules=tuple(TileAdjacencyRule.from_dict(item) for item in value.get("adjacency_rules", [])),
         )

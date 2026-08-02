@@ -39,11 +39,16 @@ from .sprite import (
 )
 from .serialization import dump_json, load_json
 from .tilemap import (
+    AtlasPageDefinition,
     TileColliderType,
     TileDefinition,
     TileFilterMode,
+    TileAdjacencyRule,
+    TileDirection,
     TileLayer,
     TileMapRequest,
+    TileSemanticRole,
+    TileSetProfile,
     TilemapEngineTarget,
 )
 
@@ -91,9 +96,14 @@ __all__ = [
     "dump_json",
     "load_json",
     "TileColliderType",
+    "AtlasPageDefinition",
+    "TileAdjacencyRule",
     "TileDefinition",
+    "TileDirection",
     "TileFilterMode",
     "TileLayer",
     "TileMapRequest",
+    "TileSemanticRole",
+    "TileSetProfile",
     "TilemapEngineTarget",
 ]
