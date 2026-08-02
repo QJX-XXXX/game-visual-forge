@@ -129,6 +129,11 @@ class SkillContractTests(unittest.TestCase):
         ):
             self.assertIn(required, skill)
 
+    def test_map_skill_documents_tile_size_modes(self) -> None:
+        skill = (ROOT / "skills" / "forge-2d-map" / "SKILL.md").read_text(encoding="utf-8")
+        for required in ("preset_16", "preset_32", "custom", "32×32", "tile_width / pixels_per_unit"):
+            self.assertIn(required, skill)
+
     def test_each_skill_contains_required_routing_and_safety_rules(self) -> None:
         for name, contract in SKILLS.items():
             skill = (ROOT / "skills" / name / "SKILL.md").read_text(encoding="utf-8")

@@ -64,6 +64,29 @@ reports such as `map-quality-report.json` and
 `Reports/unity-import-report.json`, but never rewrite README files or invent
 README evidence links.
 
+## Tile size modes
+
+Choose exactly one tile size mode from the user's request. The decision table is:
+
+| User request | Mode | Final size |
+| --- | --- | --- |
+| no size | `preset_32` | 32×32 |
+| 16×16 | `preset_16` | 16×16 |
+| any other positive width×height | `custom` | requested dimensions |
+
+The 16×18 size is supported when explicitly requested through `custom`; it is
+not a preset. Minimal request examples are:
+
+```json
+{"tile_size_mode":"preset_16"}
+{"tile_size_mode":"preset_32"}
+{"tile_size_mode":"custom","tile_width":16,"tile_height":18}
+```
+
+No-size requests use `preset_32`. All atlas pages in one request share the
+selected tile size. Unity derives Grid Cell Size as
+`(tile_width / pixels_per_unit, tile_height / pixels_per_unit, 1)`.
+
 ## M2 本地地图管线
 
 地图请求使用整数像素坐标描述 `spawn`、`walk_bounds`、`blockers` 和 `zones`。处理器不修改原始底图，输出 `base-map.png`、`map-runtime.json`、`walkable-mask.png`、`collision-mask.png` 和 `debug-preview.png`。其中可行走区域为 `walk_bounds - blockers`，碰撞区域为其反集；`zones` 只写入运行时元数据和调试预览。

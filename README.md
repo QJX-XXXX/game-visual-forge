@@ -117,6 +117,30 @@ scene was additionally verified through Unity MCP with three runtime Tilemaps,
 renderers, and a collider. Re-importing both example bundles twice kept 16
 Tiles and the same Tilemap Prefab GUID for each bundle.
 
+#### Tile size modes
+
+Tile requests use exactly one of these modes:
+
+| User request | Mode | Final size |
+| --- | --- | --- |
+| no size | `preset_32` | 32×32 |
+| 16×16 | `preset_16` | 16×16 |
+| any other positive width×height | `custom` | requested dimensions |
+
+No-size requests default to `preset_32`. A requested 16×18 tileset uses
+`custom`; 16×18 is supported only when requested and is not a preset. Minimal
+request examples:
+
+```json
+{"tile_size_mode":"preset_16"}
+{"tile_size_mode":"preset_32"}
+{"tile_size_mode":"custom","tile_width":16,"tile_height":18}
+```
+
+All atlas pages in one request share one tile size. Unity derives Grid Cell Size
+from the dimensions and PPU as
+`(tile_width / pixels_per_unit, tile_height / pixels_per_unit, 1)`.
+
 #### Unity success examples
 
 ##### Standard Simple Forest Map

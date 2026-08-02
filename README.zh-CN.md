@@ -34,6 +34,28 @@ Unity Test Runner 中运行。EditMode 会检查 Tile 数量、Palette 内容、
 示例场景：运行时包含 3 个 Tilemap、TilemapRenderer 和碰撞器。两套示例 Bundle 各自
 连续导入两次后，均保持 16 个 Tile，且 Tilemap Prefab GUID 不变。
 
+#### Tile 尺寸模式
+
+Tile 请求严格使用以下模式之一：
+
+| 用户请求 | 模式 | 最终尺寸 |
+| --- | --- | --- |
+| 未指定尺寸 | `preset_32` | 32×32 |
+| 16×16 | `preset_16` | 16×16 |
+| 其他任意正数宽×高 | `custom` | 用户请求的尺寸 |
+
+未指定尺寸时默认使用 `preset_32`。用户明确请求 16×18 时使用 `custom`；
+16×18 仅在请求时支持，不是独立预设。最小请求示例：
+
+```json
+{"tile_size_mode":"preset_16"}
+{"tile_size_mode":"preset_32"}
+{"tile_size_mode":"custom","tile_width":16,"tile_height":18}
+```
+
+同一请求中的所有图集页必须共享同一种 Tile 尺寸。Unity 根据尺寸和 PPU
+推导 Grid Cell Size：`(tile_width / pixels_per_unit, tile_height / pixels_per_unit, 1)`。
+
 ### Unity 成功案例
 
 #### 标准简易森林地图
