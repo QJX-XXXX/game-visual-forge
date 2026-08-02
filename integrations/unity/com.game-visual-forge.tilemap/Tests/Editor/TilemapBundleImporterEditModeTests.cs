@@ -16,7 +16,9 @@ namespace GameVisualForge.Unity.Tests
         private const string TileRoot = MapRoot + "/Tiles";
         private const string TilemapPrefabPath = MapRoot + "/Prefabs/autumn-creek-map-tilemap.prefab";
         private const string PalettePrefabPath = MapRoot + "/Palettes/Autumn Creek Map Palette.prefab";
-        private const string TestGeneratedRoot = "Assets/GameVisualForgeTask6MultiPageImport";
+        private const string TestGeneratedRoot = "Assets/GameVisualForgeTask6ImportFixtures";
+        private const string MultiPageGeneratedRoot = TestGeneratedRoot + "/MultiPage";
+        private const string LegacyGeneratedRoot = TestGeneratedRoot + "/LegacySinglePage";
 
         [OneTimeTearDown]
         public void OneTimeTearDown()
@@ -77,9 +79,23 @@ namespace GameVisualForge.Unity.Tests
             Assert.That(palette.GetComponentInChildren<Tilemap>(true).GetUsedTilesCount(), Is.EqualTo(32));
         }
 
+        [Test]
+        public void ImportBundleTreatsLegacySlicesWithoutAtlasIdAsPageOne()
+        {
+            var manifestPath = CreateLegacySinglePageBundleFixture();
+
+            var result = TilemapBundleImporter.ImportBundle(manifestPath);
+
+            Assert.That(result.tileset_assets, Has.Length.EqualTo(1));
+            Assert.That(result.tile_count, Is.EqualTo(16));
+            Assert.That(AssetDatabase.FindAssets("t:Tile", new[] { result.generated_root + "/Tiles" }), Has.Length.EqualTo(16));
+            var palette = AssetDatabase.LoadAssetAtPath<GameObject>(result.palette_prefab);
+            Assert.That(palette.GetComponentInChildren<Tilemap>(true).GetUsedTilesCount(), Is.EqualTo(16));
+        }
+
         private static string CreateTwoPageBundleFixture()
         {
-            var bundleAssetPath = TestGeneratedRoot + "/Bundle";
+            var bundleAssetPath = TestGeneratedRoot + "/MultiPageBundle";
             var bundleFullPath = ToFullPath(bundleAssetPath);
             Directory.CreateDirectory(bundleFullPath);
 
@@ -101,11 +117,42 @@ namespace GameVisualForge.Unity.Tests
   ],
   ""slices"": ""slices.json"",
   ""placement"": ""placement.json"",
-  ""generated_root"": """ + TestGeneratedRoot + @""",
+  ""generated_root"": """ + MultiPageGeneratedRoot + @""",
   ""pixels_per_unit"": 1,
   ""filter_mode"": ""point"",
   ""palette_name"": ""Task 6 Multi Page Palette"",
   ""prefab_name"": ""task-6-multi-page-tilemap""
+}");
+
+            AssetDatabase.Refresh();
+            return manifestPath;
+        }
+
+        private static string CreateLegacySinglePageBundleFixture()
+        {
+            var bundleAssetPath = TestGeneratedRoot + "/LegacyBundle";
+            var bundleFullPath = ToFullPath(bundleAssetPath);
+            Directory.CreateDirectory(bundleFullPath);
+
+            WriteAtlasPage(Path.Combine(bundleFullPath, "tileset.png"), 0);
+            File.WriteAllText(Path.Combine(bundleFullPath, "slices.json"), BuildLegacySlicesJson());
+            File.WriteAllText(Path.Combine(bundleFullPath, "placement.json"), BuildLegacyPlacementJson());
+
+            var manifestPath = Path.Combine(bundleFullPath, "manifest.json");
+            File.WriteAllText(
+                manifestPath,
+                @"{
+  ""schema_version"": 1,
+  ""asset_id"": ""task-6-legacy-single-page-fixture"",
+  ""engine_target"": ""Unity_Tilemap"",
+  ""tileset"": ""tileset.png"",
+  ""slices"": ""slices.json"",
+  ""placement"": ""placement.json"",
+  ""generated_root"": """ + LegacyGeneratedRoot + @""",
+  ""pixels_per_unit"": 1,
+  ""filter_mode"": ""point"",
+  ""palette_name"": ""Task 6 Legacy Palette"",
+  ""prefab_name"": ""task-6-legacy-tilemap""
 }");
 
             AssetDatabase.Refresh();
@@ -157,6 +204,22 @@ namespace GameVisualForge.Unity.Tests
             return "{\n  \"schema_version\": 1,\n  \"tiles\": [\n" + string.Join(",\n", items) + "\n  ]\n}";
         }
 
+        private static string BuildLegacySlicesJson()
+        {
+            var items = new List<string>();
+            for (var tileIndex = 0; tileIndex < 16; tileIndex++)
+            {
+                items.Add(
+                    "    { " +
+                    $@"""id"": ""{TileId(tileIndex)}"", " +
+                    $@"""rect"": {{ ""x"": {tileIndex % 4}, ""y"": {tileIndex / 4}, ""width"": 1, ""height"": 1 }}, " +
+                    $@"""palette"": {{ ""x"": {tileIndex}, ""y"": 0 }}, " +
+                    @"""collider_type"": ""none"" }");
+            }
+
+            return "{\n  \"schema_version\": 1,\n  \"tiles\": [\n" + string.Join(",\n", items) + "\n  ]\n}";
+        }
+
         private static string BuildPlacementJson()
         {
             var layerOne = new StringBuilder();
@@ -191,6 +254,33 @@ namespace GameVisualForge.Unity.Tests
       ""has_collider"": false,
       ""placements"": [
 " + layerTwo + @"
+      ]
+    }
+  ]
+}";
+        }
+
+        private static string BuildLegacyPlacementJson()
+        {
+            var placements = new StringBuilder();
+            for (var tileIndex = 0; tileIndex < 16; tileIndex++)
+            {
+                if (tileIndex > 0)
+                    placements.Append(",\n");
+
+                placements.Append($"        {{ \"x\": {tileIndex}, \"y\": 0, \"tile_id\": \"{TileId(tileIndex)}\" }}");
+            }
+
+            return @"{
+  ""schema_version"": 1,
+  ""map_size"": { ""width"": 16, ""height"": 1 },
+  ""layers"": [
+    {
+      ""id"": ""legacy"",
+      ""sorting_order"": 0,
+      ""has_collider"": false,
+      ""placements"": [
+" + placements + @"
       ]
     }
   ]

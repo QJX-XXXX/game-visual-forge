@@ -67,6 +67,7 @@ namespace GameVisualForge.Unity
             var slices = ReadJson<SliceManifest>(Path.Combine(bundleDirectory, manifest.slices));
             var placement = ReadJson<PlacementManifest>(Path.Combine(bundleDirectory, manifest.placement));
             ValidateBundleData(slices, placement);
+            var isLegacySinglePage = manifest.tilesets == null || manifest.tilesets.Length == 0;
             var atlasPages = NormalizeAtlasPages(manifest);
 
             EnsureAssetFolder(manifest.generated_root);
@@ -85,7 +86,7 @@ namespace GameVisualForge.Unity
             {
                 var tilesetAssetPath = $"{textureFolder}/{page.atlas_id}.png";
                 CopyToAsset(Path.Combine(bundleDirectory, page.path), tilesetAssetPath);
-                var pageSlices = slices.tiles.Where(slice => slice.atlas_id == page.atlas_id).ToArray();
+                var pageSlices = slices.tiles.Where(slice => SliceBelongsToPage(slice, page, isLegacySinglePage)).ToArray();
                 ConfigureAndSliceTexture(tilesetAssetPath, manifest, pageSlices);
                 foreach (var sprite in AssetDatabase.LoadAllAssetsAtPath(tilesetAssetPath).OfType<Sprite>())
                 {
@@ -139,6 +140,13 @@ namespace GameVisualForge.Unity
             if (atlasPages.Select(page => page.atlas_id).Distinct(StringComparer.Ordinal).Count() != atlasPages.Length)
                 throw new InvalidOperationException("Atlas page IDs must be unique.");
             return atlasPages;
+        }
+
+        private static bool SliceBelongsToPage(TileSlice slice, AtlasPage page, bool isLegacySinglePage)
+        {
+            if (isLegacySinglePage && string.IsNullOrEmpty(slice.atlas_id))
+                return page.atlas_id == "page-01";
+            return slice.atlas_id == page.atlas_id;
         }
 
         private static T ReadJson<T>(string path)
