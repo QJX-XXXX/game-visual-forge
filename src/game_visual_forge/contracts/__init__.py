@@ -48,6 +48,7 @@ from .tilemap import (
     TileLayer,
     TileMapRequest,
     TileSemanticRole,
+    TileSizeMode,
     TileSetProfile,
     TilemapEngineTarget,
 )
@@ -105,6 +106,7 @@ __all__ = [
     "TileLayer",
     "TileMapRequest",
     "TileSemanticRole",
+    "TileSizeMode",
     "TileSetProfile",
     "TilemapEngineTarget",
     "TileAtlasSourceRecord",

@@ -10,6 +10,7 @@ from game_visual_forge.contracts import (
     TileDefinition,
     TileLayer,
     TileMapRequest,
+    TileSizeMode,
     TileSetProfile,
 )
 
@@ -80,6 +81,37 @@ def make_adaptive_tilemap_request(tile_count: int = 32) -> TileMapRequest:
 
 
 class TileMapContractTests(unittest.TestCase):
+    def test_tile_size_mode_is_inferred_for_legacy_requests(self) -> None:
+        request_16 = make_tilemap_request()
+        request_32 = TileMapRequest(**{**request_16.__dict__, "tile_width": 32, "tile_height": 32, "pixels_per_unit": 32, "tile_size_mode": None})
+        rectangular = TileMapRequest(**{**request_16.__dict__, "tile_height": 18, "tile_size_mode": None})
+
+        self.assertIs(request_16.tile_size_mode, TileSizeMode.PRESET_16)
+        self.assertIs(request_32.tile_size_mode, TileSizeMode.PRESET_32)
+        self.assertIs(rectangular.tile_size_mode, TileSizeMode.CUSTOM)
+
+    def test_explicit_preset_conflicts_are_rejected(self) -> None:
+        request = make_tilemap_request()
+
+        with self.assertRaisesRegex(ValueError, "preset_32"):
+            TileMapRequest(**{**request.__dict__, "tile_size_mode": TileSizeMode.PRESET_32})
+
+    def test_atlas_page_dimension_mismatch_is_rejected(self) -> None:
+        request = make_adaptive_tilemap_request()
+        mismatched_page = AtlasPageDefinition("page-02", 4, 4, 16, 18, "Second page")
+
+        with self.assertRaisesRegex(ValueError, "tile dimensions"):
+            TileMapRequest(**{**request.__dict__, "atlas_pages": (request.atlas_pages[0], mismatched_page)})
+
+    def test_tile_size_mode_round_trips_and_legacy_payloads_parse(self) -> None:
+        request = make_tilemap_request()
+        payload = request.to_dict()
+
+        self.assertEqual(payload["tile_size_mode"], "preset_16")
+        self.assertEqual(TileMapRequest.from_dict(payload), request)
+        payload.pop("tile_size_mode")
+        self.assertEqual(TileMapRequest.from_dict(payload).tile_size_mode, TileSizeMode.PRESET_16)
+
     def test_request_round_trip_is_exact(self) -> None:
         request = make_tilemap_request()
         self.assertEqual(TileMapRequest.from_dict(request.to_dict()), request)

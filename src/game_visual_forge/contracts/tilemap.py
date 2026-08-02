@@ -41,6 +41,20 @@ class TileFilterMode(StrEnum):
     BILINEAR = "bilinear"
 
 
+class TileSizeMode(StrEnum):
+    PRESET_16 = "preset_16"
+    PRESET_32 = "preset_32"
+    CUSTOM = "custom"
+
+
+def _infer_tile_size_mode(width: int, height: int) -> TileSizeMode:
+    if (width, height) == (16, 16):
+        return TileSizeMode.PRESET_16
+    if (width, height) == (32, 32):
+        return TileSizeMode.PRESET_32
+    return TileSizeMode.CUSTOM
+
+
 class TilemapEngineTarget(StrEnum):
     UNITY_TILEMAP = "Unity_Tilemap"
 
@@ -244,6 +258,7 @@ class TileMapRequest:
     atlas_spacing: int = 0
     filter_mode: TileFilterMode = TileFilterMode.POINT
     engine_target: TilemapEngineTarget = TilemapEngineTarget.UNITY_TILEMAP
+    tile_size_mode: TileSizeMode | None = None
     reference_paths: tuple[str, ...] = ()
     tileset_profile: TileSetProfile = TileSetProfile.STANDARD_16
     max_tile_count: int = 16
@@ -259,6 +274,16 @@ class TileMapRequest:
         object.__setattr__(self, "output_dir", normalize_repo_relative_path(self.output_dir, field_name="output_dir"))
         for field_name in ("tile_width", "tile_height", "atlas_columns", "atlas_rows", "map_width", "map_height", "pixels_per_unit"):
             _positive_int(getattr(self, field_name), field_name)
+        tile_size_mode = self.tile_size_mode
+        if tile_size_mode is None:
+            tile_size_mode = _infer_tile_size_mode(self.tile_width, self.tile_height)
+        elif not isinstance(tile_size_mode, TileSizeMode):
+            raise TypeError("tile_size_mode must be TileSizeMode")
+        if tile_size_mode is TileSizeMode.PRESET_16 and (self.tile_width, self.tile_height) != (16, 16):
+            raise ValueError("preset_16 requires 16x16 tile dimensions")
+        if tile_size_mode is TileSizeMode.PRESET_32 and (self.tile_width, self.tile_height) != (32, 32):
+            raise ValueError("preset_32 requires 32x32 tile dimensions")
+        object.__setattr__(self, "tile_size_mode", tile_size_mode)
         _non_negative_int(self.atlas_margin, "atlas_margin")
         _non_negative_int(self.atlas_spacing, "atlas_spacing")
         if not isinstance(self.source_preference, SourcePreference):
@@ -284,6 +309,8 @@ class TileMapRequest:
         if not self.tiles or not all(isinstance(tile, TileDefinition) for tile in self.tiles):
             raise ValueError("tiles must contain at least one TileDefinition")
         pages = self.resolved_atlas_pages
+        if any((page.tile_width, page.tile_height) != (self.tile_width, self.tile_height) for page in pages):
+            raise ValueError("all atlas pages must use the request tile dimensions")
         page_ids = [page.atlas_id for page in pages]
         if len(page_ids) != len(set(page_ids)):
             raise ValueError("atlas page ids must be unique")
@@ -368,6 +395,7 @@ class TileMapRequest:
             "map_width": self.map_width,
             "map_height": self.map_height,
             "pixels_per_unit": self.pixels_per_unit,
+            "tile_size_mode": self.tile_size_mode.value,
             "filter_mode": self.filter_mode.value,
             "engine_target": self.engine_target.value,
             "palette_name": self.palette_name,
@@ -400,6 +428,7 @@ class TileMapRequest:
             pixels_per_unit=int(value.get("pixels_per_unit", value["tile_width"])),
             filter_mode=TileFilterMode(value.get("filter_mode", "point")),
             engine_target=TilemapEngineTarget(value.get("engine_target", "Unity_Tilemap")),
+            tile_size_mode=TileSizeMode(value["tile_size_mode"]) if "tile_size_mode" in value else None,
             palette_name=str(value["palette_name"]),
             unity_generated_root=str(value["unity_generated_root"]),
             tiles=tuple(TileDefinition.from_dict(item) for item in value["tiles"]),
