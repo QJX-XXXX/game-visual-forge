@@ -4,7 +4,7 @@ from dataclasses import dataclass
 from pathlib import Path, PurePosixPath
 from typing import Any
 
-from game_visual_forge.contracts import RawImageRecord, TileMapRequest
+from game_visual_forge.contracts import AtlasPageDefinition, RawImageRecord, TileMapRequest, TileMapSourceSet, load_tilemap_source_set
 from game_visual_forge.contracts.serialization import dump_json
 from game_visual_forge.errors import ErrorCode, ForgeError
 from game_visual_forge.processing.images import _load_pillow, verify_image_unchanged
@@ -14,7 +14,7 @@ from game_visual_forge.processing.images import _load_pillow, verify_image_uncha
 class TileMapProcessingResult:
     schema_version: int
     staging_dir: str
-    tileset_path: str
+    tileset_paths: tuple[str, ...]
     slices_path: str
     placement_path: str
     unity_manifest_path: str
@@ -22,11 +22,18 @@ class TileMapProcessingResult:
     processing_steps: tuple[str, ...]
     needs_attention: bool
 
+    @property
+    def tileset_path(self) -> str:
+        if len(self.tileset_paths) != 1:
+            raise ValueError("tileset_path is only available for single-page results")
+        return self.tileset_paths[0]
+
     def to_dict(self) -> dict[str, Any]:
         return {
             "schema_version": self.schema_version,
             "staging_dir": self.staging_dir,
-            "tileset_path": self.tileset_path,
+            "tileset_paths": list(self.tileset_paths),
+            "tileset_path": self.tileset_path if len(self.tileset_paths) == 1 else None,
             "slices_path": self.slices_path,
             "placement_path": self.placement_path,
             "unity_manifest_path": self.unity_manifest_path,
@@ -39,10 +46,13 @@ class TileMapProcessingResult:
     def from_dict(cls, value: dict[str, Any]) -> "TileMapProcessingResult":
         if value.get("schema_version") != 1:
             raise ValueError("TileMapProcessingResult schema_version must be 1")
+        paths = value.get("tileset_paths")
+        if paths is None:
+            paths = [value["tileset_path"]]
         return cls(
             schema_version=1,
             staging_dir=str(value["staging_dir"]),
-            tileset_path=str(value["tileset_path"]),
+            tileset_paths=tuple(str(path) for path in paths),
             slices_path=str(value["slices_path"]),
             placement_path=str(value["placement_path"]),
             unity_manifest_path=str(value["unity_manifest_path"]),
@@ -52,16 +62,20 @@ class TileMapProcessingResult:
         )
 
 
-def _atlas_box(request: TileMapRequest, column: int, row: int) -> tuple[int, int, int, int]:
-    left = request.atlas_margin + column * (request.tile_width + request.atlas_spacing)
-    top = request.atlas_margin + row * (request.tile_height + request.atlas_spacing)
-    return left, top, left + request.tile_width, top + request.tile_height
+def _atlas_box(page: AtlasPageDefinition, column: int, row: int, margin: int, spacing: int) -> tuple[int, int, int, int]:
+    left = margin + column * (page.tile_width + spacing)
+    top = margin + row * (page.tile_height + spacing)
+    return left, top, left + page.tile_width, top + page.tile_height
 
 
-def _compose_preview(atlas: Any, request: TileMapRequest) -> Any:
+def _compose_preview(atlases: dict[str, Any], request: TileMapRequest) -> Any:
     Image = _load_pillow()
     preview = Image.new("RGBA", (request.map_width * request.tile_width, request.map_height * request.tile_height), (0, 0, 0, 0))
-    tiles = {tile.tile_id: atlas.crop(_atlas_box(request, tile.atlas_column, tile.atlas_row)) for tile in request.tiles}
+    pages = {page.atlas_id: page for page in request.resolved_atlas_pages}
+    tiles = {
+        tile.tile_id: atlases[tile.atlas_id].crop(_atlas_box(pages[tile.atlas_id], tile.atlas_column, tile.atlas_row, request.atlas_margin, request.atlas_spacing))
+        for tile in request.tiles
+    }
     for layer in sorted(request.layers, key=lambda item: item.sorting_order):
         for index, tile_id in enumerate(layer.cells):
             if tile_id is None:
@@ -75,56 +89,81 @@ def _compose_preview(atlas: Any, request: TileMapRequest) -> Any:
 def process_tilemap(
     repo_root: Path,
     request: TileMapRequest,
-    record: RawImageRecord,
+    record: RawImageRecord | TileMapSourceSet,
     output_dir: Path,
 ) -> TileMapProcessingResult:
-    verify_image_unchanged(repo_root, record)
+    source_set = load_tilemap_source_set(record.to_dict(), request) if isinstance(record, RawImageRecord) else record
+    if not isinstance(source_set, TileMapSourceSet):
+        raise TypeError("tilemap source must be RawImageRecord or TileMapSourceSet")
+    for page in source_set.pages:
+        verify_image_unchanged(repo_root, page.image)
     Image = _load_pillow()
-    source_path = repo_root.resolve() / PurePosixPath(record.path)
-    with Image.open(source_path) as opened:
-        atlas = opened.convert("RGBA")
-    if atlas.size != request.expected_atlas_size:
-        raise ForgeError(
-            ErrorCode.INVALID_REQUEST,
-            "tileset dimensions must match the declared atlas grid",
-            recoverable=True,
-            context={"source_size": atlas.size, "expected_size": request.expected_atlas_size},
-        )
+    pages = {page.atlas_id: page for page in request.resolved_atlas_pages}
+    atlases: dict[str, Any] = {}
+    for source in source_set.pages:
+        source_path = repo_root.resolve() / PurePosixPath(source.image.path)
+        with Image.open(source_path) as opened:
+            atlas = opened.convert("RGBA")
+        expected_size = request.expected_atlas_sizes[source.atlas_id]
+        if atlas.size != expected_size:
+            raise ForgeError(
+                ErrorCode.INVALID_REQUEST,
+                "tileset dimensions must match the declared atlas grid",
+                recoverable=True,
+                context={"atlas_id": source.atlas_id, "source_size": atlas.size, "expected_size": expected_size},
+            )
+        atlases[source.atlas_id] = atlas
 
-    staging = output_dir.parent / f".{output_dir.name}.tile-staging-{record.sha256[:12]}-{record.request_fingerprint[:8]}"
+    fingerprint = source_set.pages[0].image.request_fingerprint
+    source_hash = source_set.pages[0].image.sha256
+    staging = output_dir.parent / f".{output_dir.name}.tile-staging-{source_hash[:12]}-{fingerprint[:8]}"
     staging.mkdir(parents=True, exist_ok=True)
-    atlas.save(staging / "tileset.png", format="PNG")
+    tileset_paths = []
+    for index, source in enumerate(source_set.pages, start=1):
+        filename = "tileset.png" if len(source_set.pages) == 1 else f"tileset-{source.atlas_id}.png"
+        atlases[source.atlas_id].save(staging / filename, format="PNG")
+        tileset_paths.append(filename)
 
     slices = []
     for tile in request.tiles:
-        left, top, right, bottom = _atlas_box(request, tile.atlas_column, tile.atlas_row)
+        page = pages[tile.atlas_id]
+        left, top, right, bottom = _atlas_box(page, tile.atlas_column, tile.atlas_row, request.atlas_margin, request.atlas_spacing)
         slices.append({
             "id": tile.tile_id,
             "name": tile.tile_id,
             "atlas_column": tile.atlas_column,
             "atlas_row": tile.atlas_row,
+            "atlas_id": tile.atlas_id,
             "rect": {
                 "x": left,
                 "y": atlas.height - bottom,
                 "width": right - left,
                 "height": bottom - top,
             },
-            "palette": {"x": tile.atlas_column, "y": request.atlas_rows - 1 - tile.atlas_row},
+            "palette": {"x": list(pages).index(tile.atlas_id) * page.columns + tile.atlas_column, "y": page.rows - 1 - tile.atlas_row},
             "collider_type": tile.collider_type.value,
+            "semantic_role": tile.semantic_role.value,
+        })
+    atlas_metadata = []
+    for source in source_set.pages:
+        page = pages[source.atlas_id]
+        atlas_metadata.append({
+            "atlas_id": source.atlas_id,
+            "path": tileset_paths[len(atlas_metadata)],
+            "width": atlases[source.atlas_id].width,
+            "height": atlases[source.atlas_id].height,
+            "columns": page.columns,
+            "rows": page.rows,
+            "tile_width": page.tile_width,
+            "tile_height": page.tile_height,
+            "margin": request.atlas_margin,
+            "spacing": request.atlas_spacing,
         })
     dump_json(staging / "tileset-slices.json", {
         "schema_version": 1,
         "coordinate_origin": "bottom-left",
-        "atlas": {
-            "width": atlas.width,
-            "height": atlas.height,
-            "columns": request.atlas_columns,
-            "rows": request.atlas_rows,
-            "tile_width": request.tile_width,
-            "tile_height": request.tile_height,
-            "margin": request.atlas_margin,
-            "spacing": request.atlas_spacing,
-        },
+        "atlas": atlas_metadata[0] if len(atlas_metadata) == 1 else None,
+        "atlases": atlas_metadata,
         "tiles": slices,
     })
 
@@ -156,7 +195,8 @@ def process_tilemap(
         "engine_target": request.engine_target.value,
         "minimum_unity_version": "2022.3",
         "importer_version": "0.1.0",
-        "tileset": "tileset.png",
+        "tileset": tileset_paths[0] if len(tileset_paths) == 1 else None,
+        "tilesets": [{"atlas_id": item["atlas_id"], "path": item["path"]} for item in atlas_metadata],
         "slices": "tileset-slices.json",
         "placement": "tilemap-placement.json",
         "palette_name": request.palette_name,
@@ -166,12 +206,12 @@ def process_tilemap(
         "prefab_name": f"{request.asset_id}-tilemap",
         "required_packages": ["com.unity.2d.sprite", "com.unity.2d.tilemap"],
     })
-    _compose_preview(atlas, request).save(staging / "tilemap-preview.png", format="PNG")
+    _compose_preview(atlases, request).save(staging / "tilemap-preview.png", format="PNG")
 
     return TileMapProcessingResult(
         schema_version=1,
         staging_dir=PurePosixPath(staging.resolve().relative_to(repo_root.resolve()).as_posix()).as_posix(),
-        tileset_path="tileset.png",
+        tileset_paths=tuple(tileset_paths),
         slices_path="tileset-slices.json",
         placement_path="tilemap-placement.json",
         unity_manifest_path="unity-tilemap.json",

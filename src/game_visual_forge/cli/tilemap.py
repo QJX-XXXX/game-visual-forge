@@ -117,8 +117,10 @@ def run_tilemap_process(
     now: str,
 ) -> dict[str, Any]:
     request, fingerprint = _request(request_path)
-    record = RawImageRecord.from_dict(load_json(raw_image_path))
-    if record.request_fingerprint != fingerprint:
+    payload = load_json(raw_image_path)
+    record = RawImageRecord.from_dict(payload) if "pages" not in payload else TileMapSourceSet.from_dict(payload)
+    source_fingerprint = record.request_fingerprint if isinstance(record, RawImageRecord) else record.pages[0].image.request_fingerprint
+    if source_fingerprint != fingerprint:
         raise ValueError("raw image fingerprint does not match tilemap request")
     result = process_tilemap(repo_root, request, record, repo_root / PurePosixPath(request.output_dir))
     staging = repo_root / PurePosixPath(result.staging_dir)
