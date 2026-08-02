@@ -117,6 +117,10 @@ def validate_tilemap_outputs(
             and len(placement["layers"]) == len(request.layers)
             and unity["engine_target"] == "Unity_Tilemap"
             and unity["generated_root"].startswith("Assets/")
+            and unity["tile_size_mode"] == request.tile_size_mode.value
+            and unity["tile_width"] == request.tile_width
+            and unity["tile_height"] == request.tile_height
+            and unity["pixels_per_unit"] == request.pixels_per_unit
         )
     except (OSError, ValueError, TypeError, KeyError):
         metadata_valid = False
@@ -175,9 +179,10 @@ def build_tilemap_asset_manifest(
     roles.update({path: "tileset" for path in processing.tileset_paths})
     if (staging_dir / "map-quality-report.json").is_file():
         roles["map-quality-report.json"] = "map-quality-report"
+    output_paths = (*_paths(processing), *(("map-quality-report.json",) if (staging_dir / "map-quality-report.json").is_file() else ()))
     outputs = tuple(
         ArtifactRecord(role=roles[path], path=f"{request.output_dir}/{path}", sha256=sha256_file(staging_dir / PurePosixPath(path)))
-        for path in _paths(processing)
+        for path in output_paths
     )
     source_artifacts = tuple(ArtifactRecord(role="source", path=page.image.path, sha256=page.image.sha256) for page in sources.pages)
     quality_status = "failed" if report.deterministic_status is QualityStatus.FAILED or report.visual_status is QualityStatus.FAILED else "passed" if report.deterministic_status is QualityStatus.PASSED and report.visual_status is QualityStatus.PASSED else "needs_attention"

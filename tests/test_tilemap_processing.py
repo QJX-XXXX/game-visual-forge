@@ -59,7 +59,11 @@ class TileMapProcessingTests(unittest.TestCase):
             staging = root / result.staging_dir
 
             slices = load_json(staging / result.slices_path)
+            unity = load_json(staging / result.unity_manifest_path)
             self.assertEqual(slices["tiles"][0]["rect"], {"x": 0, "y": 16, "width": 16, "height": 16})
+            self.assertEqual(unity["tile_size_mode"], "preset_16")
+            self.assertEqual(unity["tile_width"], 16)
+            self.assertEqual(unity["tile_height"], 16)
             placement = load_json(staging / result.placement_path)
             self.assertEqual(placement["layers"][0]["placements"][0], {"x": 0, "y": 1, "tile_id": "grass"})
             with Image.open(staging / result.preview_path) as preview:

@@ -152,7 +152,6 @@ def run_tilemap_validate(
     report = validate_tilemap_outputs(staging_dir, request, record, result)
     if visual_review_path is not None:
         report = apply_tilemap_visual_review(report, load_json(visual_review_path))
-    manifest = build_tilemap_asset_manifest(staging_dir, request, record, result, report)
     report_path = staging_dir / "map-quality-report.json"
     dump_json(report_path, report.to_dict())
     unity_path = staging_dir / result.unity_manifest_path
@@ -160,6 +159,7 @@ def run_tilemap_validate(
     unity["quality_report"] = report_path.name
     unity["quality_report_sha256"] = sha256_file(report_path)
     dump_json(unity_path, unity)
+    manifest = build_tilemap_asset_manifest(staging_dir, request, record, result, report)
     dump_json(staging_dir / "asset-manifest.json", manifest.to_dict())
     published = publish_verified_outputs(staging_dir, final_dir, report)
     state = load_job(state_path)
