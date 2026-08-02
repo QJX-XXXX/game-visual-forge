@@ -105,7 +105,7 @@ def normalize_atlas(
 Implementation rules:
 
 - Open as RGBA.
-- Require positive dimensions and exact divisibility by `columns` and `rows`.
+- Require positive dimensions and a square source image. Generated pages may be non-divisible squares (for example, 1254x1254); derive proportional rounded crop boundaries for each declared row/column, then resize each cell independently.
 - Crop each source cell independently, resize it with `Image.Resampling.NEAREST`, and paste at the same row-major destination cell.
 - Create the parent directory and save a PNG.
 - Return `source`, `output`, `columns`, `rows`, `source_cell_size`, `source_size`, `tile_size`, and `output_size` as JSON-compatible values.
@@ -634,6 +634,7 @@ Use a read-only Python assertion script to require:
 - 48 unique tiles and every tile has usage count greater than zero;
 - `clipped_tiles`, `overused_tiles`, `invalid_adjacencies`, and `invalid_bridge_connectivity` are empty;
 - maximum seam score is at or below 48;
+- seam comparisons are evaluated within the same semantic role and exclude intentional water-transition boundaries; decoration overuse is evaluated per layer and does not treat structural `prop` tiles as decoration;
 - preview contract is 32x24 cells at 32x32 pixels;
 - bridge cells `(14..17,12)` are bridge/none and approaches `(13,12)`, `(18,12)` are road/none;
 - the six entrance records match the approved IDs/targets and point to doorway/none cells;
@@ -717,7 +718,7 @@ Save the active scene, wait for refresh, and verify `isDirty == false`. Inspect 
 
 - [ ] **Step 5: Frame the map and capture acceptance evidence**
 
-Adjust the scene’s existing camera position/orthographic size only as needed to frame the complete 32x24 map in Game View. Do not add gameplay scripts. Capture a current-run Game View screenshot to `outputs/spring-creek-village-20260803/unity/` and inspect it visually.
+Adjust the scene’s existing camera position/orthographic size only as needed to frame the complete 32x24 map in Game View. Do not add gameplay scripts. Capture a current-run Unity Scene View/Game View screenshot to `outputs/spring-creek-village-20260803/unity/` and inspect it visually.
 
 Read Console messages since the baseline. Require no errors related to Game Visual Forge, import, assets, prefab, Tilemap, or Collider; report unrelated pre-existing warnings separately.
 
