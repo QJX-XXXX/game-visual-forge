@@ -106,10 +106,11 @@ namespace GameVisualForge.Unity
             }
             var tiles = CreateOrUpdateTiles(tileFolder, slices.tiles, sprites);
             var palettePath = CreateOrUpdatePalette(paletteFolder, manifest.palette_name, slices.tiles, tiles);
-            var prefabPath = CreateOrUpdateTilemapPrefab(prefabFolder, manifest.prefab_name, placement.layers, tiles);
+            var prefabPath = CreateOrUpdateTilemapPrefab(prefabFolder, manifest.prefab_name, placement.layers, tiles, palettePath);
 
             AssetDatabase.SaveAssets();
             AssetDatabase.Refresh();
+            var activeScene = UnityEditor.SceneManagement.EditorSceneManager.GetActiveScene();
             Debug.Log($"[Game Visual Forge] Imported tilemap bundle '{manifest.asset_id}' to '{manifest.generated_root}'.");
             var result = new ImportResult
             {
@@ -125,8 +126,8 @@ namespace GameVisualForge.Unity
                 had_existing_assets = existingResourceGuids.Count > 0,
                 resource_guids_stable = ExistingResourceGuidsAreStable(existingResourceGuids),
                 scene_action = "unchanged",
-                scene_path = UnityEditor.SceneManagement.EditorSceneManager.GetActiveScene().path,
-                scene_dirty = false,
+                scene_path = activeScene.path,
+                scene_dirty = activeScene.isDirty,
             };
             if (mode == ImportMode.ImportAndPlace)
             {
@@ -353,33 +354,59 @@ namespace GameVisualForge.Unity
             return path;
         }
 
-        private static string CreateOrUpdateTilemapPrefab(string folder, string prefabName, PlacementLayer[] layers, IReadOnlyDictionary<string, Tile> tiles)
+        private static string CreateOrUpdateTilemapPrefab(string folder, string prefabName, PlacementLayer[] layers, IReadOnlyDictionary<string, Tile> tiles, string seedPrefabPath)
         {
             var path = $"{folder}/{prefabName}.prefab";
-            var root = new GameObject(prefabName);
-            root.AddComponent<Grid>();
+            if (AssetDatabase.LoadAssetAtPath<GameObject>(path) == null && !AssetDatabase.CopyAsset(seedPrefabPath, path))
+                throw new InvalidOperationException($"Unity could not create the Tilemap Prefab at '{path}'.");
+            var root = PrefabUtility.LoadPrefabContents(path);
             try
             {
-                foreach (var layer in layers.OrderBy(item => item.sorting_order))
+                root.name = prefabName;
+                EnsureOnlyGridRoot(root);
+                var orderedLayers = layers.OrderBy(item => item.sorting_order).ToArray();
+                var children = root.transform.Cast<Transform>().Select(child => child.gameObject).ToList();
+                if (children.Count == 0)
+                    throw new InvalidOperationException("The Tilemap Prefab has no layer template.");
+                for (var index = 0; index < orderedLayers.Length; index++)
                 {
-                    var child = new GameObject(layer.id);
+                    var layer = orderedLayers[index];
+                    var child = index < children.Count ? children[index] : UnityEngine.Object.Instantiate(children[0], root.transform);
+                    child.name = layer.id;
                     child.transform.SetParent(root.transform, false);
-                    var tilemap = child.AddComponent<Tilemap>();
-                    var renderer = child.AddComponent<TilemapRenderer>();
+                    var tilemap = child.GetComponent<Tilemap>() ?? child.AddComponent<Tilemap>();
+                    var renderer = child.GetComponent<TilemapRenderer>() ?? child.AddComponent<TilemapRenderer>();
+                    tilemap.ClearAllTiles();
                     renderer.sortingOrder = layer.sorting_order;
                     foreach (var item in layer.placements)
                         tilemap.SetTile(new Vector3Int(item.x, item.y, 0), tiles[item.tile_id]);
                     tilemap.CompressBounds();
-                    if (layer.has_collider)
+                    var collider = child.GetComponent<TilemapCollider2D>();
+                    if (layer.has_collider && collider == null)
                         child.AddComponent<TilemapCollider2D>();
+                    else if (!layer.has_collider && collider != null)
+                        UnityEngine.Object.DestroyImmediate(collider);
                 }
+                for (var index = children.Count - 1; index >= orderedLayers.Length; index--)
+                    UnityEngine.Object.DestroyImmediate(children[index]);
                 PrefabUtility.SaveAsPrefabAsset(root, path);
             }
             finally
             {
-                UnityEngine.Object.DestroyImmediate(root);
+                PrefabUtility.UnloadPrefabContents(root);
             }
             return path;
+        }
+
+        private static void EnsureOnlyGridRoot(GameObject root)
+        {
+            if (root.GetComponent<Grid>() == null)
+                root.AddComponent<Grid>();
+            foreach (var component in root.GetComponents<Component>())
+            {
+                if (!(component is Transform) && !(component is Grid))
+                    UnityEngine.Object.DestroyImmediate(component);
+            }
         }
     }
 }
