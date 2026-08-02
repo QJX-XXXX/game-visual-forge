@@ -106,6 +106,29 @@ class SkillContractTests(unittest.TestCase):
         self.assertEqual(ingest.returncode, 0, ingest.stderr)
         self.assertIn("--atlas-page", ingest.stdout)
 
+    def test_map_skill_documents_adaptive_tilemap_confirmation_quality_and_scope(self) -> None:
+        skill = (ROOT / "skills" / "forge-2d-map" / "SKILL.md").read_text(encoding="utf-8")
+        for required in (
+            "`standard_16`",
+            "`adaptive_hd`",
+            "ordered multi-page confirmation packet",
+            "page count, ordered slots, and the prompt for every page",
+            "`--atlas-page` arguments",
+            "--atlas-page page-01=outputs/adaptive-map/raw/tileset-page-01.png",
+            "`tilemap-preview.png`",
+            "`tile-seam-preview.png`",
+            "`tile-usage-preview.png`",
+            "`map-quality-report.json` quality preview artifacts",
+            "**Assets-only** import by default",
+            "**Import and Place**",
+            "Collision/mask layers are optional",
+            "spatial data; gameplay objects",
+            "runtime game logic are outside this Skill's scope",
+            "never rewrite README files",
+            "invent\nREADME evidence links",
+        ):
+            self.assertIn(required, skill)
+
     def test_each_skill_contains_required_routing_and_safety_rules(self) -> None:
         for name, contract in SKILLS.items():
             skill = (ROOT / "skills" / name / "SKILL.md").read_text(encoding="utf-8")

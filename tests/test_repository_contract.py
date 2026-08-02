@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import subprocess
 import unittest
 
 from tests._bootstrap import ROOT
@@ -31,9 +32,42 @@ class RepositoryContractTests(unittest.TestCase):
         self.assertFalse((ROOT / ".gitmodules").exists())
         ignore_rules = (ROOT / ".gitignore").read_text(encoding="utf-8").splitlines()
         self.assertFalse((ROOT / "docs").exists())
-        self.assertFalse((ROOT / ".superpowers").exists())
         self.assertIn("docs/", ignore_rules)
         self.assertIn(".superpowers/", ignore_rules)
+
+        result = subprocess.run(
+            ["git", "ls-files", ".superpowers"],
+            cwd=ROOT,
+            capture_output=True,
+            text=True,
+            encoding="utf-8",
+            check=False,
+        )
+        self.assertEqual(result.returncode, 0, result.stderr)
+        self.assertEqual(result.stdout.strip(), "")
+
+    def test_readmes_document_adaptive_tilemap_reports_and_import_modes(self) -> None:
+        for readme_name in ("README.md", "README.zh-CN.md"):
+            text = (ROOT / readme_name).read_text(encoding="utf-8")
+            for required in (
+                "`standard_16`",
+                "`adaptive_hd`",
+                "`--atlas-page page-01=path.png`",
+                "`map-quality-report.json`",
+                "`Reports/unity-import-report.json`",
+                "**Assets-only**",
+                "**Import and Place**",
+            ):
+                self.assertIn(required, text, f"{readme_name} missing adaptive tilemap contract: {required}")
+
+    def test_readmes_keep_report_contracts_documentary_only_until_real_evidence_exists(self) -> None:
+        english = (ROOT / "README.md").read_text(encoding="utf-8")
+        chinese = (ROOT / "README.zh-CN.md").read_text(encoding="utf-8")
+
+        self.assertIn("records\nthe Python report SHA-256, page count, Tile count, Palette, Prefab, and scene\naction.", english)
+        self.assertIn("Routine runs never rewrite README files.", english)
+        self.assertIn("`Reports/unity-import-report.json` 记录 Python", chinese)
+        self.assertIn("普通运行不会自动改写 README", chinese)
 
     def test_install_guides_are_manual_and_repo_local(self) -> None:
         for agent in ("codex", "claude"):
