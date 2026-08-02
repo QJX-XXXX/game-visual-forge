@@ -8,6 +8,20 @@ from pathlib import PurePosixPath
 from typing import Any
 
 from game_visual_forge.cli.planning import build_execution_plan
+from game_visual_forge.cli.map import (
+    run_map_ingest,
+    run_map_plan,
+    run_map_process,
+    run_map_route,
+    run_map_validate,
+)
+from game_visual_forge.cli.tilemap import (
+    run_tilemap_ingest,
+    run_tilemap_plan,
+    run_tilemap_process,
+    run_tilemap_route,
+    run_tilemap_validate,
+)
 from game_visual_forge.cli.sprite import (
     run_sprite_ingest,
     run_sprite_plan,
@@ -16,6 +30,7 @@ from game_visual_forge.cli.sprite import (
     run_sprite_validate,
 )
 from game_visual_forge.contracts import AssetBrief, JobState, JobStatus, load_json
+from game_visual_forge.contracts import MapSourceType
 from game_visual_forge.contracts.serialization import dump_json
 from game_visual_forge.contracts.sprite import SourceType
 from game_visual_forge.errors import ForgeError
@@ -31,6 +46,96 @@ def build_parser() -> argparse.ArgumentParser:
     dry_run.add_argument("--brief", type=Path, required=True)
     dry_run.add_argument("--out-dir", type=Path, required=True)
     dry_run.add_argument("--now", required=True)
+
+    map_parser = commands.add_parser("map")
+    map_commands = map_parser.add_subparsers(dest="map_command", required=True)
+
+    map_plan = map_commands.add_parser("plan")
+    map_plan.add_argument("--request", type=Path, required=True)
+    map_plan.add_argument("--out-dir", type=Path, required=True)
+    map_plan.add_argument("--now", required=True)
+
+    map_route = map_commands.add_parser("route")
+    map_route.add_argument("--request", type=Path, required=True)
+    map_route.add_argument("--capabilities", type=Path, required=True)
+    map_route.add_argument("--selection", choices=[item.value for item in MapSourceType])
+    map_route.add_argument("--preflight", type=Path)
+    map_route.add_argument("--out", type=Path, required=True)
+    map_route.add_argument("--state", type=Path, required=True)
+    map_route.add_argument("--now", required=True)
+
+    map_ingest = map_commands.add_parser("ingest")
+    map_ingest.add_argument("--request", type=Path, required=True)
+    map_ingest.add_argument("--decision", type=Path, required=True)
+    map_ingest.add_argument("--image", type=Path, required=True)
+    map_ingest.add_argument("--repo-root", type=Path, required=True)
+    map_ingest.add_argument("--out", type=Path, required=True)
+    map_ingest.add_argument("--state", type=Path, required=True)
+    map_ingest.add_argument("--now", required=True)
+
+    map_process = map_commands.add_parser("process")
+    map_process.add_argument("--request", type=Path, required=True)
+    map_process.add_argument("--raw-image", type=Path, required=True)
+    map_process.add_argument("--repo-root", type=Path, required=True)
+    map_process.add_argument("--out-dir", type=Path, required=True)
+    map_process.add_argument("--state", type=Path, required=True)
+    map_process.add_argument("--now", required=True)
+
+    map_validate = map_commands.add_parser("validate")
+    map_validate.add_argument("--request", type=Path, required=True)
+    map_validate.add_argument("--raw-image", type=Path, required=True)
+    map_validate.add_argument("--processing-result", type=Path, required=True)
+    map_validate.add_argument("--repo-root", type=Path, required=True)
+    map_validate.add_argument("--staging-dir", type=Path, required=True)
+    map_validate.add_argument("--final-dir", type=Path, required=True)
+    map_validate.add_argument("--visual-review", type=Path)
+    map_validate.add_argument("--state", type=Path, required=True)
+    map_validate.add_argument("--now", required=True)
+
+    tilemap = map_commands.add_parser("tile")
+    tilemap_commands = tilemap.add_subparsers(dest="tilemap_command", required=True)
+
+    tilemap_plan = tilemap_commands.add_parser("plan")
+    tilemap_plan.add_argument("--request", type=Path, required=True)
+    tilemap_plan.add_argument("--out-dir", type=Path, required=True)
+    tilemap_plan.add_argument("--now", required=True)
+
+    tilemap_route = tilemap_commands.add_parser("route")
+    tilemap_route.add_argument("--request", type=Path, required=True)
+    tilemap_route.add_argument("--capabilities", type=Path, required=True)
+    tilemap_route.add_argument("--selection", choices=[item.value for item in MapSourceType])
+    tilemap_route.add_argument("--preflight", type=Path)
+    tilemap_route.add_argument("--out", type=Path, required=True)
+    tilemap_route.add_argument("--state", type=Path, required=True)
+    tilemap_route.add_argument("--now", required=True)
+
+    tilemap_ingest = tilemap_commands.add_parser("ingest")
+    tilemap_ingest.add_argument("--request", type=Path, required=True)
+    tilemap_ingest.add_argument("--decision", type=Path, required=True)
+    tilemap_ingest.add_argument("--image", type=Path, required=True)
+    tilemap_ingest.add_argument("--repo-root", type=Path, required=True)
+    tilemap_ingest.add_argument("--out", type=Path, required=True)
+    tilemap_ingest.add_argument("--state", type=Path, required=True)
+    tilemap_ingest.add_argument("--now", required=True)
+
+    tilemap_process = tilemap_commands.add_parser("process")
+    tilemap_process.add_argument("--request", type=Path, required=True)
+    tilemap_process.add_argument("--raw-image", type=Path, required=True)
+    tilemap_process.add_argument("--repo-root", type=Path, required=True)
+    tilemap_process.add_argument("--out-dir", type=Path, required=True)
+    tilemap_process.add_argument("--state", type=Path, required=True)
+    tilemap_process.add_argument("--now", required=True)
+
+    tilemap_validate = tilemap_commands.add_parser("validate")
+    tilemap_validate.add_argument("--request", type=Path, required=True)
+    tilemap_validate.add_argument("--raw-image", type=Path, required=True)
+    tilemap_validate.add_argument("--processing-result", type=Path, required=True)
+    tilemap_validate.add_argument("--repo-root", type=Path, required=True)
+    tilemap_validate.add_argument("--staging-dir", type=Path, required=True)
+    tilemap_validate.add_argument("--final-dir", type=Path, required=True)
+    tilemap_validate.add_argument("--visual-review", type=Path)
+    tilemap_validate.add_argument("--state", type=Path, required=True)
+    tilemap_validate.add_argument("--now", required=True)
 
     show_state = commands.add_parser("show-state")
     show_state.add_argument("--state", type=Path, required=True)
@@ -121,16 +226,38 @@ def main(argv: list[str] | None = None) -> int:
             payload = run_dry_run(args.brief, args.out_dir, args.now)
         elif args.command == "show-state":
             payload = load_job(args.state).to_dict()
-        elif args.sprite_command == "plan":
+        elif args.command == "map" and args.map_command == "plan":
+            payload = run_map_plan(args.request, args.out_dir, args.now)
+        elif args.command == "map" and args.map_command == "route":
+            payload = run_map_route(args.request, args.capabilities, args.selection, args.preflight, args.out, args.state, args.now)
+        elif args.command == "map" and args.map_command == "ingest":
+            payload = run_map_ingest(args.request, args.decision, args.image, args.repo_root, args.out, args.state, args.now)
+        elif args.command == "map" and args.map_command == "process":
+            payload = run_map_process(args.request, args.raw_image, args.repo_root, args.out_dir, args.state, args.now)
+        elif args.command == "map" and args.map_command == "validate":
+            payload = run_map_validate(args.request, args.raw_image, args.processing_result, args.repo_root, args.staging_dir, args.final_dir, args.visual_review, args.state, args.now)
+        elif args.command == "map" and args.map_command == "tile" and args.tilemap_command == "plan":
+            payload = run_tilemap_plan(args.request, args.out_dir, args.now)
+        elif args.command == "map" and args.map_command == "tile" and args.tilemap_command == "route":
+            payload = run_tilemap_route(args.request, args.capabilities, args.selection, args.preflight, args.out, args.state, args.now)
+        elif args.command == "map" and args.map_command == "tile" and args.tilemap_command == "ingest":
+            payload = run_tilemap_ingest(args.request, args.decision, args.image, args.repo_root, args.out, args.state, args.now)
+        elif args.command == "map" and args.map_command == "tile" and args.tilemap_command == "process":
+            payload = run_tilemap_process(args.request, args.raw_image, args.repo_root, args.out_dir, args.state, args.now)
+        elif args.command == "map" and args.map_command == "tile" and args.tilemap_command == "validate":
+            payload = run_tilemap_validate(args.request, args.raw_image, args.processing_result, args.repo_root, args.staging_dir, args.final_dir, args.visual_review, args.state, args.now)
+        elif args.command == "sprite" and args.sprite_command == "plan":
             payload = run_sprite_plan(args.request, args.out_dir, args.now)
-        elif args.sprite_command == "route":
+        elif args.command == "sprite" and args.sprite_command == "route":
             payload = run_sprite_route(args.request, args.capabilities, args.native_outcome, args.selection, args.preflight, args.out, args.state, args.now)
-        elif args.sprite_command == "ingest":
+        elif args.command == "sprite" and args.sprite_command == "ingest":
             payload = run_sprite_ingest(args.request, args.decision, args.image, args.repo_root, args.out, args.state, args.now)
-        elif args.sprite_command == "process":
+        elif args.command == "sprite" and args.sprite_command == "process":
             payload = run_sprite_process(args.request, args.raw_image, args.repo_root, args.out_dir, args.state, args.now)
-        else:
+        elif args.command == "sprite" and args.sprite_command == "validate":
             payload = run_sprite_validate(args.request, args.raw_image, args.processing_result, args.repo_root, args.staging_dir, args.final_dir, args.visual_review, args.state, args.now)
+        else:
+            raise ValueError("unsupported command")
         print(json.dumps(payload, ensure_ascii=False, indent=2, sort_keys=True))
         return 0
     except ForgeError as error:

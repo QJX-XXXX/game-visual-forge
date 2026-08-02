@@ -40,6 +40,103 @@ processing and rembg is an optional background-removal backend; neither is
 installed automatically. The repository defines Dreamina and Wanxiang CLI
 boundaries but does not include a default or real paid provider adapter.
 
+### M2 2D map foundation
+
+M2 adds a structured `MapRequest` and an offline map pipeline for existing base
+images: `map plan -> map route -> map ingest -> map process -> map validate`.
+The first batch produces `base-map.png`, `map-runtime.json`,
+`walkable-mask.png`, `collision-mask.png`, and `debug-preview.png`.
+
+Map geometry uses integer pixel coordinates. The walkable mask is
+`walk_bounds - blockers`; the collision mask is its inverse. Zones are recorded
+in runtime metadata and the debug preview but do not change collision. A spawn
+point must be inside the canvas and on an unblocked walkable pixel before the
+asset can pass deterministic validation. Visual review remains a required
+human confirmation before publishing.
+
+```powershell
+python skills/forge-2d-map/scripts/run.py map plan `
+  --request <map-request.json> --out-dir <output> --now <utc-rfc3339>
+python skills/forge-2d-map/scripts/run.py map route `
+  --request <output>/map-request.json --capabilities <capabilities.json> `
+  --out <output>/source-decision.json --state <output>/job-state.json `
+  --now <utc-rfc3339>
+python skills/forge-2d-map/scripts/run.py map ingest `
+  --request <output>/map-request.json --decision <output>/source-decision.json `
+  --image <source.png> --repo-root <repo> --out <output>/raw-image.json `
+  --state <output>/job-state.json --now <utc-rfc3339>
+python skills/forge-2d-map/scripts/run.py map process `
+  --request <output>/map-request.json --raw-image <output>/raw-image.json `
+  --repo-root <repo> --out-dir <output> --state <output>/job-state.json `
+  --now <utc-rfc3339>
+python skills/forge-2d-map/scripts/run.py map validate `
+  --request <output>/map-request.json --raw-image <output>/raw-image.json `
+  --processing-result <staging>/processing-result.json --repo-root <repo> `
+  --staging-dir <staging> --final-dir <output>/final `
+  --state <output>/job-state.json --now <utc-rfc3339>
+```
+
+M2 keeps paid-provider calls behind explicit provider/model/parameter/cost
+confirmation and does not silently retry unknown submissions.
+
+### Tile mode and Unity Tilemap
+
+Tile mode treats a generated or existing tileset PNG as the visual source and
+turns it into a neutral, versioned delivery bundle. The bundle contains
+`tileset.png`, `tileset-slices.json`, `tilemap-placement.json`,
+`unity-tilemap.json`, and `tilemap-preview.png`. Cell arrays in the request use
+top-left row-major order; Unity-facing slice rectangles and placements use a
+bottom-left origin.
+
+```powershell
+python skills/forge-2d-map/scripts/run.py map tile plan `
+  --request <tilemap-request.json> --out-dir <output> --now <utc-rfc3339>
+python skills/forge-2d-map/scripts/run.py map tile route `
+  --request <output>/tilemap-request.json --capabilities <capabilities.json> `
+  --out <output>/source-decision.json --state <output>/job-state.json `
+  --now <utc-rfc3339>
+```
+
+Continue with `map tile ingest`, `map tile process`, and `map tile validate`.
+The Unity 2022.3 LTS / Unity 6 Editor importer is provided as the local package
+`integrations/unity/com.game-visual-forge.tilemap`. Install it explicitly with
+Unity Package Manager's **Add package from disk** command. The package declares
+`com.unity.2d.sprite` and `com.unity.2d.tilemap`; the importer itself never
+installs packages or modifies the open Scene. From **Tools > Game Visual Forge >
+Import Tilemap Bundle**, select `unity-tilemap.json`. It creates or updates the
+sliced Sprite texture, Tile assets, Tile Palette, and layered Tilemap Prefab
+under the bundle's `generated_root`. Defaults are Point filtering, uncompressed
+textures, and one tile per Unity unit when pixels-per-unit equals tile width.
+
+#### Unity success example: Autumn Creek Map
+
+The second end-to-end map run uses a generated 4x4 autumn Tileset to build a
+24x16 top-down creek crossing. The vertical stone path crosses a four-cell-wide
+creek on a wooden bridge; trees, rocks, leaf patches, and lanterns are delivered
+as separate Tilemap layers.
+
+![Autumn Creek Map in Unity Game View](assets/readme/autumn-creek-map-game-view.png)
+
+![Autumn Creek Map pipeline preview](assets/readme/autumn-creek-map-pipeline-preview.png)
+
+![Autumn Creek Map in Unity Scene View](assets/readme/autumn-creek-map-scene-view.png)
+
+Run result:
+
+- 16 generated Tiles in a 4x4, 1024x1024 atlas; Point filtering; 256 pixels per Unity unit.
+- 384 ground placements, 28 detail placements, and 22 obstacle placements across three layers.
+- The `tree-canopy` Tile was regenerated as a complete, centered single-cell tree with transparent margins; all Unity tree placements were re-imported and re-captured.
+- Unity import succeeded with `AutumnCreekMapDemo` in `Assets/Scenes/SampleScene.unity`.
+- Deterministic checks passed: source dimensions, readable artifacts, raster dimensions, and Unity bundle contract.
+- Manual visual checks passed: seams, readability, layer order, collision layer, and no text/watermark.
+- The `obstacles` Tilemap has a `TilemapCollider2D`; the saved scene is clean after import.
+
+Artifacts: [Unity bundle](assets/readme/autumn-creek-map-unity-tilemap.json),
+[quality report](assets/readme/autumn-creek-map-quality-report.json),
+[Tileset prompt](assets/readme/autumn-creek-tileset.prompt.txt),
+[tree replacement prompt](assets/readme/tree-canopy-replacement.prompt.txt),
+and [tilemap placement data](assets/readme/autumn-creek-map-tilemap-placement.json).
+
 ### HD background removal
 
 For HD sprites generated on solid `#FF00FF`, install the default high-quality
@@ -101,7 +198,7 @@ bundle.
 - native failure or quality rejection -> defined fallback/choice only after confirmation
 - every Dreamina/Wanxiang third-party attempt has explicit provider/model/parameter/cost confirmation and no silent resubmission
 - `submission_unknown` may only be queried or manually reconciled.
-- M1 does not implement maps, video, MP4, FFmpeg, automatic dependency installation, or silent paid retries.
+- M2 does not implement video, MP4, FFmpeg, automatic dependency installation, or silent paid retries.
 
 ### Installation
 

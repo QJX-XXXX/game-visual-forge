@@ -1,0 +1,65 @@
+{
+  "asset_id": "autumn-creek-map",
+  "deterministic_checks": [
+    {
+      "artifact_paths": [],
+      "check_id": "source-dimensions",
+      "message": "source dimensions match the declared atlas grid",
+      "status": "passed"
+    },
+    {
+      "artifact_paths": [],
+      "check_id": "tilemap-artifacts-readable",
+      "message": "tilemap artifacts are readable",
+      "status": "passed"
+    },
+    {
+      "artifact_paths": [],
+      "check_id": "tilemap-raster-dimensions",
+      "message": "tilemap raster dimensions match the request",
+      "status": "passed"
+    },
+    {
+      "artifact_paths": [],
+      "check_id": "unity-bundle-contract",
+      "message": "Unity bundle metadata matches the request",
+      "status": "passed"
+    }
+  ],
+  "deterministic_status": "passed",
+  "request_fingerprint": "05464be5fb8aa0ef7ca837cb202198350aa48d8a05040b7af08f1d80d0346b56",
+  "schema_version": 1,
+  "visual_checks": [
+    {
+      "artifact_paths": [],
+      "check_id": "tileset-seams",
+      "message": "manual visual review",
+      "status": "passed"
+    },
+    {
+      "artifact_paths": [],
+      "check_id": "tilemap-readability",
+      "message": "manual visual review",
+      "status": "passed"
+    },
+    {
+      "artifact_paths": [],
+      "check_id": "layer-order",
+      "message": "manual visual review",
+      "status": "passed"
+    },
+    {
+      "artifact_paths": [],
+      "check_id": "collision-layer",
+      "message": "manual visual review",
+      "status": "passed"
+    },
+    {
+      "artifact_paths": [],
+      "check_id": "unwanted-text-or-watermark",
+      "message": "manual visual review",
+      "status": "passed"
+    }
+  ],
+  "visual_status": "passed"
+}

@@ -81,6 +81,20 @@ class SkillContractTests(unittest.TestCase):
         for command in ("plan", "route", "ingest", "process", "validate"):
             self.assertIn(command, result.stdout)
 
+    def test_map_launcher_exposes_m2_commands(self) -> None:
+        launcher = ROOT / "skills" / "forge-2d-map" / "scripts" / "run.py"
+        result = subprocess.run([sys.executable, str(launcher), "map", "--help"], cwd=ROOT, capture_output=True, text=True, encoding="utf-8", check=False)
+        self.assertEqual(result.returncode, 0, result.stderr)
+        for command in ("plan", "route", "ingest", "process", "validate"):
+            self.assertIn(command, result.stdout)
+
+    def test_map_launcher_exposes_tilemap_commands(self) -> None:
+        launcher = ROOT / "skills" / "forge-2d-map" / "scripts" / "run.py"
+        result = subprocess.run([sys.executable, str(launcher), "map", "tile", "--help"], cwd=ROOT, capture_output=True, text=True, encoding="utf-8", check=False)
+        self.assertEqual(result.returncode, 0, result.stderr)
+        for command in ("plan", "route", "ingest", "process", "validate"):
+            self.assertIn(command, result.stdout)
+
     def test_each_skill_contains_required_routing_and_safety_rules(self) -> None:
         for name, contract in SKILLS.items():
             skill = (ROOT / "skills" / name / "SKILL.md").read_text(encoding="utf-8")

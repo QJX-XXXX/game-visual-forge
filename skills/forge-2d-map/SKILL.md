@@ -5,7 +5,23 @@ description: "Generate production-oriented 2D game maps with explicit visual, la
 
 # Forge 2D Map
 
-先确认地图视觉模型、图层、运行时对象、碰撞和交互目标，再建立 `AssetBrief`。当前 M0 只支持零网络 `dry-run`，不生成地图媒体或运行时数据。
+## Tile 模式与 Unity Tilemap
+
+当用户要求像素风格 Tileset、Tile Palette 或 Unity Tilemap 时，先确认 Tile
+尺寸、图集行列、地图宽高、图层、碰撞层和每个 Tile 的 atlas 坐标，再建立
+`TileMapRequest`。可见美术必须来自图像生成工具或用户素材；本地脚本只负责切片、
+组装、坐标转换、验证和导出，不用程序绘制替代最终美术。
+
+使用 `map tile plan -> map tile route -> map tile ingest -> map tile process ->
+map tile validate`。输出必须包含 Tileset、切片描述、摆放数据、Unity 导入清单和
+预览图。发布前检查接缝、可读性、图层顺序、碰撞层和意外文字/水印。
+
+Unity 目标使用仓库中的 `com.game-visual-forge.tilemap` Editor Package。依赖必须由
+用户明确安装；Skill 和导入器不得静默安装 Package。导入器只生成或更新 Sprite、
+Tile、Tile Palette 与 Tilemap Prefab，不修改当前打开的 Scene。默认 Point 过滤、
+无纹理压缩、一个 Tile 对应一个 Unity 单位，并优先保持资源 GUID 与重复导入幂等。
+
+先确认地图视觉模型、图层、运行时对象、碰撞和交互目标，再建立 `MapRequest`。M2 第一批支持已有底图的零网络地图管线：规划、能力路由、底图导入、碰撞派生和质量验证。
 
 需要生成底图或 Props 时，默认先使用 Agent 原生工具。原生不支持时，要求用户选择即梦、万相、本地图像工具或已有素材；每次都由用户选择来源。
 
@@ -15,3 +31,31 @@ description: "Generate production-oriented 2D game maps with explicit visual, la
 python skills/forge-2d-map/scripts/run.py dry-run `
   --brief <brief.json> --out-dir <output> --now <utc-rfc3339>
 ```
+
+## M2 本地地图管线
+
+地图请求使用整数像素坐标描述 `spawn`、`walk_bounds`、`blockers` 和 `zones`。处理器不修改原始底图，输出 `base-map.png`、`map-runtime.json`、`walkable-mask.png`、`collision-mask.png` 和 `debug-preview.png`。其中可行走区域为 `walk_bounds - blockers`，碰撞区域为其反集；`zones` 只写入运行时元数据和调试预览。
+
+```powershell
+python skills/forge-2d-map/scripts/run.py map plan `
+  --request <map-request.json> --out-dir <output> --now <utc-rfc3339>
+python skills/forge-2d-map/scripts/run.py map route `
+  --request <output>/map-request.json --capabilities <capabilities.json> `
+  --out <output>/source-decision.json --state <output>/job-state.json `
+  --now <utc-rfc3339>
+python skills/forge-2d-map/scripts/run.py map ingest `
+  --request <output>/map-request.json --decision <output>/source-decision.json `
+  --image <source.png> --repo-root <repo> --out <output>/raw-image.json `
+  --state <output>/job-state.json --now <utc-rfc3339>
+python skills/forge-2d-map/scripts/run.py map process `
+  --request <output>/map-request.json --raw-image <output>/raw-image.json `
+  --repo-root <repo> --out-dir <output> --state <output>/job-state.json `
+  --now <utc-rfc3339>
+python skills/forge-2d-map/scripts/run.py map validate `
+  --request <output>/map-request.json --raw-image <output>/raw-image.json `
+  --processing-result <staging>/processing-result.json --repo-root <repo> `
+  --staging-dir <staging> --final-dir <output>/final `
+  --state <output>/job-state.json --now <utc-rfc3339>
+```
+
+地图生成 Provider 仍遵循显式能力路由和付费确认规则；M2 不自动调用付费服务，也不自动重试未知提交状态。发布前必须通过确定性质量检查，并完成 `visual-review`。
