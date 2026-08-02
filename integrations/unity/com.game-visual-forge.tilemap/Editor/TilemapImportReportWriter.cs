@@ -31,8 +31,10 @@ namespace GameVisualForge.Unity
                 generated_root = result.generated_root,
                 python_quality_report = reportPath == null ? null : fields.quality_report,
                 python_quality_report_sha256 = reportHash,
-                had_existing_assets = result.tileset_assets.Any(path => AssetDatabase.LoadAssetAtPath<Texture2D>(path) != null),
-                resource_guids_stable = true,
+                had_existing_assets = result.had_existing_assets,
+                resource_guids_stable = result.resource_guids_stable,
+                atlas_page_paths = result.tileset_assets ?? Array.Empty<string>(),
+                tile_paths = result.tile_assets ?? Array.Empty<string>(),
                 atlas_page_count = atlasPageCount,
                 sprite_count = result.tile_count,
                 tile_count = result.tile_count,
@@ -51,7 +53,7 @@ namespace GameVisualForge.Unity
             return assetPath;
         }
 
-        private static string ComputeSha256(string path)
+        internal static string ComputeSha256(string path)
         {
             using (var stream = File.OpenRead(path))
             using (var algorithm = SHA256.Create())

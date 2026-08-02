@@ -70,11 +70,19 @@ namespace GameVisualForge.Unity
             var isLegacySinglePage = manifest.tilesets == null || manifest.tilesets.Length == 0;
             var atlasPages = NormalizeAtlasPages(manifest);
 
-            EnsureAssetFolder(manifest.generated_root);
             var textureFolder = $"{manifest.generated_root}/Textures";
             var tileFolder = $"{manifest.generated_root}/Tiles";
             var paletteFolder = $"{manifest.generated_root}/Palettes";
             var prefabFolder = $"{manifest.generated_root}/Prefabs";
+            var tilesetAssetPaths = atlasPages.Select(page => $"{textureFolder}/{page.atlas_id}.png").ToArray();
+            var tileAssetPaths = slices.tiles.Select(slice => $"{tileFolder}/{slice.id}.asset").ToArray();
+            var expectedPalettePath = $"{paletteFolder}/{manifest.palette_name}.prefab";
+            var expectedPrefabPath = $"{prefabFolder}/{manifest.prefab_name}.prefab";
+            var existingResourceGuids = CaptureExistingResourceGuids(
+                tilesetAssetPaths
+                    .Concat(tileAssetPaths)
+                    .Concat(new[] { expectedPalettePath, expectedPrefabPath }));
+
             EnsureAssetFolder(textureFolder);
             EnsureAssetFolder(tileFolder);
             EnsureAssetFolder(paletteFolder);
@@ -111,8 +119,11 @@ namespace GameVisualForge.Unity
                 tileset_assets = tilesetAssets.ToArray(),
                 palette_prefab = palettePath,
                 tilemap_prefab = prefabPath,
+                tile_assets = tileAssetPaths,
                 tile_count = tiles.Count,
                 layer_count = placement.layers.Length,
+                had_existing_assets = existingResourceGuids.Count > 0,
+                resource_guids_stable = ExistingResourceGuidsAreStable(existingResourceGuids),
                 scene_action = "unchanged",
                 scene_path = UnityEditor.SceneManagement.EditorSceneManager.GetActiveScene().path,
                 scene_dirty = false,
@@ -124,8 +135,27 @@ namespace GameVisualForge.Unity
                 result.scene_path = placementResult.scene_path;
                 result.scene_dirty = placementResult.scene_dirty;
             }
-            var report = TilemapImportReportWriter.Write(manifestFullPath, result, atlasPages.Length, mode);
+            result.unity_import_report = TilemapImportReportWriter.Write(manifestFullPath, result, atlasPages.Length, mode);
             return result;
+        }
+
+        private static Dictionary<string, string> CaptureExistingResourceGuids(IEnumerable<string> assetPaths)
+        {
+            return assetPaths
+                .Distinct(StringComparer.Ordinal)
+                .Select(path => new { Path = path, Guid = AssetDatabase.AssetPathToGUID(path) })
+                .Where(item => !string.IsNullOrEmpty(item.Guid))
+                .ToDictionary(item => item.Path, item => item.Guid, StringComparer.Ordinal);
+        }
+
+        private static bool ExistingResourceGuidsAreStable(IReadOnlyDictionary<string, string> existingResourceGuids)
+        {
+            foreach (var item in existingResourceGuids)
+            {
+                if (!string.Equals(AssetDatabase.AssetPathToGUID(item.Key), item.Value, StringComparison.Ordinal))
+                    return false;
+            }
+            return true;
         }
 
         private static AtlasPage[] NormalizeAtlasPages(BundleManifest manifest)

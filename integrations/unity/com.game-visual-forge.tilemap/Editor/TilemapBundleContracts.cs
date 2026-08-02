@@ -104,11 +104,15 @@ namespace GameVisualForge.Unity
             public string[] tileset_assets;
             public string palette_prefab;
             public string tilemap_prefab;
+            public string[] tile_assets;
             public int tile_count;
             public int layer_count;
+            public bool had_existing_assets;
+            public bool resource_guids_stable;
             public string scene_action;
             public string scene_path;
             public bool scene_dirty;
+            public string unity_import_report;
         }
     }
 
@@ -145,6 +149,8 @@ namespace GameVisualForge.Unity
         public string python_quality_report_sha256;
         public bool had_existing_assets;
         public bool resource_guids_stable;
+        public string[] atlas_page_paths;
+        public string[] tile_paths;
         public int atlas_page_count;
         public int sprite_count;
         public int tile_count;

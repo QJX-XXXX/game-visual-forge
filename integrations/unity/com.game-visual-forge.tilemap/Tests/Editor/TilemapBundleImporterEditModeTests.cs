@@ -1,11 +1,13 @@
 using System.Collections.Generic;
 using System.IO;
 using System.Linq;
+using System.Security.Cryptography;
 using System.Text;
 using GameVisualForge.Unity;
 using NUnit.Framework;
 using UnityEditor;
 using UnityEngine;
+using UnityEngine.SceneManagement;
 using UnityEngine.Tilemaps;
 
 namespace GameVisualForge.Unity.Tests
@@ -19,6 +21,24 @@ namespace GameVisualForge.Unity.Tests
         private const string TestGeneratedRoot = "Assets/GameVisualForgeTask6ImportFixtures";
         private const string MultiPageGeneratedRoot = TestGeneratedRoot + "/MultiPage";
         private const string LegacyGeneratedRoot = TestGeneratedRoot + "/LegacySinglePage";
+        private const string Task7BundleRoot = TestGeneratedRoot + "/Task7Bundle";
+        private const string Task7GeneratedRoot = TestGeneratedRoot + "/Task7Generated";
+        private const string Task7PrefabPath = Task7GeneratedRoot + "/Prefabs/task-7-placement-report-tilemap.prefab";
+        private const string Task7ReportPath = Task7GeneratedRoot + "/Reports/unity-import-report.json";
+
+        [SetUp]
+        public void SetUp()
+        {
+            RemoveTask7SceneInstances();
+            DeleteAssetIfExists(TestGeneratedRoot);
+        }
+
+        [TearDown]
+        public void TearDown()
+        {
+            RemoveTask7SceneInstances();
+            DeleteAssetIfExists(TestGeneratedRoot);
+        }
 
         [OneTimeTearDown]
         public void OneTimeTearDown()
@@ -93,6 +113,60 @@ namespace GameVisualForge.Unity.Tests
             Assert.That(palette.GetComponentInChildren<Tilemap>(true).GetUsedTilesCount(), Is.EqualTo(16));
         }
 
+        [Test]
+        public void AssetsOnlyImportDoesNotChangeActiveSceneRootsAndWritesReport()
+        {
+            var manifestPath = CreateTask7BundleFixture();
+            var before = SceneManager.GetActiveScene().GetRootGameObjects().Select(item => item.GetInstanceID()).ToArray();
+
+            var result = TilemapBundleImporter.ImportBundle(manifestPath, ImportMode.AssetsOnly);
+
+            var after = SceneManager.GetActiveScene().GetRootGameObjects().Select(item => item.GetInstanceID()).ToArray();
+            Assert.That(after, Is.EqualTo(before));
+            Assert.That(result.scene_action, Is.EqualTo("unchanged"));
+            Assert.That(result.scene_dirty, Is.False);
+            Assert.That(result.unity_import_report, Is.EqualTo(Task7ReportPath));
+
+            var report = ReadTask7UnityReport();
+            Assert.That(report.python_quality_report, Is.EqualTo("quality-report.json"));
+            Assert.That(report.python_quality_report_sha256, Is.EqualTo(ComputeSha256(Path.Combine(ToFullPath(Task7BundleRoot), "quality-report.json"))));
+            Assert.That(report.atlas_page_count, Is.EqualTo(2));
+            Assert.That(report.atlas_page_paths, Is.EqualTo(result.tileset_assets));
+            Assert.That(report.tile_count, Is.EqualTo(32));
+            Assert.That(report.tile_paths, Is.EqualTo(result.tile_assets));
+            Assert.That(report.palette_path, Is.EqualTo(result.palette_prefab));
+            Assert.That(report.prefab_path, Is.EqualTo(result.tilemap_prefab));
+            Assert.That(report.scene_action, Is.EqualTo("unchanged"));
+            Assert.That(report.had_existing_assets, Is.False);
+            Assert.That(report.resource_guids_stable, Is.True);
+        }
+
+        [Test]
+        public void ImportAndPlaceReusesExistingPrefabInstanceAndReportsStableExistingAssets()
+        {
+            var manifestPath = CreateTask7BundleFixture();
+
+            var first = TilemapBundleImporter.ImportBundle(manifestPath, ImportMode.ImportAndPlace);
+            var firstGuids = CaptureGuids(new[] { first.tileset_assets[0], first.tile_assets[0], first.palette_prefab, first.tilemap_prefab });
+            var firstReport = ReadTask7UnityReport();
+            var second = TilemapBundleImporter.ImportBundle(manifestPath, ImportMode.ImportAndPlace);
+            var secondReport = ReadTask7UnityReport();
+            var matches = SceneManager.GetActiveScene().GetRootGameObjects()
+                .Count(root => PrefabUtility.GetPrefabAssetPathOfNearestInstanceRoot(root) == second.tilemap_prefab);
+
+            Assert.That(first.scene_action, Is.EqualTo("placed"));
+            Assert.That(firstReport.scene_action, Is.EqualTo("placed"));
+            Assert.That(firstReport.had_existing_assets, Is.False);
+            Assert.That(matches, Is.EqualTo(1));
+            Assert.That(second.scene_action, Is.EqualTo("updated"));
+            Assert.That(second.scene_dirty, Is.True);
+            Assert.That(secondReport.scene_action, Is.EqualTo("updated"));
+            Assert.That(secondReport.had_existing_assets, Is.True);
+            Assert.That(secondReport.resource_guids_stable, Is.True);
+            foreach (var item in firstGuids)
+                Assert.That(AssetDatabase.AssetPathToGUID(item.Key), Is.EqualTo(item.Value), item.Key);
+        }
+
         private static string CreateTwoPageBundleFixture()
         {
             var bundleAssetPath = TestGeneratedRoot + "/MultiPageBundle";
@@ -122,6 +196,44 @@ namespace GameVisualForge.Unity.Tests
   ""filter_mode"": ""point"",
   ""palette_name"": ""Task 6 Multi Page Palette"",
   ""prefab_name"": ""task-6-multi-page-tilemap""
+}");
+
+            AssetDatabase.Refresh();
+            return manifestPath;
+        }
+
+        private static string CreateTask7BundleFixture()
+        {
+            var bundleFullPath = ToFullPath(Task7BundleRoot);
+            Directory.CreateDirectory(bundleFullPath);
+
+            WriteAtlasPage(Path.Combine(bundleFullPath, "page-01.png"), 0);
+            WriteAtlasPage(Path.Combine(bundleFullPath, "page-02.png"), 16);
+            File.WriteAllText(Path.Combine(bundleFullPath, "slices.json"), BuildSlicesJson());
+            File.WriteAllText(Path.Combine(bundleFullPath, "placement.json"), BuildPlacementJson());
+            File.WriteAllText(Path.Combine(bundleFullPath, "quality-report.json"), "{\n  \"status\": \"pass\",\n  \"tile_count\": 32\n}\n");
+            var qualityReportHash = ComputeSha256(Path.Combine(bundleFullPath, "quality-report.json"));
+
+            var manifestPath = Path.Combine(bundleFullPath, "manifest.json");
+            File.WriteAllText(
+                manifestPath,
+                @"{
+  ""schema_version"": 1,
+  ""asset_id"": ""task-7-placement-report-fixture"",
+  ""engine_target"": ""Unity_Tilemap"",
+  ""tilesets"": [
+    { ""atlas_id"": ""page-01"", ""path"": ""page-01.png"" },
+    { ""atlas_id"": ""page-02"", ""path"": ""page-02.png"" }
+  ],
+  ""slices"": ""slices.json"",
+  ""placement"": ""placement.json"",
+  ""quality_report"": ""quality-report.json"",
+  ""quality_report_sha256"": """ + qualityReportHash + @""",
+  ""generated_root"": """ + Task7GeneratedRoot + @""",
+  ""pixels_per_unit"": 1,
+  ""filter_mode"": ""point"",
+  ""palette_name"": ""Task 7 Placement Report Palette"",
+  ""prefab_name"": ""task-7-placement-report-tilemap""
 }");
 
             AssetDatabase.Refresh();
@@ -297,6 +409,47 @@ namespace GameVisualForge.Unity.Tests
             var projectRoot = Directory.GetParent(Application.dataPath)?.FullName;
             Assert.That(projectRoot, Is.Not.Null, "Could not resolve the Unity project root.");
             return Path.Combine(projectRoot, assetPath.Replace('/', Path.DirectorySeparatorChar));
+        }
+
+        private static UnityImportReport ReadTask7UnityReport()
+        {
+            var report = AssetDatabase.LoadAssetAtPath<TextAsset>(Task7ReportPath);
+            Assert.That(report, Is.Not.Null, "Expected Unity import report: " + Task7ReportPath);
+            return JsonUtility.FromJson<UnityImportReport>(report.text);
+        }
+
+        private static Dictionary<string, string> CaptureGuids(IEnumerable<string> assetPaths)
+        {
+            return assetPaths.ToDictionary(path => path, AssetDatabase.AssetPathToGUID, System.StringComparer.Ordinal);
+        }
+
+        private static string ComputeSha256(string path)
+        {
+            using (var stream = File.OpenRead(path))
+            using (var algorithm = SHA256.Create())
+                return string.Concat(algorithm.ComputeHash(stream).Select(value => value.ToString("x2")));
+        }
+
+        private static void RemoveTask7SceneInstances()
+        {
+            foreach (var root in SceneManager.GetActiveScene().GetRootGameObjects().ToArray())
+            {
+                if (PrefabUtility.GetPrefabAssetPathOfNearestInstanceRoot(root) == Task7PrefabPath)
+                    Object.DestroyImmediate(root);
+            }
+        }
+
+        private static void DeleteAssetIfExists(string assetPath)
+        {
+            if (AssetDatabase.IsValidFolder(assetPath) || AssetDatabase.LoadAssetAtPath<Object>(assetPath) != null)
+                AssetDatabase.DeleteAsset(assetPath);
+            var fullPath = ToFullPath(assetPath);
+            if (Directory.Exists(fullPath))
+                Directory.Delete(fullPath, true);
+            var metaPath = fullPath + ".meta";
+            if (File.Exists(metaPath))
+                File.Delete(metaPath);
+            AssetDatabase.Refresh();
         }
 
         private static T LoadFixture<T>(string assetPath) where T : Object

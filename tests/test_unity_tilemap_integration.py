@@ -43,8 +43,15 @@ class UnityTilemapIntegrationTests(unittest.TestCase):
         writer = (package_root / "Editor" / "TilemapImportReportWriter.cs").read_text(encoding="utf-8")
         self.assertIn("AssetsOnly", contracts)
         self.assertIn("ImportAndPlace", contracts)
+        self.assertIn("atlas_page_paths", contracts)
+        self.assertIn("tile_paths", contracts)
+        self.assertIn("had_existing_assets", contracts)
+        self.assertIn("resource_guids_stable", contracts)
         self.assertIn("PlaceOrUpdate", placer)
         self.assertIn("quality_report_sha256", writer)
+        self.assertIn("ComputeSha256", writer)
+        self.assertIn("ImportAndPlaceBundleForAutomation", importer := (package_root / "Editor" / "TilemapBundleImporter.cs").read_text(encoding="utf-8"))
+        self.assertIn("CaptureExistingResourceGuids", importer)
 
 
 if __name__ == "__main__":
