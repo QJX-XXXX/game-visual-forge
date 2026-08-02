@@ -23,7 +23,7 @@ from game_visual_forge.contracts import (
 )
 from game_visual_forge.contracts.serialization import dump_json
 from game_visual_forge.jobs import fingerprint_request, load_job, save_job, transition_job
-from game_visual_forge.processing.images import ingest_image
+from game_visual_forge.processing.images import ingest_image, sha256_file
 from game_visual_forge.processing.sprite import publish_verified_outputs
 from game_visual_forge.processing.tilemap import TileMapProcessingResult, process_tilemap
 from game_visual_forge.quality.tilemap import apply_tilemap_visual_review, build_tilemap_asset_manifest, validate_tilemap_outputs
@@ -143,15 +143,23 @@ def run_tilemap_validate(
     now: str,
 ) -> dict[str, Any]:
     request, fingerprint = _request(request_path)
-    record = RawImageRecord.from_dict(load_json(raw_image_path))
+    payload = load_json(raw_image_path)
+    record = RawImageRecord.from_dict(payload) if "pages" not in payload else TileMapSourceSet.from_dict(payload)
+    source_fingerprint = record.request_fingerprint if isinstance(record, RawImageRecord) else record.pages[0].image.request_fingerprint
     result = TileMapProcessingResult.from_dict(load_json(processing_result_path))
-    if record.request_fingerprint != fingerprint:
+    if source_fingerprint != fingerprint:
         raise ValueError("raw image fingerprint does not match tilemap request")
     report = validate_tilemap_outputs(staging_dir, request, record, result)
     if visual_review_path is not None:
         report = apply_tilemap_visual_review(report, load_json(visual_review_path))
     manifest = build_tilemap_asset_manifest(staging_dir, request, record, result, report)
-    dump_json(staging_dir / "quality-report.json", report.to_dict())
+    report_path = staging_dir / "map-quality-report.json"
+    dump_json(report_path, report.to_dict())
+    unity_path = staging_dir / result.unity_manifest_path
+    unity = load_json(unity_path)
+    unity["quality_report"] = report_path.name
+    unity["quality_report_sha256"] = sha256_file(report_path)
+    dump_json(unity_path, unity)
     dump_json(staging_dir / "asset-manifest.json", manifest.to_dict())
     published = publish_verified_outputs(staging_dir, final_dir, report)
     state = load_job(state_path)

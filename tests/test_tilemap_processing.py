@@ -70,7 +70,7 @@ class TileMapProcessingTests(unittest.TestCase):
             report = validate_tilemap_outputs(staging, request, record, result)
             self.assertEqual(report.deterministic_status.value, "passed")
             manifest = build_tilemap_asset_manifest(staging, request, record, result, report)
-            self.assertEqual([item.role for item in manifest.artifacts[1:]], ["tileset", "sprite-slices", "tilemap-placement", "unity-import-manifest", "tilemap-preview"])
+            self.assertEqual([item.role for item in manifest.artifacts[1:]], ["tileset", "sprite-slices", "tilemap-placement", "unity-import-manifest", "tilemap-preview", "tilemap-quality-metrics", "tile-seam-preview", "tile-usage-preview"])
 
     def test_incorrect_atlas_size_is_rejected(self) -> None:
         with tempfile.TemporaryDirectory() as directory:
