@@ -65,6 +65,7 @@ class TileMapQualityMetrics:
     invalid_adjacencies: tuple[InvalidAdjacency, ...]
     needs_attention: bool
     invalid_bridge_connectivity: tuple[InvalidBridgeConnectivity, ...] = ()
+    foundation_recomposition_match: bool | None = None
 
     def to_dict(self) -> dict[str, Any]:
         return {
@@ -78,6 +79,7 @@ class TileMapQualityMetrics:
             "invalid_adjacencies": [item.to_dict() for item in self.invalid_adjacencies],
             "invalid_bridge_connectivity": [item.to_dict() for item in self.invalid_bridge_connectivity],
             "needs_attention": self.needs_attention,
+            "foundation_recomposition_match": self.foundation_recomposition_match,
         }
 
     @classmethod
@@ -93,6 +95,7 @@ class TileMapQualityMetrics:
             tuple(InvalidAdjacency.from_dict(item) for item in value["invalid_adjacencies"]),
             bool(value["needs_attention"]),
             tuple(InvalidBridgeConnectivity.from_dict(item) for item in value.get("invalid_bridge_connectivity", [])),
+            None if value.get("foundation_recomposition_match") is None else bool(value["foundation_recomposition_match"]),
         )
 
 

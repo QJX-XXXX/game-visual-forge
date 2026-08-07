@@ -46,6 +46,7 @@ def _paths(processing: TileMapProcessingResult) -> tuple[str, ...]:
         processing.preview_path,
         *(path for path in (processing.quality_metrics_path, processing.seam_preview_path, processing.usage_preview_path) if path),
         *(path for path in (processing.gameplay_crop_path, processing.collision_preview_path) if path),
+        *(path for path in (processing.foundation_path, processing.foundation_prompt_path, processing.foundation_recomposition_path) if path),
     )
 
 
@@ -122,6 +123,23 @@ def validate_tilemap_outputs(
         "tilemap raster dimensions match the request" if not wrong_size else "tilemap raster dimensions do not match the request",
         tuple(wrong_size),
     ))
+    if request.tileset_profile.value == "coherent_foundation":
+        foundation_match = False
+        try:
+            with Image.open(staging_dir / processing.foundation_path) as opened:
+                foundation = opened.convert("RGBA")
+            with Image.open(staging_dir / processing.foundation_recomposition_path) as opened:
+                recomposition = opened.convert("RGBA")
+            prompt_valid = bool((staging_dir / processing.foundation_prompt_path).read_text(encoding="utf-8").strip())
+            foundation_match = foundation.size == recomposition.size and foundation.tobytes() == recomposition.tobytes() and prompt_valid
+        except (OSError, ValueError, TypeError):
+            foundation_match = False
+        checks.append(_check(
+            "foundation-recomposition",
+            QualityStatus.PASSED if foundation_match else QualityStatus.FAILED,
+            "Foundation slicing recomposes pixel-identically" if foundation_match else "Foundation slicing or prompt provenance is inconsistent",
+            tuple(path for path in (processing.foundation_path, processing.foundation_prompt_path, processing.foundation_recomposition_path) if path),
+        ))
 
     try:
         slices = load_json(staging_dir / processing.slices_path)
@@ -172,7 +190,7 @@ def validate_tilemap_outputs(
         checks.extend((_check("tile-seams", QualityStatus.FAILED, "Tile quality metrics are missing"), _check("tile-clipping", QualityStatus.FAILED, "Tile quality metrics are missing"), _check("tile-usage", QualityStatus.FAILED, "Tile quality metrics are missing"), _check("tile-adjacency", QualityStatus.FAILED, "Tile quality metrics are missing"), _check("bridge-connectivity", QualityStatus.FAILED, "Tile quality metrics are missing")))
     else:
         checks.extend((
-            _check("tile-seams", QualityStatus.NEEDS_ATTENTION if metrics.max_seam_score > SEAM_ATTENTION_THRESHOLD else QualityStatus.PASSED, "Tile seam threshold check", (processing.seam_preview_path,)),
+            _check("tile-seams", QualityStatus.PASSED if request.tileset_profile.value == "coherent_foundation" and metrics.foundation_recomposition_match else QualityStatus.NEEDS_ATTENTION if metrics.max_seam_score > SEAM_ATTENTION_THRESHOLD else QualityStatus.PASSED, "Tile seam threshold check", (processing.seam_preview_path,)),
             _check("tile-clipping", QualityStatus.NEEDS_ATTENTION if metrics.clipped_tile_ids else QualityStatus.PASSED, "Decoration and prop clipping check", metrics.clipped_tile_ids),
             _check("tile-usage", QualityStatus.NEEDS_ATTENTION if metrics.overused_decoration_ids else QualityStatus.PASSED, "Tile usage distribution check", metrics.overused_decoration_ids),
             _check("tile-adjacency", QualityStatus.NEEDS_ATTENTION if metrics.invalid_adjacencies else QualityStatus.PASSED, "Declared Tile adjacency check"),
@@ -250,6 +268,12 @@ def build_tilemap_asset_manifest(
         roles[processing.gameplay_crop_path] = "gameplay-crop"
     if processing.collision_preview_path:
         roles[processing.collision_preview_path] = "tilemap-collision-preview"
+    if processing.foundation_path:
+        roles[processing.foundation_path] = "foundation"
+    if processing.foundation_prompt_path:
+        roles[processing.foundation_prompt_path] = "foundation-prompt"
+    if processing.foundation_recomposition_path:
+        roles[processing.foundation_recomposition_path] = "foundation-recomposition"
     if (staging_dir / "map-quality-report.json").is_file():
         roles["map-quality-report.json"] = "map-quality-report"
     output_paths = (*_paths(processing), *(("map-quality-report.json",) if (staging_dir / "map-quality-report.json").is_file() else ()))

@@ -1,10 +1,11 @@
 from __future__ import annotations
 
-from dataclasses import dataclass
+from dataclasses import dataclass, replace
 from pathlib import Path, PurePosixPath
+import shutil
 from typing import Any
 
-from game_visual_forge.contracts import AtlasPageDefinition, RawImageRecord, TileMapRequest, TileMapSourceSet, load_tilemap_source_set
+from game_visual_forge.contracts import AtlasPageDefinition, RawImageRecord, TileMapRequest, TileMapSourceSet, TileSetProfile, load_tilemap_source_set
 from game_visual_forge.contracts.serialization import dump_json
 from game_visual_forge.errors import ErrorCode, ForgeError
 from game_visual_forge.processing.images import _load_pillow, verify_image_unchanged
@@ -32,6 +33,9 @@ class TileMapProcessingResult:
     asset_set_path: str = ""
     gameplay_crop_path: str = ""
     collision_preview_path: str = ""
+    foundation_path: str = ""
+    foundation_prompt_path: str = ""
+    foundation_recomposition_path: str = ""
 
     @property
     def tileset_path(self) -> str:
@@ -60,6 +64,9 @@ class TileMapProcessingResult:
             "asset_set_path": self.asset_set_path,
             "gameplay_crop_path": self.gameplay_crop_path,
             "collision_preview_path": self.collision_preview_path,
+            "foundation_path": self.foundation_path,
+            "foundation_prompt_path": self.foundation_prompt_path,
+            "foundation_recomposition_path": self.foundation_recomposition_path,
         }
 
     @classmethod
@@ -88,6 +95,9 @@ class TileMapProcessingResult:
             asset_set_path=str(value.get("asset_set_path", "")),
             gameplay_crop_path=str(value.get("gameplay_crop_path", "")),
             collision_preview_path=str(value.get("collision_preview_path", "")),
+            foundation_path=str(value.get("foundation_path", "")),
+            foundation_prompt_path=str(value.get("foundation_prompt_path", "")),
+            foundation_recomposition_path=str(value.get("foundation_recomposition_path", "")),
         )
 
 
@@ -152,6 +162,15 @@ def process_tilemap(
         filename = "tileset.png" if len(source_set.pages) == 1 else f"tileset-{source.atlas_id}.png"
         atlases[source.atlas_id].save(staging / filename, format="PNG")
         tileset_paths.append(filename)
+    foundation_paths = {"foundation_path": "", "foundation_prompt_path": "", "foundation_recomposition_path": ""}
+    if request.tileset_profile is TileSetProfile.COHERENT_FOUNDATION:
+        atlases[source_set.pages[0].atlas_id].save(staging / "foundation.png", format="PNG")
+        prompt_source = repo_root.resolve() / PurePosixPath(request.foundation_prompt_path)
+        if not prompt_source.is_file():
+            raise ForgeError(ErrorCode.INVALID_REQUEST, "foundation prompt file is missing", recoverable=True, context={"path": request.foundation_prompt_path})
+        shutil.copyfile(prompt_source, staging / "foundation.prompt.txt")
+        foundation_paths["foundation_path"] = "foundation.png"
+        foundation_paths["foundation_prompt_path"] = "foundation.prompt.txt"
 
     slices = []
     for tile in request.tiles:
@@ -262,10 +281,19 @@ def process_tilemap(
         "asset_set": "asset-set.json" if request.object_assets else None,
         "gameplay_crop": "tilemap-gameplay-crop.png" if request.gameplay_crop is not None else None,
         "collision_preview": "tilemap-collision-preview.png" if request.object_assets else None,
+        "foundation": "foundation.png" if request.tileset_profile is TileSetProfile.COHERENT_FOUNDATION else None,
+        "foundation_prompt": "foundation.prompt.txt" if request.tileset_profile is TileSetProfile.COHERENT_FOUNDATION else None,
+        "foundation_recomposition": "foundation-recomposition.png" if request.tileset_profile is TileSetProfile.COHERENT_FOUNDATION else None,
     })
     preview = _compose_preview(atlases, request)
     preview.save(staging / "tilemap-preview.png", format="PNG")
     metrics = analyze_tilemap_quality(atlases, request)
+    if request.tileset_profile is TileSetProfile.COHERENT_FOUNDATION:
+        preview.save(staging / "foundation-recomposition.png", format="PNG")
+        foundation = atlases[source_set.pages[0].atlas_id]
+        matches = preview.size == foundation.size and preview.tobytes() == foundation.tobytes()
+        metrics = replace(metrics, needs_attention=not matches or bool(metrics.invalid_bridge_connectivity), foundation_recomposition_match=matches)
+        foundation_paths["foundation_recomposition_path"] = "foundation-recomposition.png"
     dump_json(staging / "tilemap-quality-metrics.json", metrics.to_dict())
     render_seam_preview(preview, seam_samples(atlases, request), request).save(staging / "tile-seam-preview.png", format="PNG")
     render_usage_preview(_tile_images(atlases, request), metrics.usage_counts, request).save(staging / "tile-usage-preview.png", format="PNG")
@@ -294,8 +322,10 @@ def process_tilemap(
             "emit-unity-import-manifest",
             "compose-tilemap-preview",
             "validate-bridge-connectivity",
+            *(('round-trip-coherent-foundation',) if request.tileset_profile is TileSetProfile.COHERENT_FOUNDATION else ()),
         ),
         needs_attention=metrics.needs_attention,
         building_entrances_path="building-entrances.json",
+        **foundation_paths,
         **object_paths,
     )

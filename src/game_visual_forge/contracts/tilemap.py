@@ -72,6 +72,7 @@ class TileSetProfile(StrEnum):
     STANDARD_16 = "standard_16"
     ADAPTIVE_HD = "adaptive_hd"
     DEMAND_DRIVEN = "demand_driven"
+    COHERENT_FOUNDATION = "coherent_foundation"
 
 
 class TileSemanticRole(StrEnum):
@@ -435,6 +436,7 @@ class TileMapRequest:
     object_entrances: tuple[TileObjectEntrance, ...] = ()
     approval_workflow: TileMapApprovalWorkflow = TileMapApprovalWorkflow.LEGACY_VISUAL
     gameplay_crop: GridRect | None = None
+    foundation_prompt_path: str | None = None
 
     def __post_init__(self) -> None:
         if self.schema_version != 1:
@@ -518,7 +520,7 @@ class TileMapRequest:
         if self.gameplay_crop is not None and not isinstance(self.gameplay_crop, GridRect):
             raise TypeError("gameplay_crop must be GridRect")
         _positive_int(self.max_tile_count, "max_tile_count")
-        if self.tileset_profile is not TileSetProfile.DEMAND_DRIVEN and self.max_tile_count not in {16, 32, 48}:
+        if self.tileset_profile not in {TileSetProfile.DEMAND_DRIVEN, TileSetProfile.COHERENT_FOUNDATION} and self.max_tile_count not in {16, 32, 48}:
             raise ValueError("max_tile_count must be one of 16, 32, or 48")
         _non_empty(self.palette_name, "palette_name")
         if "/" in self.palette_name or "\\" in self.palette_name:
@@ -533,7 +535,15 @@ class TileMapRequest:
         page_ids = [page.atlas_id for page in pages]
         if len(page_ids) != len(set(page_ids)):
             raise ValueError("atlas page ids must be unique")
-        if self.tileset_profile is TileSetProfile.ADAPTIVE_HD:
+        if self.tileset_profile is TileSetProfile.COHERENT_FOUNDATION:
+            if len(pages) != 1 or pages[0].columns != self.map_width or pages[0].rows != self.map_height:
+                raise ValueError("coherent_foundation atlas dimensions must match map dimensions")
+            if self.max_tile_count != self.map_width * self.map_height:
+                raise ValueError("coherent_foundation max_tile_count must equal one tile per map cell")
+            if self.foundation_prompt_path is None:
+                raise ValueError("coherent_foundation requires foundation_prompt_path")
+            object.__setattr__(self, "foundation_prompt_path", normalize_repo_relative_path(self.foundation_prompt_path, field_name="foundation_prompt_path"))
+        elif self.tileset_profile is TileSetProfile.ADAPTIVE_HD:
             if not 1 <= len(pages) <= 3:
                 raise ValueError("adaptive_hd must contain one to three atlas pages")
             if any(page.columns != 4 or page.rows != 4 for page in pages):
@@ -549,6 +559,8 @@ class TileMapRequest:
             raise ValueError("standard_16 must contain exactly one atlas page")
         if len(self.tiles) > self.max_tile_count:
             raise ValueError("tiles must not exceed max_tile_count")
+        if self.tileset_profile is TileSetProfile.COHERENT_FOUNDATION and len(self.tiles) != self.map_width * self.map_height:
+            raise ValueError("coherent_foundation requires one tile per map cell")
         tile_ids = [tile.tile_id for tile in self.tiles]
         if len(tile_ids) != len(set(tile_ids)):
             raise ValueError("tile ids must be unique")
@@ -584,6 +596,17 @@ class TileMapRequest:
             unknown = {item for item in layer.cells if item is not None and item not in known_tiles}
             if unknown:
                 raise ValueError(f"layer references unknown tiles: {layer.layer_id}: {sorted(unknown)}")
+        if self.tileset_profile is TileSetProfile.COHERENT_FOUNDATION:
+            if len(self.layers) != 1:
+                raise ValueError("coherent_foundation requires exactly one terrain layer")
+            tile_coordinates = {(tile.atlas_column, tile.atlas_row): tile.tile_id for tile in self.tiles}
+            expected_coordinates = {(x, y) for y in range(self.map_height) for x in range(self.map_width)}
+            if set(tile_coordinates) != expected_coordinates:
+                raise ValueError("coherent_foundation requires one tile per map cell")
+            for index, tile_id in enumerate(self.layers[0].cells):
+                coordinate = (index % self.map_width, index // self.map_width)
+                if tile_id != tile_coordinates[coordinate]:
+                    raise ValueError("coherent_foundation layer cells must reference the tile at the matching atlas coordinate")
         adjacency_keys = [(rule.tile_id, rule.direction) for rule in self.adjacency_rules]
         if len(adjacency_keys) != len(set(adjacency_keys)):
             raise ValueError("adjacency rules must be unique per tile and direction")
@@ -682,6 +705,7 @@ class TileMapRequest:
             "object_entrances": [item.to_dict() for item in self.object_entrances],
             "approval_workflow": self.approval_workflow.value,
             "gameplay_crop": None if self.gameplay_crop is None else self.gameplay_crop.to_dict(),
+            "foundation_prompt_path": self.foundation_prompt_path,
         }
 
     @classmethod
@@ -723,4 +747,5 @@ class TileMapRequest:
             object_entrances=tuple(TileObjectEntrance.from_dict(item) for item in value.get("object_entrances", [])),
             approval_workflow=TileMapApprovalWorkflow(value.get("approval_workflow", "legacy_visual")),
             gameplay_crop=None if value.get("gameplay_crop") is None else GridRect.from_dict(value["gameplay_crop"]),
+            foundation_prompt_path=None if value.get("foundation_prompt_path") is None else str(value["foundation_prompt_path"]),
         )
