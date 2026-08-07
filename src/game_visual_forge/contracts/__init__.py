@@ -2,6 +2,7 @@ from .asset import AssetBrief, AssetKind, SourcePreference
 from .confirmation import PaidConfirmation
 from .execution import ExecutionPlan, PlanStep
 from .job import JobState, JobStatus
+from .rejection import JobRejectionRecord, RejectedArtifact
 from .map import (
     MapPoint,
     MapRequest,
@@ -40,10 +41,13 @@ from .sprite import (
 from .serialization import dump_json, load_json
 from .tilemap import (
     AtlasPageDefinition,
+    BuildingEntrance,
     TileColliderType,
     TileDefinition,
     TileFilterMode,
     TileAdjacencyRule,
+    BridgeConnectivityRule,
+    BridgeOrientation,
     TileDirection,
     TileLayer,
     TileMapRequest,
@@ -66,6 +70,8 @@ __all__ = [
     "ExecutionPlan",
     "JobState",
     "JobStatus",
+    "JobRejectionRecord",
+    "RejectedArtifact",
     "MapPoint",
     "MapRequest",
     "MapShape",
@@ -99,7 +105,10 @@ __all__ = [
     "load_json",
     "TileColliderType",
     "AtlasPageDefinition",
+    "BuildingEntrance",
     "TileAdjacencyRule",
+    "BridgeConnectivityRule",
+    "BridgeOrientation",
     "TileDefinition",
     "TileDirection",
     "TileFilterMode",

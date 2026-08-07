@@ -6,6 +6,7 @@ from typing import Any
 
 from game_visual_forge.cli.planning import build_tilemap_execution_plan
 from game_visual_forge.contracts import (
+    JobRejectionRecord,
     JobState,
     JobStatus,
     MapSourceCapabilities,
@@ -18,6 +19,7 @@ from game_visual_forge.contracts import (
     TileMapRequest,
     TileMapSourceSet,
     TileAtlasSourceRecord,
+    RejectedArtifact,
     parse_atlas_page_argument,
     load_json,
 )
@@ -28,6 +30,50 @@ from game_visual_forge.processing.sprite import publish_verified_outputs
 from game_visual_forge.processing.tilemap import TileMapProcessingResult, process_tilemap
 from game_visual_forge.quality.tilemap import apply_tilemap_visual_review, build_tilemap_asset_manifest, validate_tilemap_outputs
 from game_visual_forge.routing import route_map
+
+
+def run_tilemap_reject(
+    state_path: Path,
+    run_root: Path,
+    out_path: Path,
+    reason_code: str,
+    reason: str,
+    now: str,
+) -> dict[str, Any]:
+    """Permanently reject a run while retaining immutable artifact evidence."""
+    state = load_job(state_path)
+    if state.status is JobStatus.REJECTED:
+        raise ValueError("tilemap run is already rejected")
+    run_root = run_root.resolve()
+    if not run_root.is_dir():
+        raise ValueError("run_root must be an existing directory")
+    out_path = out_path.resolve()
+    artifacts: list[RejectedArtifact] = []
+    for path in sorted(run_root.rglob("*")):
+        if not path.is_file() or path.resolve() == out_path:
+            continue
+        relative = path.relative_to(run_root).as_posix()
+        artifacts.append(RejectedArtifact(relative, sha256_file(path)))
+    record = JobRejectionRecord(
+        schema_version=1,
+        job_id=state.job_id,
+        asset_id=state.asset_id,
+        request_fingerprint=state.request_fingerprint,
+        rejected_at=now,
+        reason_code=reason_code,
+        reason=reason,
+        artifacts=tuple(artifacts),
+    )
+    dump_json(out_path, record.to_dict())
+    rejected = transition_job(state, JobStatus.REJECTED, now=now, error_code=reason_code)
+    save_job(state_path, rejected)
+    return {
+        "schema_version": 1,
+        "status": rejected.status.value,
+        "rejection_path": str(out_path),
+        "artifact_count": len(artifacts),
+        "reason_code": reason_code,
+    }
 
 
 def _request(path: Path) -> tuple[TileMapRequest, str]:

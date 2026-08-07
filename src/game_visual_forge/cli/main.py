@@ -19,6 +19,7 @@ from game_visual_forge.cli.tilemap import (
     run_tilemap_ingest,
     run_tilemap_plan,
     run_tilemap_process,
+    run_tilemap_reject,
     run_tilemap_route,
     run_tilemap_validate,
 )
@@ -138,6 +139,14 @@ def build_parser() -> argparse.ArgumentParser:
     tilemap_validate.add_argument("--state", type=Path, required=True)
     tilemap_validate.add_argument("--now", required=True)
 
+    tilemap_reject_parser = tilemap_commands.add_parser("reject")
+    tilemap_reject_parser.add_argument("--state", type=Path, required=True)
+    tilemap_reject_parser.add_argument("--run-root", type=Path, required=True)
+    tilemap_reject_parser.add_argument("--out", type=Path, required=True)
+    tilemap_reject_parser.add_argument("--reason-code", required=True)
+    tilemap_reject_parser.add_argument("--reason", required=True)
+    tilemap_reject_parser.add_argument("--now", required=True)
+
     show_state = commands.add_parser("show-state")
     show_state.add_argument("--state", type=Path, required=True)
 
@@ -247,6 +256,8 @@ def main(argv: list[str] | None = None) -> int:
             payload = run_tilemap_process(args.request, args.raw_image, args.repo_root, args.out_dir, args.state, args.now)
         elif args.command == "map" and args.map_command == "tile" and args.tilemap_command == "validate":
             payload = run_tilemap_validate(args.request, args.raw_image, args.processing_result, args.repo_root, args.staging_dir, args.final_dir, args.visual_review, args.state, args.now)
+        elif args.command == "map" and args.map_command == "tile" and args.tilemap_command == "reject":
+            payload = run_tilemap_reject(args.state, args.run_root, args.out, args.reason_code, args.reason, args.now)
         elif args.command == "sprite" and args.sprite_command == "plan":
             payload = run_sprite_plan(args.request, args.out_dir, args.now)
         elif args.command == "sprite" and args.sprite_command == "route":
