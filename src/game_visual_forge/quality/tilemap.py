@@ -90,6 +90,9 @@ def validate_tilemap_outputs(
         try:
             if path.endswith(".json"):
                 load_json(target)
+            elif path.endswith(".txt"):
+                if not target.read_text(encoding="utf-8").strip():
+                    raise ValueError("text artifact must not be empty")
             else:
                 with Image.open(target) as image:
                     image.verify()

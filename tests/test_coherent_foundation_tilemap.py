@@ -103,6 +103,7 @@ class CoherentFoundationProcessingTests(unittest.TestCase):
             self.assertFalse(result.needs_attention)
 
             report = validate_tilemap_outputs(staging, request, source_set, result)
+            self.assertEqual(report.deterministic_status.value, "passed")
             check = next(item for item in report.deterministic_checks if item.check_id == "foundation-recomposition")
             self.assertEqual(check.status.value, "passed")
             manifest = build_tilemap_asset_manifest(staging, request, source_set, result, report)
