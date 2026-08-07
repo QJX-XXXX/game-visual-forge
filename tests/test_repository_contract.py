@@ -31,7 +31,7 @@ class RepositoryContractTests(unittest.TestCase):
         self.assertFalse((ROOT / ".codex-plugin").exists())
         self.assertFalse((ROOT / ".gitmodules").exists())
         ignore_rules = (ROOT / ".gitignore").read_text(encoding="utf-8").splitlines()
-        self.assertFalse((ROOT / "docs").exists())
+        self.assertTrue((ROOT / "docs" / "superpowers" / "specs").is_dir())
         self.assertIn("docs/", ignore_rules)
         self.assertIn(".superpowers/", ignore_rules)
 

@@ -23,6 +23,12 @@ Use this skill when the requested map must be a real runtime map rather than a d
 - Road global connectivity is optional. Set `road_connectivity_policy` to `none`, `partial`, or `required`; only declared `road_connection_requirements` are tested.
 - Buildings need complete object images, footprint-relative collision cells, a clear doorway cell, placements, and object entrances. Unity receives `Buildings`, `Props`, and `Metadata` hierarchies.
 
+Legacy compatibility remains available: `standard_16` is the one-page 16-Tile profile and `adaptive_hd` is the one-to-three-page 4×4 profile with 16/32/48 declared Tiles. New playable hybrid maps should choose `demand_driven` instead. Select `preset_16`, `preset_32`, or `custom` tile dimensions explicitly; Unity derives cell size as `tile_width / pixels_per_unit` and `tile_height / pixels_per_unit`.
+
+The default 32×32 tile mode is `preset_32`; use `preset_16` for 16×16 and `custom` for other positive dimensions.
+
+Use the built-in image generation tool for new visual assets when available. Native generation is not a license to silently choose a paid provider: provider/model/parameter/cost confirmation remains explicit, and failed or `submission_unknown` jobs are not silently resubmitted. Existing files remain valid sources when the user supplies them.
+
 ## Standard CLI flow
 
 For a Tilemap request, run:

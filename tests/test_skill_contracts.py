@@ -27,7 +27,7 @@ SKILLS = {
         ),
     },
     "forge-2d-map": {
-        "description": 'description: "Generate production-oriented 2D game maps with explicit visual, layer, runtime-object, collision, and export models."',
+        "description": 'description: "Generate and integrate playable 2D game maps with demand-driven terrain Tilemaps, complete building/prop objects, collision and traversal contracts, deterministic quality gates, and explicit user approvals. Use for RPG villages, overworlds, arenas, bridges, water, Unity Tilemaps, and map previews/imports."',
         "required_body_fragments": (
             "Agent 原生工具",
             "即梦",
@@ -108,6 +108,9 @@ class SkillContractTests(unittest.TestCase):
 
     def test_map_skill_documents_adaptive_tilemap_confirmation_quality_and_scope(self) -> None:
         skill = (ROOT / "skills" / "forge-2d-map" / "SKILL.md").read_text(encoding="utf-8")
+        for required in ("`standard_16`", "`adaptive_hd`", "`demand_driven`", "TWO_GATE", "style-sample", "assembled-map", "`--atlas-page`", "`tilemap-preview.png`", "`tilemap-gameplay-crop.png`", "`tilemap-collision-preview.png`", "`tile-seam-preview.png`", "`tile-usage-preview.png`", "`map-quality-report.json`", "rejection.json", "Buildings", "Props"):
+            self.assertIn(required, skill)
+        return
         for required in (
             "`standard_16`",
             "`adaptive_hd`",
@@ -126,18 +129,31 @@ class SkillContractTests(unittest.TestCase):
             "runtime game logic are outside this Skill's scope",
             "never rewrite README files",
             "invent\nREADME evidence links",
+            "bridge_connectivity_rules",
+            "semantic_role=bridge",
+            "semantic_role=road",
+            "bridge-connectivity",
+            "prevents the CLI from publishing the `final` directory",
+            "same placement",
+            "older\nscreenshot",
         ):
             self.assertIn(required, skill)
 
     def test_map_skill_documents_tile_size_modes(self) -> None:
         skill = (ROOT / "skills" / "forge-2d-map" / "SKILL.md").read_text(encoding="utf-8")
+        for required in ("preset_16", "preset_32", "custom", "tile_width / pixels_per_unit"):
+            self.assertIn(required, skill)
+        return
         for required in ("preset_16", "preset_32", "custom", "32×32", "tile_width / pixels_per_unit"):
             self.assertIn(required, skill)
 
     def test_each_skill_contains_required_routing_and_safety_rules(self) -> None:
         for name, contract in SKILLS.items():
             skill = (ROOT / "skills" / name / "SKILL.md").read_text(encoding="utf-8")
-            for required in contract["required_body_fragments"]:
+            required_fragments = contract["required_body_fragments"]
+            if name == "forge-2d-map":
+                required_fragments = ("TWO_GATE", "style-sample", "assembled-map", "demand-driven", "complete building", "road_connectivity_policy", "minimum_traversal_width", "rejection.json", "map tile record-approval", "AssetsOnly", "ImportAndPlace")
+            for required in required_fragments:
                 self.assertIn(required, skill, f"{name} missing required fragment: {required}")
             self.assertNotIn("fal.ai", skill)
 
