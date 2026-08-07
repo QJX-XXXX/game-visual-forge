@@ -257,6 +257,11 @@ def process_tilemap(
         "prefab_name": f"{request.asset_id}-tilemap",
         "required_packages": ["com.unity.2d.sprite", "com.unity.2d.tilemap"],
         "bridge_connectivity_rules": [rule.to_dict() for rule in request.bridge_connectivity_rules],
+        "objects": "tilemap-objects.json" if request.object_assets else None,
+        "collision": "tilemap-collision.json" if request.object_assets else None,
+        "asset_set": "asset-set.json" if request.object_assets else None,
+        "gameplay_crop": "tilemap-gameplay-crop.png" if request.gameplay_crop is not None else None,
+        "collision_preview": "tilemap-collision-preview.png" if request.object_assets else None,
     })
     preview = _compose_preview(atlases, request)
     preview.save(staging / "tilemap-preview.png", format="PNG")

@@ -27,6 +27,34 @@ class InvalidAdjacency:
 
 
 @dataclass(frozen=True)
+class InvalidBridgeConnectivity:
+    rule_id: str
+    layer_id: str
+    x: int
+    y: int
+    expected_role: str
+    actual_tile_id: str | None
+    actual_role: str | None
+    failure_kind: str
+
+    def to_dict(self) -> dict[str, Any]:
+        return self.__dict__.copy()
+
+    @classmethod
+    def from_dict(cls, value: dict[str, Any]) -> "InvalidBridgeConnectivity":
+        return cls(
+            str(value["rule_id"]),
+            str(value["layer_id"]),
+            int(value["x"]),
+            int(value["y"]),
+            str(value["expected_role"]),
+            None if value.get("actual_tile_id") is None else str(value["actual_tile_id"]),
+            None if value.get("actual_role") is None else str(value["actual_role"]),
+            str(value.get("failure_kind", "bridge-cell")),
+        )
+
+
+@dataclass(frozen=True)
 class TileMapQualityMetrics:
     max_seam_score: float
     seam_pair_count: int
@@ -36,6 +64,7 @@ class TileMapQualityMetrics:
     overused_decoration_ids: tuple[str, ...]
     invalid_adjacencies: tuple[InvalidAdjacency, ...]
     needs_attention: bool
+    invalid_bridge_connectivity: tuple[InvalidBridgeConnectivity, ...] = ()
 
     def to_dict(self) -> dict[str, Any]:
         return {
@@ -47,6 +76,7 @@ class TileMapQualityMetrics:
             "unused_tile_ids": list(self.unused_tile_ids),
             "overused_decoration_ids": list(self.overused_decoration_ids),
             "invalid_adjacencies": [item.to_dict() for item in self.invalid_adjacencies],
+            "invalid_bridge_connectivity": [item.to_dict() for item in self.invalid_bridge_connectivity],
             "needs_attention": self.needs_attention,
         }
 
@@ -62,6 +92,7 @@ class TileMapQualityMetrics:
             tuple(str(item) for item in value["overused_decoration_ids"]),
             tuple(InvalidAdjacency.from_dict(item) for item in value["invalid_adjacencies"]),
             bool(value["needs_attention"]),
+            tuple(InvalidBridgeConnectivity.from_dict(item) for item in value.get("invalid_bridge_connectivity", [])),
         )
 
 
@@ -93,6 +124,7 @@ def _edge_score(left: Any, right: Any, vertical: bool) -> float:
 
 def seam_samples(atlases: dict[str, Any], request: TileMapRequest) -> tuple[tuple[int, int, int, int, float], ...]:
     tiles = _tile_images(atlases, request)
+    definitions = {tile.tile_id: tile for tile in request.tiles}
     samples = []
     for layer in request.layers:
         for index, tile_id in enumerate(layer.cells):
@@ -100,11 +132,21 @@ def seam_samples(atlases: dict[str, Any], request: TileMapRequest) -> tuple[tupl
                 continue
             x, y = index % request.map_width, index // request.map_width
             if x + 1 < request.map_width and layer.cells[index + 1] is not None:
-                score = _edge_score(tiles[tile_id], tiles[layer.cells[index + 1]], True)
-                samples.append((x + 1, y, x + 1, y + 1, score))
+                neighbor_id = layer.cells[index + 1]
+                if (
+                    definitions[tile_id].semantic_role is definitions[neighbor_id].semantic_role
+                    and definitions[tile_id].semantic_role is not TileSemanticRole.WATER
+                ):
+                    score = _edge_score(tiles[tile_id], tiles[neighbor_id], True)
+                    samples.append((x + 1, y, x + 1, y + 1, score))
             if y + 1 < request.map_height and layer.cells[index + request.map_width] is not None:
-                score = _edge_score(tiles[tile_id], tiles[layer.cells[index + request.map_width]], False)
-                samples.append((x, y + 1, x + 1, y + 1, score))
+                neighbor_id = layer.cells[index + request.map_width]
+                if (
+                    definitions[tile_id].semantic_role is definitions[neighbor_id].semantic_role
+                    and definitions[tile_id].semantic_role is not TileSemanticRole.WATER
+                ):
+                    score = _edge_score(tiles[tile_id], tiles[neighbor_id], False)
+                    samples.append((x, y + 1, x + 1, y + 1, score))
     return tuple(samples)
 
 
@@ -115,13 +157,16 @@ def analyze_tilemap_quality(atlases: dict[str, Any], request: TileMapRequest) ->
     clipped = set()
     overused = set()
     invalid = []
+    invalid_bridge_connectivity = []
     samples = seam_samples(atlases, request)
     for layer in request.layers:
         non_empty = 0
+        layer_usage: dict[str, int] = {}
         for index, tile_id in enumerate(layer.cells):
             if tile_id is None:
                 continue
             usage[tile_id] += 1
+            layer_usage[tile_id] = layer_usage.get(tile_id, 0) + 1
             non_empty += 1
             tile = definitions[tile_id]
             if tile.semantic_role in {TileSemanticRole.DECORATION, TileSemanticRole.PROP}:
@@ -139,12 +184,56 @@ def analyze_tilemap_quality(atlases: dict[str, Any], request: TileMapRequest) ->
                     neighbor = layer.cells[ny * request.map_width + nx]
                     if neighbor is not None and neighbor not in rule.allowed_neighbors:
                         invalid.append(InvalidAdjacency(layer.layer_id, x, y, tile_id, direction, neighbor))
-        if non_empty:
-            for tile_id, count in usage.items():
-                if definitions[tile_id].semantic_role in {TileSemanticRole.DECORATION, TileSemanticRole.PROP} and count / non_empty > DECORATION_USAGE_RATIO_THRESHOLD:
+        if non_empty >= 16:
+            for tile_id, count in layer_usage.items():
+                if definitions[tile_id].semantic_role is TileSemanticRole.DECORATION and count / non_empty > DECORATION_USAGE_RATIO_THRESHOLD:
                     overused.add(tile_id)
+    for rule in request.bridge_connectivity_rules:
+        if not rule.traversable:
+            continue
+        layer_by_id = {layer.layer_id: layer for layer in request.layers}
+        bridge_layer = layer_by_id[rule.bridge_layer_id]
+        approach_layer = layer_by_id[rule.approach_layer_id]
+        for x, y in rule.bridge_coordinates():
+            tile_id = bridge_layer.cells[y * request.map_width + x]
+            tile = definitions.get(tile_id) if tile_id is not None else None
+            if tile is None or tile.semantic_role is not TileSemanticRole.BRIDGE:
+                invalid_bridge_connectivity.append(InvalidBridgeConnectivity(
+                    rule.rule_id,
+                    rule.bridge_layer_id,
+                    x,
+                    y,
+                    TileSemanticRole.BRIDGE.value,
+                    tile_id,
+                    None if tile is None else tile.semantic_role.value,
+                    "bridge-cell",
+                ))
+        for x, y in rule.approach_coordinates():
+            tile_id = approach_layer.cells[y * request.map_width + x]
+            tile = definitions.get(tile_id) if tile_id is not None else None
+            if tile is None or tile.semantic_role is not TileSemanticRole.ROAD:
+                invalid_bridge_connectivity.append(InvalidBridgeConnectivity(
+                    rule.rule_id,
+                    rule.approach_layer_id,
+                    x,
+                    y,
+                    TileSemanticRole.ROAD.value,
+                    tile_id,
+                    None if tile is None else tile.semantic_role.value,
+                    "approach-cell",
+                ))
     max_score = max((sample[-1] for sample in samples), default=0.0)
-    return TileMapQualityMetrics(max_score, len(samples), tuple(sorted(clipped)), usage, tuple(sorted(tile_id for tile_id, count in usage.items() if count == 0)), tuple(sorted(overused)), tuple(invalid), max_score > SEAM_ATTENTION_THRESHOLD or bool(clipped) or bool(overused) or bool(invalid))
+    return TileMapQualityMetrics(
+        max_score,
+        len(samples),
+        tuple(sorted(clipped)),
+        usage,
+        tuple(sorted(tile_id for tile_id, count in usage.items() if count == 0)),
+        tuple(sorted(overused)),
+        tuple(invalid),
+        max_score > SEAM_ATTENTION_THRESHOLD or bool(clipped) or bool(overused) or bool(invalid) or bool(invalid_bridge_connectivity),
+        tuple(invalid_bridge_connectivity),
+    )
 
 
 def render_seam_preview(preview: Any, samples: tuple[tuple[int, int, int, int, float], ...], request: TileMapRequest) -> Any:

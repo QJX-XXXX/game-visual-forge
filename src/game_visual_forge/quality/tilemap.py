@@ -19,6 +19,7 @@ from game_visual_forge.contracts.serialization import load_json
 from game_visual_forge.processing.images import _load_pillow, sha256_file
 from game_visual_forge.processing.tilemap import TileMapProcessingResult
 from game_visual_forge.processing.tilemap_quality import SEAM_ATTENTION_THRESHOLD, TileMapQualityMetrics
+from game_visual_forge.quality.tilemap_objects import ObjectQualityMetrics, analyze_object_quality
 
 
 TILEMAP_VISUAL_CHECK_IDS = (
@@ -40,13 +41,26 @@ def _paths(processing: TileMapProcessingResult) -> tuple[str, ...]:
         processing.slices_path,
         processing.placement_path,
         processing.unity_manifest_path,
+        *(path for path in (processing.building_entrances_path,) if path),
+        *(path for path in (processing.objects_path, processing.collision_path, processing.asset_set_path) if path),
         processing.preview_path,
         *(path for path in (processing.quality_metrics_path, processing.seam_preview_path, processing.usage_preview_path) if path),
+        *(path for path in (processing.gameplay_crop_path, processing.collision_preview_path) if path),
     )
 
 
 def _sources(record: RawImageRecord | TileMapSourceSet, request: TileMapRequest) -> TileMapSourceSet:
-    return load_tilemap_source_set(record.to_dict(), request) if isinstance(record, RawImageRecord) else record
+    return load_tilemap_source_set(record.to_dict(), request)
+
+
+def _expected_building_entrances(request: TileMapRequest) -> dict[str, Any]:
+    return {
+        "schema_version": 1,
+        "map_id": request.asset_id,
+        "coordinate_system": "top-left-grid",
+        "transition_implementation": "out-of-scope",
+        "entries": [entrance.to_dict() for entrance in request.building_entrances],
+    }
 
 
 def validate_tilemap_outputs(
@@ -93,6 +107,8 @@ def validate_tilemap_outputs(
     }
     for page, path in zip(sources.pages, processing.tileset_paths):
         raster_sizes[path] = expected_pages[page.atlas_id]
+    if processing.gameplay_crop_path and request.gameplay_crop is not None:
+        raster_sizes[processing.gameplay_crop_path] = (request.gameplay_crop.width * request.tile_width, request.gameplay_crop.height * request.tile_height)
     for path, expected in raster_sizes.items():
         try:
             with Image.open(staging_dir / PurePosixPath(path)) as image:
@@ -112,6 +128,15 @@ def validate_tilemap_outputs(
         placement = load_json(staging_dir / processing.placement_path)
         unity = load_json(staging_dir / processing.unity_manifest_path)
         metrics = TileMapQualityMetrics.from_dict(load_json(staging_dir / processing.quality_metrics_path))
+        entrance_artifact_valid = True
+        if processing.building_entrances_path:
+            entrance_payload = load_json(staging_dir / processing.building_entrances_path)
+            entrance_artifact_valid = entrance_payload == _expected_building_entrances(request)
+        elif request.building_entrances:
+            entrance_artifact_valid = False
+        object_metadata_valid = True
+        if processing.objects_path:
+            object_metadata_valid = load_json(staging_dir / processing.objects_path).get("assets") is not None and load_json(staging_dir / processing.collision_path).get("blocked_cells") is not None
         metadata_valid = (
             len(slices["tiles"]) == len(request.tiles)
             and len(placement["layers"]) == len(request.layers)
@@ -121,24 +146,66 @@ def validate_tilemap_outputs(
             and unity["tile_width"] == request.tile_width
             and unity["tile_height"] == request.tile_height
             and unity["pixels_per_unit"] == request.pixels_per_unit
+            and placement.get("bridge_connectivity_rules", []) == [rule.to_dict() for rule in request.bridge_connectivity_rules]
+            and unity.get("bridge_connectivity_rules", []) == [rule.to_dict() for rule in request.bridge_connectivity_rules]
+            and (not processing.building_entrances_path or unity.get("building_entrances") == processing.building_entrances_path)
+            and entrance_artifact_valid
+            and object_metadata_valid
         )
     except (OSError, ValueError, TypeError, KeyError):
         metadata_valid = False
         metrics = None
+        entrance_artifact_valid = False
     checks.append(_check(
         "unity-bundle-contract",
         QualityStatus.PASSED if metadata_valid else QualityStatus.FAILED,
         "Unity bundle metadata matches the request" if metadata_valid else "Unity bundle metadata is incomplete or inconsistent",
     ))
+    checks.append(_check(
+        "building-entrances",
+        QualityStatus.PASSED if entrance_artifact_valid else QualityStatus.FAILED,
+        "Building entrance metadata matches the request" if entrance_artifact_valid else "Building entrance metadata is missing or inconsistent",
+        (processing.building_entrances_path,) if processing.building_entrances_path else (),
+    ))
 
     if metrics is None:
-        checks.extend((_check("tile-seams", QualityStatus.FAILED, "Tile quality metrics are missing"), _check("tile-clipping", QualityStatus.FAILED, "Tile quality metrics are missing"), _check("tile-usage", QualityStatus.FAILED, "Tile quality metrics are missing"), _check("tile-adjacency", QualityStatus.FAILED, "Tile quality metrics are missing")))
+        checks.extend((_check("tile-seams", QualityStatus.FAILED, "Tile quality metrics are missing"), _check("tile-clipping", QualityStatus.FAILED, "Tile quality metrics are missing"), _check("tile-usage", QualityStatus.FAILED, "Tile quality metrics are missing"), _check("tile-adjacency", QualityStatus.FAILED, "Tile quality metrics are missing"), _check("bridge-connectivity", QualityStatus.FAILED, "Tile quality metrics are missing")))
     else:
         checks.extend((
             _check("tile-seams", QualityStatus.NEEDS_ATTENTION if metrics.max_seam_score > SEAM_ATTENTION_THRESHOLD else QualityStatus.PASSED, "Tile seam threshold check", (processing.seam_preview_path,)),
             _check("tile-clipping", QualityStatus.NEEDS_ATTENTION if metrics.clipped_tile_ids else QualityStatus.PASSED, "Decoration and prop clipping check", metrics.clipped_tile_ids),
             _check("tile-usage", QualityStatus.NEEDS_ATTENTION if metrics.overused_decoration_ids else QualityStatus.PASSED, "Tile usage distribution check", metrics.overused_decoration_ids),
             _check("tile-adjacency", QualityStatus.NEEDS_ATTENTION if metrics.invalid_adjacencies else QualityStatus.PASSED, "Declared Tile adjacency check"),
+            _check(
+                "bridge-connectivity",
+                QualityStatus.FAILED if metrics.invalid_bridge_connectivity else QualityStatus.PASSED,
+                "Declared bridge connectivity check" if not metrics.invalid_bridge_connectivity else "Bridge connectivity failures: " + "; ".join(
+                    f"rule={item.rule_id} layer={item.layer_id} coord=({item.x},{item.y}) expected={item.expected_role} actual_tile={item.actual_tile_id or 'empty'} actual_role={item.actual_role or 'none'}"
+                    for item in metrics.invalid_bridge_connectivity
+                ),
+                tuple(f"{item.layer_id}:{item.x},{item.y}" for item in metrics.invalid_bridge_connectivity),
+            ),
+        ))
+
+    object_metrics = ObjectQualityMetrics()
+    if request.object_assets:
+        object_images = {}
+        try:
+            for asset in request.object_assets:
+                with Image.open(staging_dir / "objects" / f"{asset.asset_id}.png") as image:
+                    object_images[asset.asset_id] = image.convert("RGBA")
+            object_metrics = analyze_object_quality(request, object_images)
+        except (OSError, ValueError, KeyError):
+            object_metrics = ObjectQualityMetrics(alpha_failures=tuple(asset.asset_id for asset in request.object_assets))
+        checks.extend((
+            _check("object-alpha", QualityStatus.FAILED if object_metrics.alpha_failures else QualityStatus.PASSED, "Object alpha and dimensions check", object_metrics.alpha_failures),
+            _check("building-silhouette", QualityStatus.FAILED if object_metrics.silhouette_failures else QualityStatus.PASSED, "Building silhouette and duplication check", object_metrics.silhouette_failures),
+            _check("object-overlap", QualityStatus.FAILED if object_metrics.overlap_failures else QualityStatus.PASSED, "Object collision overlap check", object_metrics.overlap_failures),
+            _check("object-density", QualityStatus.FAILED if object_metrics.density_failures else QualityStatus.PASSED, "Object density and repeat limit check", object_metrics.density_failures),
+            _check("entrance-reachability", QualityStatus.FAILED if object_metrics.entrance_failures else QualityStatus.PASSED, "Object entrance reachability check", object_metrics.entrance_failures),
+            _check("road-connectivity", QualityStatus.FAILED if object_metrics.road_connectivity_failures else QualityStatus.PASSED, "Declared road connectivity policy check", object_metrics.road_connectivity_failures),
+            _check("water-collision", QualityStatus.FAILED if object_metrics.water_collision_failures else QualityStatus.PASSED, "Water collision policy check", object_metrics.water_collision_failures),
+            _check("bridge-traversal", QualityStatus.FAILED if object_metrics.bridge_traversal_failures else QualityStatus.PASSED, "Conditional bridge traversal check", object_metrics.bridge_traversal_failures),
         ))
 
     deterministic = QualityStatus.FAILED if any(item.status is QualityStatus.FAILED for item in checks) else QualityStatus.NEEDS_ATTENTION if any(item.status is QualityStatus.NEEDS_ATTENTION for item in checks) or processing.needs_attention else QualityStatus.PASSED
@@ -171,12 +238,18 @@ def build_tilemap_asset_manifest(
         processing.slices_path: "sprite-slices",
         processing.placement_path: "tilemap-placement",
         processing.unity_manifest_path: "unity-import-manifest",
+        **(({processing.building_entrances_path: "building-entrances"} if processing.building_entrances_path else {})),
         processing.preview_path: "tilemap-preview",
         processing.quality_metrics_path: "tilemap-quality-metrics",
         processing.seam_preview_path: "tile-seam-preview",
         processing.usage_preview_path: "tile-usage-preview",
+        **({processing.objects_path: "tilemap-objects", processing.collision_path: "tilemap-collision", processing.asset_set_path: "asset-set"} if processing.objects_path else {}),
     }
     roles.update({path: "tileset" for path in processing.tileset_paths})
+    if processing.gameplay_crop_path:
+        roles[processing.gameplay_crop_path] = "gameplay-crop"
+    if processing.collision_preview_path:
+        roles[processing.collision_preview_path] = "tilemap-collision-preview"
     if (staging_dir / "map-quality-report.json").is_file():
         roles["map-quality-report.json"] = "map-quality-report"
     output_paths = (*_paths(processing), *(("map-quality-report.json",) if (staging_dir / "map-quality-report.json").is_file() else ()))
