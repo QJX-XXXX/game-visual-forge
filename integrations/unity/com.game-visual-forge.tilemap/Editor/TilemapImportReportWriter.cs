@@ -41,9 +41,14 @@ namespace GameVisualForge.Unity
                 layer_count = result.layer_count,
                 palette_path = result.palette_prefab,
                 prefab_path = result.tilemap_prefab,
+                building_entrances_asset = result.building_entrances_asset,
                 scene_action = result.scene_action,
                 scene_path = result.scene_path,
                 scene_dirty = result.scene_dirty,
+                objects_manifest = result.objects_manifest,
+                collision_manifest = result.collision_manifest,
+                object_prefab_paths = result.object_prefabs ?? Array.Empty<string>(),
+                object_count = result.object_count,
             };
             var reportsFolder = $"{result.generated_root}/Reports";
             TilemapBundleImporter.EnsureAssetFolder(reportsFolder);

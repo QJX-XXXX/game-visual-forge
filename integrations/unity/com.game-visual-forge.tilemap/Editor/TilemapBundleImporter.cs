@@ -62,11 +62,15 @@ namespace GameVisualForge.Unity
             var manifestFullPath = ResolveInputPath(manifestPath);
             var manifest = ReadJson<BundleManifest>(manifestFullPath);
             ValidateManifest(manifest);
+            TilemapApprovalValidator.Validate(manifestFullPath, manifest);
 
             var bundleDirectory = Path.GetDirectoryName(manifestFullPath) ?? throw new InvalidOperationException("Bundle manifest has no parent directory.");
             var slices = ReadJson<SliceManifest>(Path.Combine(bundleDirectory, manifest.slices));
             var placement = ReadJson<PlacementManifest>(Path.Combine(bundleDirectory, manifest.placement));
             ValidateBundleData(slices, placement);
+            ObjectManifest objectManifest = null;
+            if (!string.IsNullOrWhiteSpace(manifest.objects))
+                objectManifest = ReadJson<ObjectManifest>(Path.Combine(bundleDirectory, manifest.objects));
             var gridCellSize = ResolveGridCellSize(manifest, slices.tiles);
             var isLegacySinglePage = manifest.tilesets == null || manifest.tilesets.Length == 0;
             var atlasPages = NormalizeAtlasPages(manifest);
@@ -75,19 +79,30 @@ namespace GameVisualForge.Unity
             var tileFolder = $"{manifest.generated_root}/Tiles";
             var paletteFolder = $"{manifest.generated_root}/Palettes";
             var prefabFolder = $"{manifest.generated_root}/Prefabs";
+            var dataFolder = $"{manifest.generated_root}/Data";
+            var buildingEntrancesAssetPath = string.IsNullOrWhiteSpace(manifest.building_entrances)
+                ? null
+                : $"{dataFolder}/building-entrances.json";
             var tilesetAssetPaths = atlasPages.Select(page => $"{textureFolder}/{page.atlas_id}.png").ToArray();
             var tileAssetPaths = slices.tiles.Select(slice => $"{tileFolder}/{slice.id}.asset").ToArray();
             var expectedPalettePath = $"{paletteFolder}/{manifest.palette_name}.prefab";
             var expectedPrefabPath = $"{prefabFolder}/{manifest.prefab_name}.prefab";
+            var expectedObjectTexturePaths = objectManifest == null ? Array.Empty<string>() : objectManifest.assets.Select(asset => $"{manifest.generated_root}/Objects/{asset.id}.png").ToArray();
+            var expectedObjectPrefabPaths = objectManifest == null ? Array.Empty<string>() : objectManifest.assets.Select(asset => $"{manifest.generated_root}/Prefabs/Objects/{asset.id}.prefab").ToArray();
             var existingResourceGuids = CaptureExistingResourceGuids(
                 tilesetAssetPaths
                     .Concat(tileAssetPaths)
-                    .Concat(new[] { expectedPalettePath, expectedPrefabPath }));
+                    .Concat(new[] { expectedPalettePath, expectedPrefabPath })
+                    .Concat(expectedObjectTexturePaths)
+                    .Concat(expectedObjectPrefabPaths)
+                    .Concat(buildingEntrancesAssetPath == null ? Array.Empty<string>() : new[] { buildingEntrancesAssetPath }));
 
             EnsureAssetFolder(textureFolder);
             EnsureAssetFolder(tileFolder);
             EnsureAssetFolder(paletteFolder);
             EnsureAssetFolder(prefabFolder);
+            if (buildingEntrancesAssetPath != null)
+                EnsureAssetFolder(dataFolder);
 
             var tilesetAssets = new List<string>();
             var sprites = new Dictionary<string, Sprite>(StringComparer.Ordinal);
@@ -108,6 +123,20 @@ namespace GameVisualForge.Unity
             var tiles = CreateOrUpdateTiles(tileFolder, slices.tiles, sprites);
             var palettePath = CreateOrUpdatePalette(paletteFolder, manifest.palette_name, slices.tiles, tiles, gridCellSize);
             var prefabPath = CreateOrUpdateTilemapPrefab(prefabFolder, manifest.prefab_name, placement.layers, tiles, palettePath, gridCellSize);
+            if (buildingEntrancesAssetPath != null)
+            {
+                var sourcePath = ResolveBundleFile(bundleDirectory, manifest.building_entrances);
+                CopyToAsset(sourcePath, buildingEntrancesAssetPath, "Building entrance metadata was not found.");
+            }
+            ObjectImportResult objectResult = null;
+            if (objectManifest != null)
+            {
+                objectResult = TilemapObjectImporter.ImportObjects(bundleDirectory, manifest.generated_root, objectManifest, placement.map_size.height, gridCellSize.x, gridCellSize.y, "tilemap-collision.json");
+                TilemapObjectImporter.AttachObjects(prefabPath, objectManifest, objectManifest.assets.ToDictionary(asset => asset.id, asset => $"{manifest.generated_root}/Prefabs/Objects/{asset.id}.prefab", StringComparer.Ordinal), placement.map_size.height, gridCellSize.x, gridCellSize.y);
+                CopyToAsset(ResolveBundleFile(bundleDirectory, manifest.objects), $"{dataFolder}/tilemap-objects.json", "Object manifest was not found.");
+                if (!string.IsNullOrWhiteSpace(manifest.collision))
+                    CopyToAsset(ResolveBundleFile(bundleDirectory, manifest.collision), $"{dataFolder}/tilemap-collision.json", "Collision manifest was not found.");
+            }
 
             AssetDatabase.SaveAssets();
             AssetDatabase.Refresh();
@@ -121,6 +150,7 @@ namespace GameVisualForge.Unity
                 tileset_assets = tilesetAssets.ToArray(),
                 palette_prefab = palettePath,
                 tilemap_prefab = prefabPath,
+                building_entrances_asset = buildingEntrancesAssetPath,
                 tile_assets = tileAssetPaths,
                 tile_count = tiles.Count,
                 layer_count = placement.layers.Length,
@@ -129,6 +159,10 @@ namespace GameVisualForge.Unity
                 scene_action = "unchanged",
                 scene_path = activeScene.path,
                 scene_dirty = activeScene.isDirty,
+                objects_manifest = objectResult == null ? null : $"{dataFolder}/tilemap-objects.json",
+                collision_manifest = objectResult == null ? null : $"{dataFolder}/tilemap-collision.json",
+                object_prefabs = objectResult == null ? Array.Empty<string>() : objectResult.object_prefabs,
+                object_count = objectResult == null ? 0 : objectResult.object_count,
             };
             if (mode == ImportMode.ImportAndPlace)
             {
@@ -165,8 +199,8 @@ namespace GameVisualForge.Unity
             var atlasPages = manifest.tilesets != null && manifest.tilesets.Length > 0
                 ? manifest.tilesets
                 : new[] { new AtlasPage { atlas_id = "page-01", path = manifest.tileset } };
-            if (atlasPages.Length < 1 || atlasPages.Length > 3)
-                throw new InvalidOperationException("Unity tilemap bundles must contain one to three atlas pages.");
+            if (atlasPages.Length < 1 || atlasPages.Length > 4)
+                throw new InvalidOperationException("Unity tilemap bundles must contain one to four atlas pages.");
             if (atlasPages.Any(page => string.IsNullOrWhiteSpace(page.atlas_id) || string.IsNullOrWhiteSpace(page.path)))
                 throw new InvalidOperationException("Every atlas page must define atlas_id and path.");
             if (atlasPages.Select(page => page.atlas_id).Distinct(StringComparer.Ordinal).Count() != atlasPages.Length)
@@ -263,12 +297,28 @@ namespace GameVisualForge.Unity
 
         private static void CopyToAsset(string sourcePath, string destinationAssetPath)
         {
+            CopyToAsset(sourcePath, destinationAssetPath, "Tileset image was not found.");
+        }
+
+        private static void CopyToAsset(string sourcePath, string destinationAssetPath, string missingMessage)
+        {
             if (!File.Exists(sourcePath))
-                throw new FileNotFoundException("Tileset image was not found.", sourcePath);
+                throw new FileNotFoundException(missingMessage, sourcePath);
             var destinationFullPath = AssetPathToFullPath(destinationAssetPath);
             Directory.CreateDirectory(Path.GetDirectoryName(destinationFullPath) ?? throw new InvalidOperationException("Tileset destination has no parent."));
             File.Copy(sourcePath, destinationFullPath, true);
             AssetDatabase.ImportAsset(destinationAssetPath, ImportAssetOptions.ForceSynchronousImport | ImportAssetOptions.ForceUpdate);
+        }
+
+        private static string ResolveBundleFile(string bundleDirectory, string relativePath)
+        {
+            if (string.IsNullOrWhiteSpace(relativePath) || Path.IsPathRooted(relativePath))
+                throw new InvalidOperationException("Bundle data paths must be relative files.");
+            var bundleRoot = Path.GetFullPath(bundleDirectory).TrimEnd(Path.DirectorySeparatorChar, Path.AltDirectorySeparatorChar) + Path.DirectorySeparatorChar;
+            var resolved = Path.GetFullPath(Path.Combine(bundleDirectory, relativePath));
+            if (!resolved.StartsWith(bundleRoot, StringComparison.OrdinalIgnoreCase))
+                throw new InvalidOperationException("Bundle data paths must remain inside the bundle directory.");
+            return resolved;
         }
 
         private static void ConfigureAndSliceTexture(string assetPath, BundleManifest manifest, TileSlice[] slices)

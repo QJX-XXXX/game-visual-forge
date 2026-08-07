@@ -19,6 +19,7 @@ namespace GameVisualForge.Unity
         public AtlasPage[] tilesets;
         public string slices;
         public string placement;
+        public string building_entrances;
         public string quality_report;
         public string quality_report_sha256;
         public string generated_root;
@@ -28,6 +29,16 @@ namespace GameVisualForge.Unity
         public string filter_mode;
         public string palette_name;
         public string prefab_name;
+        public string approval_workflow;
+        public string style_approval;
+        public string style_approval_sha256;
+        public string assembled_approval;
+        public string assembled_approval_sha256;
+        public string objects;
+        public string collision;
+        public string asset_set;
+        public string gameplay_crop;
+        public string collision_preview;
     }
 
     [Serializable]
@@ -72,6 +83,56 @@ namespace GameVisualForge.Unity
     }
 
     [Serializable]
+    internal sealed class ObjectManifest
+    {
+        public int schema_version;
+        public ObjectAsset[] assets;
+        public ObjectPlacement[] placements;
+        public ObjectEntrance[] entrances;
+    }
+
+    [Serializable]
+    internal sealed class ObjectAsset
+    {
+        public string id;
+        public string kind;
+        public string path;
+        public int pixel_width;
+        public int pixel_height;
+        public int pixels_per_unit;
+        public GridRectData footprint;
+        public GridCellData[] collision_cells;
+        public GridCellData doorway_cell;
+    }
+
+    [Serializable]
+    internal sealed class ObjectPlacement
+    {
+        public string id;
+        public string asset_id;
+        public int x;
+        public int y;
+        public int sorting_order;
+    }
+
+    [Serializable]
+    internal sealed class ObjectEntrance
+    {
+        public string id;
+        public string instance_id;
+        public string connection_target;
+        public string target_scene_id;
+        public string target_spawn_id;
+        public GridCellData cell;
+    }
+
+    [Serializable]
+    internal sealed class GridCellData { public int x; public int y; }
+
+    [Serializable]
+    internal sealed class GridRectData { public int x; public int y; public int width; public int height; }
+
+    [Serializable]
     internal sealed class MapSize
     {
         public int width;
@@ -106,6 +167,7 @@ namespace GameVisualForge.Unity
             public string[] tileset_assets;
             public string palette_prefab;
             public string tilemap_prefab;
+            public string building_entrances_asset;
             public string[] tile_assets;
             public int tile_count;
             public int layer_count;
@@ -115,6 +177,10 @@ namespace GameVisualForge.Unity
             public string scene_path;
             public bool scene_dirty;
             public string unity_import_report;
+            public string objects_manifest;
+            public string collision_manifest;
+            public string[] object_prefabs;
+            public int object_count;
         }
     }
 
@@ -131,6 +197,10 @@ namespace GameVisualForge.Unity
         public string instance_name;
         public string scene_path;
         public bool scene_dirty;
+        public string objects_manifest;
+        public string collision_manifest;
+        public string[] object_prefab_paths;
+        public int object_count;
 
         public ScenePlacementResult(string action, string name, string path, bool dirty)
         {
@@ -159,6 +229,7 @@ namespace GameVisualForge.Unity
         public int layer_count;
         public string palette_path;
         public string prefab_path;
+        public string building_entrances_asset;
         public string scene_action;
         public string scene_path;
         public bool scene_dirty;
