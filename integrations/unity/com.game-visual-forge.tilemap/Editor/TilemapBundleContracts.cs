@@ -39,6 +39,12 @@ namespace GameVisualForge.Unity
         public string asset_set;
         public string gameplay_crop;
         public string collision_preview;
+        public string foundation;
+        public string foundation_sha256;
+        public string foundation_prompt;
+        public string foundation_prompt_sha256;
+        public string foundation_recomposition;
+        public string foundation_recomposition_sha256;
     }
 
     [Serializable]
@@ -181,6 +187,8 @@ namespace GameVisualForge.Unity
             public string collision_manifest;
             public string[] object_prefabs;
             public int object_count;
+            public string foundation;
+            public string foundation_recomposition;
         }
     }
 
@@ -233,5 +241,7 @@ namespace GameVisualForge.Unity
         public string collision_manifest;
         public string[] object_prefab_paths;
         public int object_count;
+        public string foundation;
+        public string foundation_recomposition;
     }
 }

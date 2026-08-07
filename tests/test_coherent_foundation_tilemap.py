@@ -133,5 +133,17 @@ class CoherentFoundationProcessingTests(unittest.TestCase):
             self.assertEqual(report.deterministic_status.value, "failed")
 
 
+class CoherentFoundationRepositoryTests(unittest.TestCase):
+    def test_skill_and_unity_importer_document_foundation_preflight(self) -> None:
+        skill = (ROOT / "skills/forge-2d-map/SKILL.md").read_text(encoding="utf-8")
+        contracts = (ROOT / "integrations/unity/com.game-visual-forge.tilemap/Editor/TilemapBundleContracts.cs").read_text(encoding="utf-8")
+        importer = (ROOT / "integrations/unity/com.game-visual-forge.tilemap/Editor/TilemapBundleImporter.cs").read_text(encoding="utf-8")
+        self.assertIn("COHERENT_FOUNDATION", skill)
+        self.assertIn("foundation-recomposition.png", skill)
+        self.assertIn("foundation_recomposition_sha256", contracts)
+        self.assertIn("ValidateCoherentFoundation", importer)
+        self.assertLess(importer.index("ValidateCoherentFoundation"), importer.index("EnsureAssetFolder(textureFolder)"))
+
+
 if __name__ == "__main__":
     unittest.main()

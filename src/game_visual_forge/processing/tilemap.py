@@ -8,7 +8,7 @@ from typing import Any
 from game_visual_forge.contracts import AtlasPageDefinition, RawImageRecord, TileMapRequest, TileMapSourceSet, TileSetProfile, load_tilemap_source_set
 from game_visual_forge.contracts.serialization import dump_json
 from game_visual_forge.errors import ErrorCode, ForgeError
-from game_visual_forge.processing.images import _load_pillow, verify_image_unchanged
+from game_visual_forge.processing.images import _load_pillow, sha256_file, verify_image_unchanged
 from game_visual_forge.processing.tilemap_quality import analyze_tilemap_quality, render_seam_preview, render_usage_preview, seam_samples, _tile_images
 from game_visual_forge.processing.tilemap_objects import emit_object_artifacts
 
@@ -255,6 +255,15 @@ def process_tilemap(
         ],
     })
 
+    foundation_manifest = {}
+    if request.tileset_profile is TileSetProfile.COHERENT_FOUNDATION:
+        foundation_manifest = {
+            "foundation": "foundation.png",
+            "foundation_sha256": sha256_file(staging / "foundation.png"),
+            "foundation_prompt": "foundation.prompt.txt",
+            "foundation_prompt_sha256": sha256_file(staging / "foundation.prompt.txt"),
+            "foundation_recomposition": "foundation-recomposition.png",
+        }
     dump_json(staging / "unity-tilemap.json", {
         "schema_version": 1,
         "asset_id": request.asset_id,
@@ -281,9 +290,7 @@ def process_tilemap(
         "asset_set": "asset-set.json" if request.object_assets else None,
         "gameplay_crop": "tilemap-gameplay-crop.png" if request.gameplay_crop is not None else None,
         "collision_preview": "tilemap-collision-preview.png" if request.object_assets else None,
-        "foundation": "foundation.png" if request.tileset_profile is TileSetProfile.COHERENT_FOUNDATION else None,
-        "foundation_prompt": "foundation.prompt.txt" if request.tileset_profile is TileSetProfile.COHERENT_FOUNDATION else None,
-        "foundation_recomposition": "foundation-recomposition.png" if request.tileset_profile is TileSetProfile.COHERENT_FOUNDATION else None,
+        **foundation_manifest,
     })
     preview = _compose_preview(atlases, request)
     preview.save(staging / "tilemap-preview.png", format="PNG")
@@ -294,6 +301,11 @@ def process_tilemap(
         matches = preview.size == foundation.size and preview.tobytes() == foundation.tobytes()
         metrics = replace(metrics, needs_attention=not matches or bool(metrics.invalid_bridge_connectivity), foundation_recomposition_match=matches)
         foundation_paths["foundation_recomposition_path"] = "foundation-recomposition.png"
+        unity_path = staging / "unity-tilemap.json"
+        from game_visual_forge.contracts.serialization import load_json
+        unity_payload = load_json(unity_path)
+        unity_payload["foundation_recomposition_sha256"] = sha256_file(staging / "foundation-recomposition.png")
+        dump_json(unity_path, unity_payload)
     dump_json(staging / "tilemap-quality-metrics.json", metrics.to_dict())
     render_seam_preview(preview, seam_samples(atlases, request), request).save(staging / "tile-seam-preview.png", format="PNG")
     render_usage_preview(_tile_images(atlases, request), metrics.usage_counts, request).save(staging / "tile-usage-preview.png", format="PNG")

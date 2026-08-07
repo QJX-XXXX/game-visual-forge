@@ -1,6 +1,6 @@
 ---
 name: forge-2d-map
-description: "Generate and integrate playable 2D game maps with demand-driven terrain Tilemaps, complete building/prop objects, collision and traversal contracts, deterministic quality gates, and explicit user approvals. Use for RPG villages, overworlds, arenas, bridges, water, Unity Tilemaps, and map previews/imports."
+description: "Generate and integrate playable 2D game maps with demand-driven or coherent-foundation terrain Tilemaps, complete building/prop objects, collision and traversal contracts, deterministic quality gates, and explicit user approvals. Use for RPG villages, overworlds, arenas, bridges, water, Unity Tilemaps, and map previews/imports."
 ---
 
 # Forge 2D Map
@@ -19,6 +19,7 @@ Use this skill when the requested map must be a real runtime map rather than a d
 - Use a hybrid delivery for playable maps: terrain, roads, water, banks, bridge deck, and other repeatable ground use Tilemap layers; complete buildings and meaningful props use independent Sprite/Prefab objects.
 - Never put building façades, roofs, doors, complete-building crops, or large collision-critical subjects into repeatable terrain Tiles.
 - Use demand-driven Tilesets. Declare only the terrain semantics the layout needs; do not fill an atlas to a fixed quota. `TileSetProfile.DEMAND_DRIVEN` permits one to four pages with each page no larger than 4×4 and `max_tile_count` no larger than declared capacity.
+- When independently generated terrain Tiles cannot preserve bridge, bank, path, or building-pad continuity, use `TileSetProfile.COHERENT_FOUNDATION`. Generate one foundation-only image at `map_width * tile_width` by `map_height * tile_height`, declare one unique Tile per map cell, and require `foundation.png` to recompose exactly as `foundation-recomposition.png`. Keep buildings and runtime-controlled props separate.
 - Water is blocked by default. A bridge is traversal-critical only when `BridgeConnectivityRule.traversable=true`; then declare its span and positive `minimum_traversal_width`, and verify the approach/bridge corridor.
 - Road global connectivity is optional. Set `road_connectivity_policy` to `none`, `partial`, or `required`; only declared `road_connection_requirements` are tested.
 - Buildings need complete object images, footprint-relative collision cells, a clear doorway cell, placements, and object entrances. Unity receives `Buildings`, `Props`, and `Metadata` hierarchies.
@@ -57,6 +58,8 @@ The style gate requires exactly `style-sample` and `art-direction`. The assemble
 Inspect at least `tilemap-preview.png`, `tilemap-gameplay-crop.png`, `tilemap-collision-preview.png`, `tile-seam-preview.png`, `tile-usage-preview.png`, `tilemap-quality-metrics.json`, `tilemap-collision.json`, and `map-quality-report.json`.
 
 Deterministic checks cover atlas dimensions/slices, semantic adjacency, clipping, object alpha and silhouette, duplicate/overlapping objects, density limits, doorway reachability, water collision, declared road policy, and traversable bridge width/connectivity. Any deterministic failure blocks publication. `TWO_GATE` also blocks publication/import when either approval is missing, stale, agent-authored, extra-role, or hash-mismatched. Do not pass `--visual-review` for a two-gate request.
+
+For `coherent_foundation`, also inspect `foundation.png`, `foundation.prompt.txt`, and `foundation-recomposition.png`. Slicing must be one-to-one and the recomposition must match the foundation exactly; rejected runs must never be reused as source art.
 
 To reject an unusable run while preserving evidence:
 

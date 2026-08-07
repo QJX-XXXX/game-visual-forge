@@ -1,4 +1,4 @@
 interface:
   display_name: "Forge 2D Map"
-  short_description: "Build playable hybrid 2D maps with approval gates"
-  default_prompt: "Use $forge-2d-map to plan, generate, validate, and integrate a playable hybrid Tilemap/object map with explicit user approval gates."
+  short_description: "Build coherent playable 2D maps with approval gates"
+  default_prompt: "Use $forge-2d-map to plan, generate, validate, and integrate a playable hybrid or coherent-foundation Tilemap/object map with explicit user approval gates."

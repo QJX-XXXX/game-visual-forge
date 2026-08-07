@@ -27,7 +27,7 @@ SKILLS = {
         ),
     },
     "forge-2d-map": {
-        "description": 'description: "Generate and integrate playable 2D game maps with demand-driven terrain Tilemaps, complete building/prop objects, collision and traversal contracts, deterministic quality gates, and explicit user approvals. Use for RPG villages, overworlds, arenas, bridges, water, Unity Tilemaps, and map previews/imports."',
+        "description": 'description: "Generate and integrate playable 2D game maps with demand-driven or coherent-foundation terrain Tilemaps, complete building/prop objects, collision and traversal contracts, deterministic quality gates, and explicit user approvals. Use for RPG villages, overworlds, arenas, bridges, water, Unity Tilemaps, and map previews/imports."',
         "required_body_fragments": (
             "Agent 原生工具",
             "即梦",

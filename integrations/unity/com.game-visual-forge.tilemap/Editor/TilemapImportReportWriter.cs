@@ -49,6 +49,8 @@ namespace GameVisualForge.Unity
                 collision_manifest = result.collision_manifest,
                 object_prefab_paths = result.object_prefabs ?? Array.Empty<string>(),
                 object_count = result.object_count,
+                foundation = result.foundation,
+                foundation_recomposition = result.foundation_recomposition,
             };
             var reportsFolder = $"{result.generated_root}/Reports";
             TilemapBundleImporter.EnsureAssetFolder(reportsFolder);

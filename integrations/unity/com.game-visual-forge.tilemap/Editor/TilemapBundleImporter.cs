@@ -65,6 +65,7 @@ namespace GameVisualForge.Unity
             TilemapApprovalValidator.Validate(manifestFullPath, manifest);
 
             var bundleDirectory = Path.GetDirectoryName(manifestFullPath) ?? throw new InvalidOperationException("Bundle manifest has no parent directory.");
+            ValidateCoherentFoundation(bundleDirectory, manifest);
             var slices = ReadJson<SliceManifest>(Path.Combine(bundleDirectory, manifest.slices));
             var placement = ReadJson<PlacementManifest>(Path.Combine(bundleDirectory, manifest.placement));
             ValidateBundleData(slices, placement);
@@ -163,6 +164,8 @@ namespace GameVisualForge.Unity
                 collision_manifest = objectResult == null ? null : $"{dataFolder}/tilemap-collision.json",
                 object_prefabs = objectResult == null ? Array.Empty<string>() : objectResult.object_prefabs,
                 object_count = objectResult == null ? 0 : objectResult.object_count,
+                foundation = manifest.foundation,
+                foundation_recomposition = manifest.foundation_recomposition,
             };
             if (mode == ImportMode.ImportAndPlace)
             {
@@ -232,6 +235,30 @@ namespace GameVisualForge.Unity
             if (manifest.pixels_per_unit <= 0)
                 throw new InvalidOperationException("pixels_per_unit must be positive.");
             ValidateAssetPath(manifest.generated_root);
+        }
+
+        private static void ValidateCoherentFoundation(string bundleDirectory, BundleManifest manifest)
+        {
+            if (string.IsNullOrWhiteSpace(manifest.foundation))
+                return;
+            if (string.IsNullOrWhiteSpace(manifest.foundation_prompt) || string.IsNullOrWhiteSpace(manifest.foundation_recomposition))
+                throw new InvalidOperationException("Coherent foundation bundles require foundation, prompt, and recomposition artifacts.");
+            var foundationPath = ResolveBundleFile(bundleDirectory, manifest.foundation);
+            var promptPath = ResolveBundleFile(bundleDirectory, manifest.foundation_prompt);
+            var recompositionPath = ResolveBundleFile(bundleDirectory, manifest.foundation_recomposition);
+            if (!File.Exists(foundationPath) || !File.Exists(promptPath) || !File.Exists(recompositionPath))
+                throw new FileNotFoundException("Coherent foundation bundle artifacts were not found.");
+            if (string.IsNullOrWhiteSpace(File.ReadAllText(promptPath)))
+                throw new InvalidOperationException("Coherent foundation prompt must not be empty.");
+            var foundationHash = TilemapImportReportWriter.ComputeSha256(foundationPath);
+            var promptHash = TilemapImportReportWriter.ComputeSha256(promptPath);
+            var recompositionHash = TilemapImportReportWriter.ComputeSha256(recompositionPath);
+            if (!string.Equals(manifest.foundation_sha256, foundationHash, StringComparison.OrdinalIgnoreCase) ||
+                !string.Equals(manifest.foundation_prompt_sha256, promptHash, StringComparison.OrdinalIgnoreCase) ||
+                !string.Equals(manifest.foundation_recomposition_sha256, recompositionHash, StringComparison.OrdinalIgnoreCase))
+                throw new InvalidOperationException("Coherent foundation artifact SHA-256 does not match the Unity manifest.");
+            if (!string.Equals(foundationHash, recompositionHash, StringComparison.OrdinalIgnoreCase))
+                throw new InvalidOperationException("Coherent foundation recomposition must be source-identical before Unity import.");
         }
 
         private static void ValidateBundleData(SliceManifest slices, PlacementManifest placement)
