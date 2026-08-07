@@ -67,7 +67,9 @@ namespace GameVisualForge.Unity
                     var parent = asset.kind == "building" ? buildings : props;
                     var instance = (GameObject)PrefabUtility.InstantiatePrefab(source, parent);
                     instance.name = placement.id;
-                    instance.transform.localPosition = new Vector3(placement.x * cellWidth, (mapHeight - placement.y - asset.footprint.height) * cellHeight, placement.sorting_order * 0.001f);
+                    instance.transform.localPosition = ResolvePlacementLocalPosition(placement, asset, mapHeight, cellWidth, cellHeight);
+                    foreach (var renderer in instance.GetComponentsInChildren<SpriteRenderer>(true))
+                        renderer.sortingOrder = placement.sorting_order;
                 }
                 PrefabUtility.SaveAsPrefabAsset(root, prefabPath);
             }
@@ -108,13 +110,33 @@ namespace GameVisualForge.Unity
                 {
                     var colliderObject = new GameObject($"Collision-{cell.x}-{cell.y}");
                     colliderObject.transform.SetParent(root.transform, false);
-                    colliderObject.transform.localPosition = new Vector3(cell.x * cellWidth, -cell.y * cellHeight, 0f);
+                    colliderObject.transform.localPosition = ResolveCollisionCellLocalPosition(cell, asset.footprint, cellWidth, cellHeight);
                     var collider = colliderObject.AddComponent<BoxCollider2D>();
                     collider.size = new Vector2(cellWidth, cellHeight);
                 }
             }
             PrefabUtility.SaveAsPrefabAsset(root, path);
             UnityEngine.Object.DestroyImmediate(root);
+        }
+
+        internal static Vector3 ResolvePlacementLocalPosition(ObjectPlacement placement, ObjectAsset asset, int mapHeight, float cellWidth, float cellHeight)
+        {
+            if (asset?.footprint == null || asset.footprint.width <= 0 || asset.footprint.height <= 0)
+                throw new InvalidOperationException("Object assets require a positive footprint before placement.");
+            return new Vector3(
+                (placement.x + asset.footprint.width * 0.5f) * cellWidth,
+                (mapHeight - placement.y - asset.footprint.height * 0.5f) * cellHeight,
+                placement.sorting_order * 0.001f);
+        }
+
+        internal static Vector3 ResolveCollisionCellLocalPosition(GridCellData cell, GridRectData footprint, float cellWidth, float cellHeight)
+        {
+            if (footprint == null || footprint.width <= 0 || footprint.height <= 0)
+                throw new InvalidOperationException("Object assets require a positive footprint before collider placement.");
+            return new Vector3(
+                (cell.x + 0.5f - footprint.width * 0.5f) * cellWidth,
+                (footprint.height * 0.5f - cell.y - 0.5f) * cellHeight,
+                0f);
         }
 
         private static void CopyToAsset(string bundleRoot, string relativePath, string assetPath)

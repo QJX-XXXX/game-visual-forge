@@ -163,6 +163,29 @@ namespace GameVisualForge.Unity.Tests
         }
 
         [Test]
+        public void HybridObjectPlacementCentersSpriteOverTopLeftGridFootprint()
+        {
+            var placement = new ObjectPlacement { x = 0, y = 0, sorting_order = 100 };
+            var asset = new ObjectAsset { footprint = new GridRectData { width = 4, height = 3 } };
+
+            var position = TilemapObjectImporter.ResolvePlacementLocalPosition(placement, asset, 12, 1f, 1f);
+
+            Assert.That(position, Is.EqualTo(new Vector3(2f, 10.5f, 0.1f)));
+        }
+
+        [Test]
+        public void HybridObjectColliderCentersCellsRelativeToSpritePivot()
+        {
+            var footprint = new GridRectData { width = 4, height = 3 };
+
+            var topLeft = TilemapObjectImporter.ResolveCollisionCellLocalPosition(new GridCellData { x = 0, y = 0 }, footprint, 1f, 1f);
+            var doorwayRow = TilemapObjectImporter.ResolveCollisionCellLocalPosition(new GridCellData { x = 2, y = 2 }, footprint, 1f, 1f);
+
+            Assert.That(topLeft, Is.EqualTo(new Vector3(-1.5f, 1f, 0f)));
+            Assert.That(doorwayRow, Is.EqualTo(new Vector3(0.5f, -1f, 0f)));
+        }
+
+        [Test]
         public void AssetsOnlyImportDoesNotChangeActiveSceneRootsAndWritesReport()
         {
             var manifestPath = CreateTask7BundleFixture(_task7BundleRoot, _task7GeneratedRoot);
