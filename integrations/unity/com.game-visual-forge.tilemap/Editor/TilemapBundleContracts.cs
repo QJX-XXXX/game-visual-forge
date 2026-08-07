@@ -197,10 +197,6 @@ namespace GameVisualForge.Unity
         public string instance_name;
         public string scene_path;
         public bool scene_dirty;
-        public string objects_manifest;
-        public string collision_manifest;
-        public string[] object_prefab_paths;
-        public int object_count;
 
         public ScenePlacementResult(string action, string name, string path, bool dirty)
         {
@@ -233,5 +229,9 @@ namespace GameVisualForge.Unity
         public string scene_action;
         public string scene_path;
         public bool scene_dirty;
+        public string objects_manifest;
+        public string collision_manifest;
+        public string[] object_prefab_paths;
+        public int object_count;
     }
 }
