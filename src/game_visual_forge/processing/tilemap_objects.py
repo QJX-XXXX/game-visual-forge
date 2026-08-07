@@ -41,6 +41,7 @@ def build_object_manifest(request: TileMapRequest, copied_paths: dict[str, str])
 
 def build_collision_manifest(request: TileMapRequest) -> dict[str, Any]:
     assets = {item.asset_id: item for item in request.object_assets}
+    tile_definitions = {item.tile_id: item for item in request.tiles}
     blockers: list[dict[str, int | str]] = []
     for placement in request.object_placements:
         definition = assets[placement.asset_id]
@@ -53,11 +54,23 @@ def build_collision_manifest(request: TileMapRequest) -> dict[str, Any]:
         if definition.doorway_cell is None:
             continue
         entrances.append({**entrance.to_dict(), "cell": {"x": placement.x + definition.doorway_cell.x, "y": placement.y + definition.doorway_cell.y}})
+    terrain_blockers = []
+    for layer in request.layers:
+        for index, tile_id in enumerate(layer.cells):
+            if tile_id is None or tile_definitions[tile_id].collider_type.value == "none":
+                continue
+            terrain_blockers.append({
+                "layer_id": layer.layer_id,
+                "tile_id": tile_id,
+                "x": index % request.map_width,
+                "y": index // request.map_width,
+            })
     return {
         "schema_version": 1,
         "map_id": request.asset_id,
         "coordinate_system": "top-left-grid",
         "blocked_cells": blockers,
+        "terrain_blocked_cells": terrain_blockers,
         "entrances": entrances,
         "road_connectivity_policy": request.road_connectivity_policy.value,
         "road_connection_requirements": [item.to_dict() for item in request.road_connection_requirements],
@@ -102,6 +115,9 @@ def emit_object_artifacts(staging: Path, repo_root: Path, request: TileMapReques
     for blocker in dump["collision"]["blocked_cells"]:
         x, y = blocker["x"] * request.tile_width, blocker["y"] * request.tile_height
         draw.rectangle((x, y, x + request.tile_width - 1, y + request.tile_height - 1), fill=(220, 40, 40, 100), outline=(220, 40, 40, 220))
+    for blocker in dump["collision"]["terrain_blocked_cells"]:
+        x, y = blocker["x"] * request.tile_width, blocker["y"] * request.tile_height
+        draw.rectangle((x, y, x + request.tile_width - 1, y + request.tile_height - 1), fill=(40, 90, 220, 90), outline=(40, 90, 220, 210))
     overlay.save(staging / "tilemap-collision-preview.png", format="PNG")
     terrain_hashes = []
     for source in source_set.pages:

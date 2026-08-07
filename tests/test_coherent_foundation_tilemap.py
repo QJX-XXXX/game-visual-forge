@@ -11,6 +11,7 @@ from game_visual_forge.contracts import (
     AtlasPageDefinition,
     SourcePreference,
     SourceType,
+    TileColliderType,
     TileDefinition,
     TileLayer,
     TileAtlasSourceRecord,
@@ -21,6 +22,7 @@ from game_visual_forge.contracts import (
 )
 from game_visual_forge.processing.images import ingest_image, sha256_file
 from game_visual_forge.processing.tilemap import process_tilemap
+from game_visual_forge.processing.tilemap_objects import build_collision_manifest
 from game_visual_forge.quality.tilemap import build_tilemap_asset_manifest, validate_tilemap_outputs
 
 
@@ -77,6 +79,13 @@ class CoherentFoundationContractTests(unittest.TestCase):
 
 
 class CoherentFoundationProcessingTests(unittest.TestCase):
+    def test_collision_manifest_includes_water_but_not_walkable_tiles(self) -> None:
+        request = coherent_request()
+        water = TileDefinition("cell-0-0", 0, 0, collider_type=TileColliderType.SPRITE, semantic_role=TileSemanticRole.WATER, atlas_id="foundation")
+        request = TileMapRequest(**{**request.__dict__, "tiles": (water, *request.tiles[1:])})
+        collision = build_collision_manifest(request)
+        self.assertEqual(collision["terrain_blocked_cells"], [{"layer_id": "ground", "tile_id": "cell-0-0", "x": 0, "y": 0}])
+
     def test_processing_recomposes_foundation_pixel_identically(self) -> None:
         with tempfile.TemporaryDirectory() as directory:
             root = Path(directory)
