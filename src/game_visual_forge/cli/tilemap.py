@@ -19,8 +19,10 @@ from game_visual_forge.contracts import (
     TileMapRequest,
     TileMapSourceSet,
     TileAtlasSourceRecord,
+    TileObjectSourceRecord,
     RejectedArtifact,
     parse_atlas_page_argument,
+    parse_object_asset_argument,
     load_json,
 )
 from game_visual_forge.contracts.serialization import dump_json
@@ -127,6 +129,7 @@ def run_tilemap_ingest(
     out_path: Path,
     state_path: Path,
     now: str,
+    object_asset_arguments: list[str] | None = None,
 ) -> dict[str, Any]:
     request, fingerprint = _request(request_path)
     decision = MapSourceDecision.from_dict(load_json(decision_path))
@@ -135,6 +138,8 @@ def run_tilemap_ingest(
     if (image_path is None) == (not atlas_page_arguments):
         raise ValueError("provide exactly one of --image or --atlas-page")
     if image_path is not None:
+        if request.object_assets:
+            raise ValueError("hybrid tilemap ingest requires atlas pages and --object-asset arguments")
         record = ingest_image(repo_root, image_path, SourceType.EXISTING_FILE, fingerprint, provider=decision.selected_provider)
         dump_json(out_path, record.to_dict())
         output_path = str(out_path.name)
@@ -143,7 +148,15 @@ def run_tilemap_ingest(
         for argument in atlas_page_arguments:
             atlas_id, page_path = parse_atlas_page_argument(argument)
             pages.append(TileAtlasSourceRecord(atlas_id, ingest_image(repo_root, page_path, SourceType.EXISTING_FILE, fingerprint, provider=decision.selected_provider)))
-        source_set = TileMapSourceSet(1, tuple(pages))
+        object_asset_arguments = object_asset_arguments or []
+        objects = []
+        for argument in object_asset_arguments:
+            asset_id, object_path = parse_object_asset_argument(argument)
+            objects.append(TileObjectSourceRecord(asset_id, ingest_image(repo_root, object_path, SourceType.EXISTING_FILE, fingerprint, provider=decision.selected_provider)))
+        expected_object_ids = tuple(item.asset_id for item in request.object_assets)
+        if tuple(item.asset_id for item in objects) != expected_object_ids:
+            raise ValueError(f"object asset arguments must match request object assets: expected {expected_object_ids}")
+        source_set = TileMapSourceSet(1, tuple(pages), tuple(objects))
         expected_ids = tuple(page.atlas_id for page in request.resolved_atlas_pages)
         if tuple(page.atlas_id for page in source_set.pages) != expected_ids:
             raise ValueError(f"atlas page arguments must match request pages: expected {expected_ids}")

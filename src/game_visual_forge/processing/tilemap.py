@@ -9,6 +9,7 @@ from game_visual_forge.contracts.serialization import dump_json
 from game_visual_forge.errors import ErrorCode, ForgeError
 from game_visual_forge.processing.images import _load_pillow, verify_image_unchanged
 from game_visual_forge.processing.tilemap_quality import analyze_tilemap_quality, render_seam_preview, render_usage_preview, seam_samples, _tile_images
+from game_visual_forge.processing.tilemap_objects import emit_object_artifacts
 
 
 @dataclass(frozen=True)
@@ -25,6 +26,12 @@ class TileMapProcessingResult:
     usage_preview_path: str
     processing_steps: tuple[str, ...]
     needs_attention: bool
+    building_entrances_path: str = ""
+    objects_path: str = ""
+    collision_path: str = ""
+    asset_set_path: str = ""
+    gameplay_crop_path: str = ""
+    collision_preview_path: str = ""
 
     @property
     def tileset_path(self) -> str:
@@ -47,6 +54,12 @@ class TileMapProcessingResult:
             "usage_preview_path": self.usage_preview_path,
             "processing_steps": list(self.processing_steps),
             "needs_attention": self.needs_attention,
+            "building_entrances_path": self.building_entrances_path,
+            "objects_path": self.objects_path,
+            "collision_path": self.collision_path,
+            "asset_set_path": self.asset_set_path,
+            "gameplay_crop_path": self.gameplay_crop_path,
+            "collision_preview_path": self.collision_preview_path,
         }
 
     @classmethod
@@ -69,6 +82,12 @@ class TileMapProcessingResult:
             usage_preview_path=str(value.get("usage_preview_path", "")),
             processing_steps=tuple(str(item) for item in value["processing_steps"]),
             needs_attention=bool(value["needs_attention"]),
+            building_entrances_path=str(value.get("building_entrances_path", "")),
+            objects_path=str(value.get("objects_path", "")),
+            collision_path=str(value.get("collision_path", "")),
+            asset_set_path=str(value.get("asset_set_path", "")),
+            gameplay_crop_path=str(value.get("gameplay_crop_path", "")),
+            collision_preview_path=str(value.get("collision_preview_path", "")),
         )
 
 
@@ -102,7 +121,7 @@ def process_tilemap(
     record: RawImageRecord | TileMapSourceSet,
     output_dir: Path,
 ) -> TileMapProcessingResult:
-    source_set = load_tilemap_source_set(record.to_dict(), request) if isinstance(record, RawImageRecord) else record
+    source_set = load_tilemap_source_set(record.to_dict(), request)
     if not isinstance(source_set, TileMapSourceSet):
         raise TypeError("tilemap source must be RawImageRecord or TileMapSourceSet")
     for page in source_set.pages:
@@ -196,7 +215,25 @@ def process_tilemap(
         "schema_version": 1,
         "coordinate_origin": "bottom-left",
         "map_size": {"width": request.map_width, "height": request.map_height},
+        "bridge_connectivity_rules": [rule.to_dict() for rule in request.bridge_connectivity_rules],
         "layers": placement_layers,
+    })
+
+    dump_json(staging / "building-entrances.json", {
+        "schema_version": 1,
+        "map_id": request.asset_id,
+        "coordinate_system": "top-left-grid",
+        "transition_implementation": "out-of-scope",
+        "entries": [
+            {
+                "id": entrance.entrance_id,
+                "layer_id": entrance.layer_id,
+                "cell": {"x": entrance.x, "y": entrance.y},
+                "target_scene_id": entrance.target_scene_id,
+                "target_spawn_id": entrance.target_spawn_id,
+            }
+            for entrance in request.building_entrances
+        ],
     })
 
     dump_json(staging / "unity-tilemap.json", {
@@ -209,6 +246,7 @@ def process_tilemap(
         "tilesets": [{"atlas_id": item["atlas_id"], "path": item["path"]} for item in atlas_metadata],
         "slices": "tileset-slices.json",
         "placement": "tilemap-placement.json",
+        "building_entrances": "building-entrances.json",
         "palette_name": request.palette_name,
         "generated_root": request.unity_generated_root,
         "tile_size_mode": request.tile_size_mode.value,
@@ -218,6 +256,7 @@ def process_tilemap(
         "filter_mode": request.filter_mode.value,
         "prefab_name": f"{request.asset_id}-tilemap",
         "required_packages": ["com.unity.2d.sprite", "com.unity.2d.tilemap"],
+        "bridge_connectivity_rules": [rule.to_dict() for rule in request.bridge_connectivity_rules],
     })
     preview = _compose_preview(atlases, request)
     preview.save(staging / "tilemap-preview.png", format="PNG")
@@ -225,6 +264,10 @@ def process_tilemap(
     dump_json(staging / "tilemap-quality-metrics.json", metrics.to_dict())
     render_seam_preview(preview, seam_samples(atlases, request), request).save(staging / "tile-seam-preview.png", format="PNG")
     render_usage_preview(_tile_images(atlases, request), metrics.usage_counts, request).save(staging / "tile-usage-preview.png", format="PNG")
+
+    object_paths = {}
+    if request.object_assets:
+        object_paths = emit_object_artifacts(staging, repo_root, request, source_set, preview)
 
     return TileMapProcessingResult(
         schema_version=1,
@@ -242,8 +285,12 @@ def process_tilemap(
             "validate-atlas-grid",
             "emit-unity-sprite-slices",
             "emit-tilemap-placement",
+            "emit-building-entrances",
             "emit-unity-import-manifest",
             "compose-tilemap-preview",
+            "validate-bridge-connectivity",
         ),
         needs_attention=metrics.needs_attention,
+        building_entrances_path="building-entrances.json",
+        **object_paths,
     )
