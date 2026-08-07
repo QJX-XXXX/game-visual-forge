@@ -1,4 +1,5 @@
 from .asset import AssetBrief, AssetKind, SourcePreference
+from .approval import ApprovalArtifact, ApprovalStatus, TilemapApprovalGate, UserApprovalRecord, record_user_approval, validate_user_approval, validate_user_approval_files
 from .confirmation import PaidConfirmation
 from .execution import ExecutionPlan, PlanStep
 from .job import JobState, JobStatus
@@ -72,6 +73,13 @@ from .tilemap_sources import TileAtlasSourceRecord, TileMapSourceSet, TileObject
 
 __all__ = [
     "ArtifactRecord",
+    "ApprovalArtifact",
+    "ApprovalStatus",
+    "TilemapApprovalGate",
+    "UserApprovalRecord",
+    "record_user_approval",
+    "validate_user_approval",
+    "validate_user_approval_files",
     "PaidConfirmation",
     "AssetBrief",
     "AssetKind",

@@ -6,6 +6,10 @@ from typing import Any
 
 from game_visual_forge.cli.planning import build_tilemap_execution_plan
 from game_visual_forge.contracts import (
+    TilemapApprovalGate,
+    UserApprovalRecord,
+    record_user_approval,
+    validate_user_approval_files,
     JobRejectionRecord,
     JobState,
     JobStatus,
@@ -78,6 +82,24 @@ def run_tilemap_reject(
     }
 
 
+def run_tilemap_record_approval(
+    gate: str,
+    artifact_arguments: list[str],
+    out_path: Path,
+    now: str,
+    repo_root: Path,
+) -> dict[str, Any]:
+    artifacts: list[tuple[str, Path]] = []
+    for argument in artifact_arguments:
+        role, separator, path = argument.partition("=")
+        if not separator or not role or not path:
+            raise ValueError("--artifact must use role=path syntax")
+        artifacts.append((role, Path(path)))
+    record = record_user_approval(TilemapApprovalGate(gate), tuple(artifacts), repo_root, now)
+    dump_json(out_path, record.to_dict())
+    return {"schema_version": 1, "status": record.status.value, "gate": record.gate.value, "approval_path": str(out_path)}
+
+
 def _request(path: Path) -> tuple[TileMapRequest, str]:
     request = TileMapRequest.from_dict(load_json(path))
     return request, fingerprint_request(request.to_dict())
@@ -130,8 +152,15 @@ def run_tilemap_ingest(
     state_path: Path,
     now: str,
     object_asset_arguments: list[str] | None = None,
+    style_approval_path: Path | None = None,
 ) -> dict[str, Any]:
     request, fingerprint = _request(request_path)
+    if request.approval_workflow.value == "two_gate":
+        if style_approval_path is None:
+            raise ValueError("two-gate tilemap ingest requires --style-approval")
+        validate_user_approval_files(load_json(style_approval_path), TilemapApprovalGate.STYLE_SAMPLE, repo_root)
+    elif style_approval_path is not None:
+        raise ValueError("legacy tilemap ingest does not accept --style-approval")
     decision = MapSourceDecision.from_dict(load_json(decision_path))
     if decision.request_fingerprint != fingerprint or decision.source_type is None:
         raise ValueError("source decision does not match tilemap request or has no source")
@@ -162,7 +191,11 @@ def run_tilemap_ingest(
             raise ValueError(f"atlas page arguments must match request pages: expected {expected_ids}")
         dump_json(out_path, source_set.to_dict())
         output_path = str(out_path.name)
-    state = transition_job(load_job(state_path), JobStatus.RUNNING, now=now)
+    state = load_job(state_path)
+    if style_approval_path is not None:
+        approval_relative = style_approval_path.resolve().relative_to(repo_root.resolve()).as_posix()
+        state = replace(state, artifact_paths=(*state.artifact_paths, approval_relative))
+    state = transition_job(state, JobStatus.RUNNING, now=now)
     save_job(state_path, state)
     return {"schema_version": 1, "status": state.status.value, "raw_image_path": output_path, "sha256": None if image_path is None else record.sha256}
 
@@ -200,23 +233,46 @@ def run_tilemap_validate(
     visual_review_path: Path | None,
     state_path: Path,
     now: str,
+    style_approval_path: Path | None = None,
+    assembled_approval_path: Path | None = None,
 ) -> dict[str, Any]:
     request, fingerprint = _request(request_path)
+    if (final_dir.resolve().parent / "rejection.json").is_file():
+        raise ValueError("rejected tilemap runs cannot be validated or published")
     payload = load_json(raw_image_path)
     record = RawImageRecord.from_dict(payload) if "pages" not in payload else TileMapSourceSet.from_dict(payload)
     source_fingerprint = record.request_fingerprint if isinstance(record, RawImageRecord) else record.pages[0].image.request_fingerprint
     result = TileMapProcessingResult.from_dict(load_json(processing_result_path))
     if source_fingerprint != fingerprint:
         raise ValueError("raw image fingerprint does not match tilemap request")
+    approvals = {}
+    if request.approval_workflow.value == "two_gate":
+        if visual_review_path is not None:
+            raise ValueError("two-gate tilemap validation does not accept --visual-review")
+        if style_approval_path is None or assembled_approval_path is None:
+            raise ValueError("two-gate tilemap validation requires style and assembled approvals")
+        approvals["style"] = validate_user_approval_files(load_json(style_approval_path), TilemapApprovalGate.STYLE_SAMPLE, repo_root)
+        approvals["assembled"] = validate_user_approval_files(load_json(assembled_approval_path), TilemapApprovalGate.ASSEMBLED_MAP, repo_root)
+        dump_json(staging_dir / "style-approval.json", approvals["style"].to_dict())
+        dump_json(staging_dir / "assembled-map-approval.json", approvals["assembled"].to_dict())
+    elif style_approval_path is not None or assembled_approval_path is not None:
+        raise ValueError("legacy tilemap validation does not accept two-gate approvals")
     report = validate_tilemap_outputs(staging_dir, request, record, result)
     if visual_review_path is not None:
         report = apply_tilemap_visual_review(report, load_json(visual_review_path))
+    elif approvals:
+        report = replace(report, visual_status=QualityStatus.PASSED)
     report_path = staging_dir / "map-quality-report.json"
     dump_json(report_path, report.to_dict())
     unity_path = staging_dir / result.unity_manifest_path
     unity = load_json(unity_path)
     unity["quality_report"] = report_path.name
     unity["quality_report_sha256"] = sha256_file(report_path)
+    if approvals:
+        unity["style_approval"] = "style-approval.json"
+        unity["style_approval_sha256"] = sha256_file(staging_dir / "style-approval.json")
+        unity["assembled_approval"] = "assembled-map-approval.json"
+        unity["assembled_approval_sha256"] = sha256_file(staging_dir / "assembled-map-approval.json")
     dump_json(unity_path, unity)
     manifest = build_tilemap_asset_manifest(staging_dir, request, record, result, report)
     dump_json(staging_dir / "asset-manifest.json", manifest.to_dict())
