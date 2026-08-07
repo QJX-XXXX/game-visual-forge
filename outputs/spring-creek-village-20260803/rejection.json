@@ -1,0 +1,215 @@
+{
+  "artifacts": [
+    {
+      "path": ".final.tile-staging-293c22963053-aee04fc8/building-entrances.json",
+      "sha256": "a49ff0682714a865c121dda5cce2281aa9b570e9854e33d5bba0e85aa759c68d"
+    },
+    {
+      "path": ".final.tile-staging-293c22963053-aee04fc8/processing-result.json",
+      "sha256": "a30bd4de5838e814e983b25b6737855807d3c293cd1205ebb8b4208d4fcd726a"
+    },
+    {
+      "path": ".final.tile-staging-293c22963053-aee04fc8/tile-seam-preview.png",
+      "sha256": "72e38e08a4bcdfd832245cc77e265a039ef51dcc3cac94725281c5569c409ed6"
+    },
+    {
+      "path": ".final.tile-staging-293c22963053-aee04fc8/tile-usage-preview.png",
+      "sha256": "4d0b8b2d3b5118a789e047b8997e08313bbaa0ea1180b26f51e0a9e6459cbe3a"
+    },
+    {
+      "path": ".final.tile-staging-293c22963053-aee04fc8/tilemap-placement.json",
+      "sha256": "271b51f6c0ae5967712eb2b634888a65d8e1eec0f5b76637b4fafb5fc4660170"
+    },
+    {
+      "path": ".final.tile-staging-293c22963053-aee04fc8/tilemap-preview.png",
+      "sha256": "da10aea52b7966528572a18daf1d3df99d534b5ba92f0fec4ca08a83ee956dfc"
+    },
+    {
+      "path": ".final.tile-staging-293c22963053-aee04fc8/tilemap-quality-metrics.json",
+      "sha256": "36096d125ac4d35238b00f555a2bb27af2616f9bd3d5314df573be91844af21a"
+    },
+    {
+      "path": ".final.tile-staging-293c22963053-aee04fc8/tileset-page-01.png",
+      "sha256": "293c22963053bfd835eb4698da3ef8f1a1b57e4880e83916d7d2b8a0374647cf"
+    },
+    {
+      "path": ".final.tile-staging-293c22963053-aee04fc8/tileset-page-02.png",
+      "sha256": "5af1815852917392b3f4865d29abc1ba6fb1339221cd1779349baf89199c2d3f"
+    },
+    {
+      "path": ".final.tile-staging-293c22963053-aee04fc8/tileset-page-03.png",
+      "sha256": "89a10d51c0be9f0061d7374abc8090dbf50b9569ea78319d1ed6037734f55683"
+    },
+    {
+      "path": ".final.tile-staging-293c22963053-aee04fc8/tileset-slices.json",
+      "sha256": "8793e72bc847fb4663ab3cd2a29f0cd7f99ddb5ef91939b43fc1ffd5dd41f352"
+    },
+    {
+      "path": ".final.tile-staging-293c22963053-aee04fc8/unity-tilemap.json",
+      "sha256": "de437af2da054bd6cf55ca06f97c86bd4b93e0e9f1522866445fd031bfbfccb8"
+    },
+    {
+      "path": "final/asset-manifest.json",
+      "sha256": "fdb1e3a455fc15f01e70b18ee94142600b021f25ce930a3fe843779d922ea8b6"
+    },
+    {
+      "path": "final/building-entrances.json",
+      "sha256": "a49ff0682714a865c121dda5cce2281aa9b570e9854e33d5bba0e85aa759c68d"
+    },
+    {
+      "path": "final/map-quality-report.json",
+      "sha256": "7ed7ad66118e84349f06b87048fdeaef5b47bc2ab1693edfad0ab3be6c534668"
+    },
+    {
+      "path": "final/processing-result.json",
+      "sha256": "a0d6787d8b9db74b60b804e988802a164d24d0cfe3c3dafa18c4539a53e6695a"
+    },
+    {
+      "path": "final/tile-seam-preview.png",
+      "sha256": "02cd014235ec393327f8eac90754b1480525127122ea4a5a588e45de84161fa9"
+    },
+    {
+      "path": "final/tile-usage-preview.png",
+      "sha256": "4d0b8b2d3b5118a789e047b8997e08313bbaa0ea1180b26f51e0a9e6459cbe3a"
+    },
+    {
+      "path": "final/tilemap-placement.json",
+      "sha256": "271b51f6c0ae5967712eb2b634888a65d8e1eec0f5b76637b4fafb5fc4660170"
+    },
+    {
+      "path": "final/tilemap-preview.png",
+      "sha256": "da10aea52b7966528572a18daf1d3df99d534b5ba92f0fec4ca08a83ee956dfc"
+    },
+    {
+      "path": "final/tilemap-quality-metrics.json",
+      "sha256": "fb44e2dc322be6363ee1bf1736012927aae3e42f7ebeafb9c14b63ba59379110"
+    },
+    {
+      "path": "final/tileset-page-01.png",
+      "sha256": "293c22963053bfd835eb4698da3ef8f1a1b57e4880e83916d7d2b8a0374647cf"
+    },
+    {
+      "path": "final/tileset-page-02.png",
+      "sha256": "5af1815852917392b3f4865d29abc1ba6fb1339221cd1779349baf89199c2d3f"
+    },
+    {
+      "path": "final/tileset-page-03.png",
+      "sha256": "89a10d51c0be9f0061d7374abc8090dbf50b9569ea78319d1ed6037734f55683"
+    },
+    {
+      "path": "final/tileset-slices.json",
+      "sha256": "8793e72bc847fb4663ab3cd2a29f0cd7f99ddb5ef91939b43fc1ffd5dd41f352"
+    },
+    {
+      "path": "final/unity-tilemap.json",
+      "sha256": "146b22768ea289c7bebd5090e56982fd1c180ee023918bd6272309d5837cd359"
+    },
+    {
+      "path": "job/execution-plan.json",
+      "sha256": "84b380a2b31f43000b50406f140d056f45b895bd832f36941f1187e7fd145d8b"
+    },
+    {
+      "path": "job/job-state.json",
+      "sha256": "dcd0c1c1488e8ec0b0546bd37b33a708e046dc5040d2b329bc53cfcd0dda25ae"
+    },
+    {
+      "path": "job/processing-result.json",
+      "sha256": "7d7598d95c1838b2f80892eb1f1b270351892d91711015aefc51fef7ee4d6ead"
+    },
+    {
+      "path": "job/raw-source-set.json",
+      "sha256": "accfeb2ed3e77ef06c2cb26400f6a1eb710cd4a6f08d73d02567663399aeeae8"
+    },
+    {
+      "path": "job/source-decision.json",
+      "sha256": "340e8cf339fb02ad74792e328a92653775af6b48ac049b6ebe7cfa4398c2b8d6"
+    },
+    {
+      "path": "job/tilemap-request.json",
+      "sha256": "8bab18e2aa89bd3fe34efbb5fb25996126540e770233ba2b970bd2ce7c575435"
+    },
+    {
+      "path": "raw/page-01-generated-attempt-01.png",
+      "sha256": "8f81019c91c2fbe8e9b5967eaf8a22a9e94dbdd5ecef5f5ae0888e668c7bd961"
+    },
+    {
+      "path": "raw/page-01-generated-attempt-02.png",
+      "sha256": "d3b5b94d7095ea80eb60201a293fb54191b1871f5daead0aca4da9abd8eca55e"
+    },
+    {
+      "path": "raw/page-01-generated-attempt-03.png",
+      "sha256": "009aac7bff2c8fa92cba5567bc3af25a77f64220774d084cc3d85c90a058511e"
+    },
+    {
+      "path": "raw/page-01-generated.png",
+      "sha256": "8f81019c91c2fbe8e9b5967eaf8a22a9e94dbdd5ecef5f5ae0888e668c7bd961"
+    },
+    {
+      "path": "raw/page-02-generated-attempt-01.png",
+      "sha256": "58d35e44a029e9b409cc7b8c14124aad16231ac6ce0120ef88bd092a96de607d"
+    },
+    {
+      "path": "raw/page-02-generated.png",
+      "sha256": "9112105d8a94e2dc28e3a36b7c4904e268a546095c5635a864e03ea6171b6da7"
+    },
+    {
+      "path": "raw/page-03-generated-attempt-01.png",
+      "sha256": "d97454a6087dd543b30810b03a2609f8f83405952d8f8730a5840f6da356b6cc"
+    },
+    {
+      "path": "raw/page-03-generated.png",
+      "sha256": "6d5195d696f0e74cf1eebeb75c466eff1ea0aa903fd1a880a5e5ce31aa48a6b4"
+    },
+    {
+      "path": "raw/tileset-page-01.png",
+      "sha256": "293c22963053bfd835eb4698da3ef8f1a1b57e4880e83916d7d2b8a0374647cf"
+    },
+    {
+      "path": "raw/tileset-page-02.png",
+      "sha256": "5af1815852917392b3f4865d29abc1ba6fb1339221cd1779349baf89199c2d3f"
+    },
+    {
+      "path": "raw/tileset-page-03.png",
+      "sha256": "89a10d51c0be9f0061d7374abc8090dbf50b9569ea78319d1ed6037734f55683"
+    },
+    {
+      "path": "source/build_request.py",
+      "sha256": "170d797038b8cb9361cdbe5e5892a5f5ec98fbf2531d14b717260e1a4da89ef2"
+    },
+    {
+      "path": "source/capabilities.json",
+      "sha256": "d18021cac6c59d8a43511c7403d6a964dfe51d652b1b6bbd99fd1a995e2dff19"
+    },
+    {
+      "path": "source/page-01.prompt.txt",
+      "sha256": "cf5765239a246383b05383cf958a469580d82f756d977b369f5f00f8a995f81b"
+    },
+    {
+      "path": "source/page-02.prompt.txt",
+      "sha256": "ba66228b744076c40ce952e3707b600c06f35fdda51e147a3ff2e12fad928e56"
+    },
+    {
+      "path": "source/page-03.prompt.txt",
+      "sha256": "540427b36efb4aa6da1d8c1d728c47984d9feff93519981950283880b4097c47"
+    },
+    {
+      "path": "source/tilemap-request.json",
+      "sha256": "ae1cdc8881bf26de99fe212e750f712ea036e45dd1be67b1ed581345b0f31bb2"
+    },
+    {
+      "path": "source/visual-review.json",
+      "sha256": "331a0ca5ac594e2028c7534180cf5c5d6ac2fc7dbec8d89e37b347fa47d4f084"
+    },
+    {
+      "path": "unity/spring-creek-village-import.png",
+      "sha256": "913c7690797edf4066bbeb52a6d92221b8a63e67b13d6893cac046ce8e0b5d16"
+    }
+  ],
+  "asset_id": "spring-creek-village",
+  "job_id": "job-spring-creek-village",
+  "reason": "Generated buildings became repeated façade mosaics; scale, roads, river transitions, plaza, and object repetition made the map unusable.",
+  "reason_code": "unusable-visual-composition",
+  "rejected_at": "2026-08-07T05:00:00Z",
+  "request_fingerprint": "aee04fc8e89b74b494b04ec5418fd7b53e092262d7ad23d8e714049be37b3cef",
+  "schema_version": 1
+}
