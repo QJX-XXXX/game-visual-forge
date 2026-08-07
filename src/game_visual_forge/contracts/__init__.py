@@ -56,7 +56,19 @@ from .tilemap import (
     TileSetProfile,
     TilemapEngineTarget,
 )
-from .tilemap_sources import TileAtlasSourceRecord, TileMapSourceSet, load_tilemap_source_set, parse_atlas_page_argument
+from .tilemap_objects import (
+    EntranceConnectionTarget,
+    GridCell,
+    GridRect,
+    RoadConnectionRequirement,
+    RoadConnectivityPolicy,
+    TileMapApprovalWorkflow,
+    TileObjectAssetDefinition,
+    TileObjectEntrance,
+    TileObjectKind,
+    TileObjectPlacement,
+)
+from .tilemap_sources import TileAtlasSourceRecord, TileMapSourceSet, TileObjectSourceRecord, load_tilemap_source_set, parse_atlas_page_argument, parse_object_asset_argument
 
 __all__ = [
     "ArtifactRecord",
@@ -118,8 +130,20 @@ __all__ = [
     "TileSizeMode",
     "TileSetProfile",
     "TilemapEngineTarget",
+    "EntranceConnectionTarget",
+    "GridCell",
+    "GridRect",
+    "RoadConnectionRequirement",
+    "RoadConnectivityPolicy",
+    "TileMapApprovalWorkflow",
+    "TileObjectAssetDefinition",
+    "TileObjectEntrance",
+    "TileObjectKind",
+    "TileObjectPlacement",
     "TileAtlasSourceRecord",
     "TileMapSourceSet",
+    "TileObjectSourceRecord",
     "load_tilemap_source_set",
     "parse_atlas_page_argument",
+    "parse_object_asset_argument",
 ]
