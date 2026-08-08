@@ -20,6 +20,9 @@ Game Visual Forge 是一个仓库内使用的 Codex Skills 集合，包含三项
 - 需要新素材时可调用内置生图，也支持用户提供已有素材。
 - 使用确定性的本地处理、质量报告和可复现的资源清单。
 - 支持包含可行走区域、碰撞、对象、入口和 Unity Tilemap 的可玩地图交付。
+- 原生地图图集会在验证前按声明的网格、Tile 尺寸、边距和间距进行标准化；
+  处理过程保留生成源文件并记录输入/输出哈希，只统一图集几何，不修复美术、
+  接缝或地图拓扑。
 - 对付费或外部任务提供 Provider、费用和提交确认门禁。
 
 ## 效果展示
@@ -119,7 +122,10 @@ install/      手动安装指南
 
 ## 开发检查
 
+请在仓库根目录（即包含 `tests/` 的目录）运行测试：
+
 ```powershell
+Set-Location "C:\path\to\game-visual-forge"
 python -m unittest discover -s tests -q
 ```
 
