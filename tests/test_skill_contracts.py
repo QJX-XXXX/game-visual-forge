@@ -157,17 +157,17 @@ class SkillContractTests(unittest.TestCase):
                 self.assertIn(required, skill, f"{name} missing required fragment: {required}")
             self.assertNotIn("fal.ai", skill)
 
-    def test_readme_uses_supported_launcher_and_documents_exact_routing_rules(self) -> None:
+    def test_readme_keeps_public_scope_outside_internal_routing(self) -> None:
         readme = (ROOT / "README.md").read_text(encoding="utf-8")
-        self.assertNotIn("python -m game_visual_forge", readme)
-        self.assertIn("python skills/forge-2d-sprite/scripts/run.py dry-run", readme)
-        for required in (
+        for required in ("forge-2d-map", "forge-2d-sprite", "forge-video-to-sprite"):
+            self.assertIn(required, readme)
+        for internal_fragment in (
             "native supported -> native path",
             "native unsupported -> user chooses third party/local/existing",
             "native failure or quality rejection -> defined fallback/choice only after confirmation",
-            "every Dreamina/Wanxiang third-party attempt has explicit provider/model/parameter/cost confirmation and no silent resubmission",
+            "every Dreamina/Wanxiang third-party attempt",
         ):
-            self.assertIn(required, readme)
+            self.assertNotIn(internal_fragment, readme)
 
 
 if __name__ == "__main__":

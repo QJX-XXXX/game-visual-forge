@@ -46,28 +46,32 @@ class RepositoryContractTests(unittest.TestCase):
         self.assertEqual(result.returncode, 0, result.stderr)
         self.assertEqual(result.stdout.strip(), "")
 
-    def test_readmes_document_adaptive_tilemap_reports_and_import_modes(self) -> None:
+    def test_readmes_expose_public_skill_and_install_entrypoints(self) -> None:
         for readme_name in ("README.md", "README.zh-CN.md"):
             text = (ROOT / readme_name).read_text(encoding="utf-8")
             for required in (
-                "`standard_16`",
-                "`adaptive_hd`",
-                "`--atlas-page page-01=path.png`",
-                "`map-quality-report.json`",
-                "`Reports/unity-import-report.json`",
-                "**Assets-only**",
-                "**Import and Place**",
+                "forge-2d-map",
+                "forge-2d-sprite",
+                "forge-video-to-sprite",
+                "install/codex/README.md",
+                "install/claude/README.md",
             ):
-                self.assertIn(required, text, f"{readme_name} missing adaptive tilemap contract: {required}")
+                self.assertIn(required, text, f"{readme_name} missing public entrypoint: {required}")
 
-    def test_readmes_keep_report_contracts_documentary_only_until_real_evidence_exists(self) -> None:
-        english = (ROOT / "README.md").read_text(encoding="utf-8")
-        chinese = (ROOT / "README.zh-CN.md").read_text(encoding="utf-8")
-
-        self.assertIn("records\nthe Python report SHA-256, page count, Tile count, Palette, Prefab, and scene\naction.", english)
-        self.assertIn("Routine runs never rewrite README files.", english)
-        self.assertIn("`Reports/unity-import-report.json` 记录 Python", chinese)
-        self.assertIn("普通运行不会自动改写 README", chinese)
+    def test_readmes_stay_concise_and_do_not_duplicate_workflow(self) -> None:
+        forbidden_fragments = (
+            "map plan -> map route -> map ingest -> map process -> map validate",
+            "### M0",
+            "### M1",
+            "### M2",
+            "`map-quality-report.json`",
+            "`Reports/unity-import-report.json`",
+        )
+        for readme_name in ("README.md", "README.zh-CN.md"):
+            text = (ROOT / readme_name).read_text(encoding="utf-8")
+            self.assertLessEqual(len(text.splitlines()), 180, readme_name)
+            for forbidden in forbidden_fragments:
+                self.assertNotIn(forbidden, text, f"{readme_name} duplicates internal workflow: {forbidden}")
 
     def test_install_guides_are_manual_and_repo_local(self) -> None:
         for agent in ("codex", "claude"):
