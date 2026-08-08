@@ -25,6 +25,10 @@ asset bundle or an engine-ready handoff.
   manifests.
 - Playable map handoff with walkability, collision, objects, entrances, and
   Unity Tilemap support.
+- Native map atlases are normalized to the declared grid, tile size, margins,
+  and spacing before validation. The process preserves generated source files,
+  publishes source/output hashes for auditability, and standardizes atlas
+  geometry only; it does not repair artwork, seams, or map topology.
 - Provider, cost, and submission confirmation gates for paid or external work.
 
 ## Showcase
