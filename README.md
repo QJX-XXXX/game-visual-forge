@@ -136,7 +136,11 @@ install/      Manual setup guides
 
 ## Development check
 
+Run the test suite from the repository root (the directory that contains
+`tests/`):
+
 ```powershell
+Set-Location "C:\path\to\game-visual-forge"
 python -m unittest discover -s tests -q
 ```
 
