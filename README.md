@@ -140,7 +140,8 @@ Run the test suite from the repository root (the directory that contains
 `tests/`):
 
 ```powershell
-Set-Location "C:\path\to\game-visual-forge"
+# Replace this example with the actual repository path:
+Set-Location "D:\Projects\game-visual-forge"
 python -m unittest discover -s tests -q
 ```
 

@@ -125,7 +125,8 @@ install/      手动安装指南
 请在仓库根目录（即包含 `tests/` 的目录）运行测试：
 
 ```powershell
-Set-Location "C:\path\to\game-visual-forge"
+# 请将以下示例替换为仓库的实际路径：
+Set-Location "D:\Projects\game-visual-forge"
 python -m unittest discover -s tests -q
 ```
 
