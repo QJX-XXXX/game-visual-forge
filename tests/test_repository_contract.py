@@ -73,6 +73,24 @@ class RepositoryContractTests(unittest.TestCase):
             for forbidden in forbidden_fragments:
                 self.assertNotIn(forbidden, text, f"{readme_name} duplicates internal workflow: {forbidden}")
 
+    def test_readmes_explain_hd_cleanup_tools_and_installation(self) -> None:
+        required = (
+            "birefnet-general",
+            'python -m pip install -e ".[image]"',
+            'python -m pip install -e ".[background]"',
+            'python -m pip install "rembg[cpu]"',
+            'python -m pip install "rembg[gpu]"',
+            'python -m pip install -e ".[matting]"',
+            "U2NET_HOME",
+            "PyMatting",
+            "CUDA",
+            "CPU",
+        )
+        for readme_name in ("README.md", "README.zh-CN.md"):
+            text = (ROOT / readme_name).read_text(encoding="utf-8")
+            for fragment in required:
+                self.assertIn(fragment, text, f"{readme_name} missing HD cleanup guidance: {fragment}")
+
     def test_install_guides_are_manual_and_repo_local(self) -> None:
         for agent in ("codex", "claude"):
             guide = (ROOT / "install" / agent / "README.md").read_text(encoding="utf-8")

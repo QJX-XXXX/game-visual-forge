@@ -40,7 +40,51 @@ connectivity, collision data, and Unity acceptance evidence.
 
 ![HD background removal comparison](assets/readme/rembg-production-comparison-on-gray.jpg)
 
-The local processor exports transparent assets and records the cleanup result.
+The cleanup is local and layered rather than a single opaque filter:
+
+- Pillow converts RGBA images and writes the transparent PNG/GIF outputs.
+- NumPy/SciPy support alpha masks and known-background reconstruction.
+- rembg uses the default `birefnet-general` model for semantic foreground
+  separation, which preserves hair, fabric, and other soft edges better than a
+  plain color key.
+- The known-magenta reconstruction pass removes color spill from anti-aliased
+  edges. If CUDA fails, the processor tries CPU; if model execution still
+  fails, it reports the reason and uses deterministic Chroma fallback.
+- Optional PyMatting can refine difficult semi-transparent edges, but it is
+  slower and is not guaranteed to improve every asset.
+
+#### Install HD cleanup
+
+Use the project extras first, then choose the rembg ONNX Runtime backend that
+matches your machine:
+
+```powershell
+# Pillow-only local image processing
+python -m pip install -e ".[image]"
+
+# rembg, NumPy, and SciPy for HD cleanup
+python -m pip install -e ".[background]"
+
+# Choose one backend: CPU is the compatibility default; GPU needs CUDA support
+python -m pip install "rembg[cpu]"
+python -m pip install "rembg[gpu]"
+
+# Optional PyMatting refinement, after choosing a rembg backend
+python -m pip install -e ".[matting]"
+```
+
+Initialize the default model once so the project can reuse its local cache:
+
+```powershell
+python -c "from rembg import new_session; new_session('birefnet-general')"
+```
+
+Models are stored under `U2NET_HOME` when it is set, otherwise under
+`~/.u2net`. Set `U2NET_HOME` to a writable shared model directory if needed.
+The repository never installs dependencies, downloads models, or selects a
+GPU silently. Use CPU for compatibility, GPU for repeated high-resolution
+batches on a verified CUDA environment, Chroma for fast solid-key input, and
+PyMatting only when extra soft-edge refinement is worth the cost.
 
 ## Install
 
