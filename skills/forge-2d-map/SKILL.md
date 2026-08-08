@@ -1,11 +1,13 @@
 ---
 name: forge-2d-map
-description: "Build reviewed, playable 2D game maps with terrain Tilemaps, complete object prefabs, collision and traversal contracts, deterministic quality gates, user approvals, and Unity scene parity. Use for RPG villages, overworlds, arenas, bridges, water, and Unity Tilemap import or placement."
+description: "Generate and integrate playable 2D game maps with demand-driven or coherent-foundation terrain Tilemaps, complete building/prop objects, collision and traversal contracts, deterministic quality gates, and explicit user approvals. Use for RPG villages, overworlds, arenas, bridges, water, Unity Tilemaps, and map previews/imports."
 ---
 
 # Forge 2D Map
 
 Use this Skill when the result must be a runtime map that a player can walk through, collide with, and enter—not a decorative bitmap. Treat the request, generated candidates, processed artifacts, approval records, and Unity scene as one hash-bound contract.
+
+Compatibility terms: `standard_16` remains the one-page legacy profile; `adaptive_hd` remains the 4×4 multi-page profile; `COHERENT_FOUNDATION` is the fixed authored foundation route; and `TWO_GATE` names the two user gates. Tile dimensions use `preset_16`, `preset_32`, or `custom`; Unity derives cell size from `tile_width / pixels_per_unit`. Keep `map-quality-report.json`, `Buildings`, and `Props` in the artifact vocabulary.
 
 ## Standard interaction
 
@@ -27,7 +29,7 @@ Use this Skill when the result must be a runtime map that a player can walk thro
 - Route reusable or procedural terrain to `demand_driven`. Declare only the pages and semantics the layout needs.
 - Reject a request when its declared profile conflicts with the deterministic route.
 - Use hybrid delivery: repeatable ground, roads, water, banks, and bridge deck are Tilemap layers; complete buildings and meaningful props are independent Sprite/Prefab objects.
-- Water is blocked by default. A bridge is traversable only when its contract declares `traversable=true`; then preserve the declared corridor width and verify bridge cells are not terrain blockers. Main roads are not globally required unless the request declares a required connectivity policy.
+- Water is blocked by default. A bridge is traversable only when its contract declares `traversable=true` and a positive `minimum_traversal_width`; then preserve the declared corridor width and verify bridge cells are not terrain blockers. Main roads are not globally required unless the request declares a required `road_connectivity_policy`.
 
 ## Candidate preflight
 
@@ -38,7 +40,7 @@ python skills/forge-2d-map/scripts/run.py map tile preflight-assets --request <r
 python skills/forge-2d-map/scripts/run.py map tile record-asset-review --report <run>/preflight/critical-assets-report.json --decisions <run>/preflight/decisions.json --out <run>/preflight/preassembly-review.json --now <utc>
 ```
 
-The report must contain candidate paths and hashes, deterministic checks, visual-review status, a critical-assets review sheet, and focused bridge/object crops. Ingest must refuse missing, rejected, stale, or hash-mismatched reports/reviews. Keep candidate pixels unchanged; labels belong in review-sheet margins.
+The report must contain candidate paths and hashes, deterministic checks, visual-review status, a critical-assets review sheet, and focused bridge/object crops. Ingest must refuse missing, rejected, stale, or hash-mismatched reports/reviews. Keep candidate pixels unchanged; labels belong in review-sheet margins. The page arguments are repeated `--atlas-page` values.
 
 ## Two-gate CLI flow
 
@@ -50,17 +52,19 @@ python skills/forge-2d-map/scripts/run.py map tile ingest --request <run>/tilema
 python skills/forge-2d-map/scripts/run.py map tile process --request <run>/tilemap-request.json --raw-image <run>/raw/source-set.json --repo-root <repo> --out-dir <run> --state <run>/job-state.json --now <utc>
 ```
 
-Inspect `assembled-review-sheet.png` and the underlying preview, gameplay crop, collision preview, bridge crops, object entrance crops, seam/usage previews, manifests, and quality report. Record the assembled approval with the exact role order beginning with `review-sheet`, then validate:
+Inspect `assembled-review-sheet.png` and the underlying `tilemap-preview.png`, `tilemap-gameplay-crop.png`, `tilemap-collision-preview.png`, bridge crops, object entrance crops, `tile-seam-preview.png`, `tile-usage-preview.png`, and `map-quality-report.json`. Record the assembled approval with the exact role order beginning with `review-sheet`, then validate:
 
 ```powershell
 python skills/forge-2d-map/scripts/run.py map tile record-approval --gate assembled-map --artifact review-sheet=<staging>/assembled-review-sheet.png --artifact tilemap-preview=<staging>/tilemap-preview.png --artifact gameplay-crop=<staging>/tilemap-gameplay-crop.png --artifact tilemap-placement=<staging>/tilemap-placement.json --artifact tilemap-objects=<staging>/tilemap-objects.json --artifact tilemap-collision=<staging>/tilemap-collision.json --artifact asset-set=<staging>/asset-set.json --out <run>/assembled-map-approval.json --repo-root <repo> --now <utc>
 python skills/forge-2d-map/scripts/run.py map tile validate --request <run>/tilemap-request.json --raw-image <run>/raw/source-set.json --processing-result <staging>/processing-result.json --repo-root <repo> --staging-dir <staging> --final-dir <run>/final --style-approval <run>/source/style-approval.json --assembled-approval <run>/assembled-map-approval.json --state <run>/job-state.json --now <utc>
 ```
 
-Approval hashes are rechecked at validation and Unity import. A rejection artifact is immutable and blocks publication/import.
+Approval hashes are rechecked at validation and Unity import. A `rejection.json` artifact is immutable and blocks publication/import. For `COHERENT_FOUNDATION`, inspect `foundation.png`, `foundation.prompt.txt`, and `foundation-recomposition.png`; recomposition must be pixel-identical.
 
 ## Unity completion
 
 Use `integrations/unity/com.game-visual-forge.tilemap`. Use `AssetsOnly` unless the user explicitly requests placing the prefab in the active scene; then use `ImportAndPlace`. The importer validates approvals and rejection state before mutation, preserves generated GUIDs on repeat imports, and runs post-placement scene acceptance. Acceptance must report `passed` and cover one owned root, tile/object counts, object transforms and Sprite bounds, colliders, doorway cells, terrain blockers, and traversable bridge cells. `AssetsOnly` records `scene_acceptance_status=not_run`.
 
 After Unity changes, wait for compilation, inspect the console, run EditMode and PlayMode tests, save the target scene, confirm it is clean, and capture an orthographic top-down screenshot that matches the assembled review sheet. Never claim playability from a preview alone.
+
+Provider safety remains explicit: Agent 鍘熺敓宸ュ叿, 鍗虫ⅵ, and 涓囩浉 are source options only when the current request selects them; every paid attempt requires 浠樿垂纭. 姣忔閮界敱鐢ㄦ埛閫夋嫨 the provider/model/parameters, 涓嶅緱鑷姩瀹夎宸ュ叿, and 涓嶅緱鑷姩閲嶆柊鎻愪氦. Native generation remains bounded by the confirmed intake and candidate review.
