@@ -7,6 +7,7 @@ from pathlib import Path, PurePosixPath
 import hashlib
 
 from .quality import QualityCheck, QualityStatus
+from .pathing import normalize_repo_relative_path
 
 
 class CandidateAssetKind(StrEnum):
@@ -64,6 +65,16 @@ class TilemapCriticalAssetReport:
     visual_status: QualityStatus
     review_sheet_path: str
     focus_paths: tuple[str, ...]
+    normalization_report_path: str | None = None
+    normalization_report_sha256: str | None = None
+
+    def __post_init__(self) -> None:
+        if (self.normalization_report_path is None) != (self.normalization_report_sha256 is None):
+            raise ValueError("normalization report path and hash must be provided together")
+        if self.normalization_report_path is not None:
+            normalize_repo_relative_path(self.normalization_report_path, field_name="normalization_report_path")
+            if not isinstance(self.normalization_report_sha256, str) or len(self.normalization_report_sha256) != 64 or any(char not in "0123456789abcdef" for char in self.normalization_report_sha256):
+                raise ValueError("normalization_report_sha256 must be a lowercase SHA-256 hex digest")
 
     def to_dict(self) -> dict[str, Any]:
         return {
@@ -76,11 +87,25 @@ class TilemapCriticalAssetReport:
             "visual_status": self.visual_status.value,
             "review_sheet_path": self.review_sheet_path,
             "focus_paths": list(self.focus_paths),
+            "normalization_report_path": self.normalization_report_path,
+            "normalization_report_sha256": self.normalization_report_sha256,
         }
 
     @classmethod
     def from_dict(cls, value: dict[str, Any]) -> "TilemapCriticalAssetReport":
-        return cls(int(value["schema_version"]), str(value["request_fingerprint"]), str(value["architecture_sha256"]), tuple(CandidateAsset.from_dict(item) for item in value["candidates"]), tuple(CriticalAssetCheck.from_dict(item) for item in value["checks"]), QualityStatus(value["deterministic_status"]), QualityStatus(value["visual_status"]), str(value["review_sheet_path"]), tuple(str(item) for item in value.get("focus_paths", [])))
+        return cls(
+            int(value["schema_version"]),
+            str(value["request_fingerprint"]),
+            str(value["architecture_sha256"]),
+            tuple(CandidateAsset.from_dict(item) for item in value["candidates"]),
+            tuple(CriticalAssetCheck.from_dict(item) for item in value["checks"]),
+            QualityStatus(value["deterministic_status"]),
+            QualityStatus(value["visual_status"]),
+            str(value["review_sheet_path"]),
+            tuple(str(item) for item in value.get("focus_paths", [])),
+            value.get("normalization_report_path"),
+            value.get("normalization_report_sha256"),
+        )
 
 
 @dataclass(frozen=True)

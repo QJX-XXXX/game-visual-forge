@@ -3,11 +3,12 @@ from __future__ import annotations
 from pathlib import Path, PurePosixPath
 from typing import Any, Iterable
 
-from game_visual_forge.contracts import TileMapRequest
+from game_visual_forge.contracts import AtlasNormalizationReport, MapSourceDecision, TileMapRequest
 from game_visual_forge.contracts.quality import QualityStatus
 from game_visual_forge.contracts.serialization import dump_json
 from game_visual_forge.contracts.tilemap_asset_review import CandidateAsset, CandidateAssetKind, CriticalAssetCheck, TilemapCriticalAssetReport
 from game_visual_forge.processing.images import _load_pillow, sha256_file
+from game_visual_forge.processing.tilemap_atlas_normalization import validate_atlas_normalization_report
 
 
 def _candidate(repo_root: Path, value: CandidateAsset | dict[str, Any] | tuple[str, str, Path]) -> CandidateAsset:
@@ -37,15 +38,43 @@ def _flattened_pixels(image: Any) -> tuple[Any, ...]:
     return tuple(image.getdata())
 
 
-def preflight_tilemap_assets(repo_root: Path, request: TileMapRequest, architecture: Any, candidates: Iterable[CandidateAsset | dict[str, Any] | tuple[str, str, Path]], out_dir: Path) -> TilemapCriticalAssetReport:
+def preflight_tilemap_assets(
+    repo_root: Path,
+    request: TileMapRequest,
+    architecture: Any,
+    candidates: Iterable[CandidateAsset | dict[str, Any] | tuple[str, str, Path]],
+    out_dir: Path,
+    *,
+    decision: MapSourceDecision | None = None,
+    normalization_report: AtlasNormalizationReport | None = None,
+    normalization_report_path: Path | None = None,
+) -> TilemapCriticalAssetReport:
     Image = _load_pillow()
     normalized = tuple(_candidate(repo_root, item) for item in candidates)
     checks: list[CriticalAssetCheck] = []
     by_kind = {kind: tuple(item for item in normalized if item.kind is kind) for kind in CandidateAssetKind}
     expected_sizes = request.expected_atlas_sizes
-    atlas_expected = next(iter(expected_sizes.values()))
-    wrong_dimensions = tuple(item.asset_id for item in by_kind[CandidateAssetKind.ATLAS] + by_kind[CandidateAssetKind.FOUNDATION] if (item.width, item.height) != atlas_expected)
+    atlas_candidates = by_kind[CandidateAssetKind.ATLAS] + by_kind[CandidateAssetKind.FOUNDATION]
+    wrong_dimensions = tuple(item.asset_id for item in atlas_candidates if item.asset_id not in expected_sizes or (item.width, item.height) != expected_sizes[item.asset_id])
     checks.append(_check("candidate-dimensions", QualityStatus.FAILED if wrong_dimensions else QualityStatus.PASSED, "candidate dimensions match the request" if not wrong_dimensions else "candidate dimensions do not match the request", wrong_dimensions))
+    if decision is not None:
+        if decision.source_type is None:
+            raise ValueError("source decision has no source type")
+        if decision.source_type.value == "agent-native" and normalization_report is None:
+            raise ValueError("agent-native atlas preflight requires normalization report")
+        if normalization_report is not None:
+            if normalization_report_path is None:
+                raise ValueError("normalization report path is required when report is supplied")
+            atlas_pages = tuple((item.asset_id, repo_root / PurePosixPath(item.path)) for item in atlas_candidates)
+            validate_atlas_normalization_report(repo_root, request, decision, normalization_report, atlas_pages)
+            report_relative = PurePosixPath(normalization_report_path.resolve().relative_to(repo_root.resolve()).as_posix()).as_posix()
+            normalization_digest = sha256_file(normalization_report_path)
+        else:
+            report_relative = None
+            normalization_digest = None
+    else:
+        report_relative = None
+        normalization_digest = None
     prompt_path = request.foundation_prompt_path
     prompt_ok = not prompt_path or (repo_root / PurePosixPath(prompt_path)).is_file() and bool((repo_root / PurePosixPath(prompt_path)).read_text(encoding="utf-8").strip())
     checks.append(_check("foundation-prompt", QualityStatus.PASSED if prompt_ok else QualityStatus.FAILED, "foundation prompt provenance is present" if prompt_ok else "foundation prompt provenance is missing"))
@@ -108,7 +137,19 @@ def preflight_tilemap_assets(repo_root: Path, request: TileMapRequest, architect
         sheet.alpha_composite(image, (x, 32))
         x += image.width + 24
     sheet.save(sheet_path, format="PNG")
-    report = TilemapCriticalAssetReport(1, getattr(architecture, "request_fingerprint", ""), _architecture_hash(architecture), normalized, tuple(checks), deterministic_status, QualityStatus.NEEDS_VISUAL_REVIEW, "critical-assets-review-sheet.png", tuple(focus_paths))
+    report = TilemapCriticalAssetReport(
+        1,
+        getattr(architecture, "request_fingerprint", ""),
+        _architecture_hash(architecture),
+        normalized,
+        tuple(checks),
+        deterministic_status,
+        QualityStatus.NEEDS_VISUAL_REVIEW,
+        "critical-assets-review-sheet.png",
+        tuple(focus_paths),
+        report_relative,
+        normalization_digest,
+    )
     out_dir.mkdir(parents=True, exist_ok=True)
     dump_json(out_dir / "critical-assets-report.json", report.to_dict())
     return report

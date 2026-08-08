@@ -17,6 +17,7 @@ from game_visual_forge.cli.map import (
 )
 from game_visual_forge.cli.tilemap import (
     run_tilemap_ingest,
+    run_tilemap_normalize_atlases,
     run_tilemap_record_approval,
     run_tilemap_plan,
     run_tilemap_preflight_assets,
@@ -127,6 +128,14 @@ def build_parser() -> argparse.ArgumentParser:
     tilemap_ingest.add_argument("--state", type=Path, required=True)
     tilemap_ingest.add_argument("--now", required=True)
 
+    tilemap_normalize = tilemap_commands.add_parser("normalize-atlases")
+    tilemap_normalize.add_argument("--request", type=Path, required=True)
+    tilemap_normalize.add_argument("--decision", type=Path, required=True)
+    tilemap_normalize.add_argument("--atlas-page", action="append", default=[])
+    tilemap_normalize.add_argument("--repo-root", type=Path, required=True)
+    tilemap_normalize.add_argument("--out-dir", type=Path, required=True)
+    tilemap_normalize.add_argument("--allow-non-native", action="store_true")
+
     tilemap_process = tilemap_commands.add_parser("process")
     tilemap_process.add_argument("--request", type=Path, required=True)
     tilemap_process.add_argument("--raw-image", type=Path, required=True)
@@ -168,6 +177,8 @@ def build_parser() -> argparse.ArgumentParser:
     tilemap_preflight.add_argument("--architecture", type=Path, required=True)
     tilemap_preflight.add_argument("--atlas-page", action="append", default=[])
     tilemap_preflight.add_argument("--object-asset", action="append", default=[])
+    tilemap_preflight.add_argument("--decision", type=Path)
+    tilemap_preflight.add_argument("--normalization-report", type=Path)
     tilemap_preflight.add_argument("--repo-root", type=Path, required=True)
     tilemap_preflight.add_argument("--out-dir", type=Path, required=True)
 
@@ -282,6 +293,8 @@ def main(argv: list[str] | None = None) -> int:
             payload = run_tilemap_route(args.request, args.capabilities, args.selection, args.preflight, args.out, args.state, args.now)
         elif args.command == "map" and args.map_command == "tile" and args.tilemap_command == "ingest":
             payload = run_tilemap_ingest(args.request, args.decision, args.image, args.atlas_page, args.repo_root, args.out, args.state, args.now, args.object_asset, args.style_approval, args.preassembly_review, args.critical_assets_report)
+        elif args.command == "map" and args.map_command == "tile" and args.tilemap_command == "normalize-atlases":
+            payload = run_tilemap_normalize_atlases(args.request, args.decision, args.atlas_page, args.repo_root, args.out_dir, args.allow_non_native)
         elif args.command == "map" and args.map_command == "tile" and args.tilemap_command == "process":
             payload = run_tilemap_process(args.request, args.raw_image, args.repo_root, args.out_dir, args.state, args.now)
         elif args.command == "map" and args.map_command == "tile" and args.tilemap_command == "validate":
@@ -291,7 +304,7 @@ def main(argv: list[str] | None = None) -> int:
         elif args.command == "map" and args.map_command == "tile" and args.tilemap_command == "record-approval":
             payload = run_tilemap_record_approval(args.gate, args.artifact, args.out, args.now, args.repo_root)
         elif args.command == "map" and args.map_command == "tile" and args.tilemap_command == "preflight-assets":
-            payload = run_tilemap_preflight_assets(args.request, args.architecture, args.atlas_page, args.object_asset, args.repo_root, args.out_dir)
+            payload = run_tilemap_preflight_assets(args.request, args.architecture, args.atlas_page, args.object_asset, args.repo_root, args.out_dir, args.decision, args.normalization_report)
         elif args.command == "map" and args.map_command == "tile" and args.tilemap_command == "record-asset-review":
             payload = run_tilemap_record_asset_review(args.report, args.decisions, args.out, args.now)
         elif args.command == "sprite" and args.sprite_command == "plan":

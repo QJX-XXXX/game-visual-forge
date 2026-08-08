@@ -11,8 +11,10 @@ from tests._bootstrap import ROOT  # noqa: F401
 from tests.tilemap_workflow_fixtures import build_workflow_request_payload
 from game_visual_forge.contracts import PreassemblyAssetDecision, PreassemblyReviewStatus, TileMapRequest, QualityStatus, record_preassembly_review, validate_preassembly_review
 from game_visual_forge.jobs import fingerprint_request
+from game_visual_forge.processing.tilemap_atlas_normalization import normalize_tilemap_atlases
 from game_visual_forge.processing.tilemap_asset_preflight import preflight_tilemap_assets
 from game_visual_forge.routing import select_tilemap_architecture
+from tests.test_normalize_tile_atlas import make_request, native_decision
 
 
 class TilemapAssetPreflightTests(unittest.TestCase):
@@ -71,6 +73,41 @@ class TilemapAssetPreflightTests(unittest.TestCase):
         result = run_tilemap_record_asset_review(out / "critical-assets-report.json", decisions, self.root / "review.json", "2026-08-09T00:00:00Z")
         self.assertEqual(result["status"], "rejected")
         self.assertTrue((self.root / "review.json").is_file())
+
+    def test_native_normalization_report_is_bound_to_preflight_candidates(self) -> None:
+        request = make_request()
+        decision = native_decision(request)
+        architecture = select_tilemap_architecture(request, fingerprint_request(request.to_dict()))
+        source = self.root / "generated-atlas.png"
+        Image.new("RGBA", (1024, 1024), (50, 90, 120, 255)).save(source)
+        pages = (("page-01", source), ("page-02", source), ("page-03", source))
+        normalization = normalize_tilemap_atlases(self.root, request, decision, pages, self.root / "normalized")
+
+        report = preflight_tilemap_assets(
+            self.root,
+            request,
+            architecture,
+            tuple((page.atlas_id, "atlas", self.root / page.output_path) for page in normalization.pages),
+            self.root / "normalized-preflight",
+            decision=decision,
+            normalization_report=normalization,
+            normalization_report_path=self.root / "normalized" / "atlas-normalization-report.json",
+        )
+
+        self.assertEqual(report.deterministic_status, QualityStatus.PASSED)
+        self.assertEqual(report.normalization_report_path, "normalized/atlas-normalization-report.json")
+        self.assertEqual(len(report.normalization_report_sha256 or ""), 64)
+
+    def test_native_preflight_rejects_missing_normalization_report(self) -> None:
+        request = make_request()
+        decision = native_decision(request)
+        architecture = select_tilemap_architecture(request, fingerprint_request(request.to_dict()))
+        source = self.root / "generated-atlas.png"
+        Image.new("RGBA", (128, 128), (50, 90, 120, 255)).save(source)
+        pages = tuple((page.atlas_id, "atlas", source) for page in request.resolved_atlas_pages)
+
+        with self.assertRaisesRegex(ValueError, "normalization report"):
+            preflight_tilemap_assets(self.root, request, architecture, pages, self.root / "missing-report", decision=decision)
 
 
 if __name__ == "__main__":

@@ -25,6 +25,7 @@ from game_visual_forge.contracts import (
     TileAtlasSourceRecord,
     TileObjectSourceRecord,
     TilemapCriticalAssetReport,
+    AtlasNormalizationReport,
     TilemapPreassemblyReview,
     PreassemblyAssetDecision,
     record_preassembly_review,
@@ -42,6 +43,7 @@ from game_visual_forge.jobs import fingerprint_request, load_job, save_job, tran
 from game_visual_forge.processing.images import ingest_image, sha256_file
 from game_visual_forge.processing.sprite import publish_verified_outputs
 from game_visual_forge.processing.tilemap import TileMapProcessingResult, process_tilemap
+from game_visual_forge.processing.tilemap_atlas_normalization import normalize_tilemap_atlases, validate_atlas_normalization_report
 from game_visual_forge.processing.tilemap_asset_preflight import preflight_tilemap_assets
 from game_visual_forge.quality.tilemap import apply_tilemap_visual_review, build_tilemap_asset_manifest, validate_tilemap_outputs
 from game_visual_forge.routing import route_map, select_tilemap_architecture, TileMapArchitectureDecision
@@ -109,6 +111,32 @@ def run_tilemap_record_approval(
     return {"schema_version": 1, "status": record.status.value, "gate": record.gate.value, "approval_path": str(out_path)}
 
 
+def run_tilemap_normalize_atlases(
+    request_path: Path,
+    decision_path: Path,
+    atlas_page_arguments: list[str],
+    repo_root: Path,
+    out_dir: Path,
+    allow_non_native: bool = False,
+) -> dict[str, Any]:
+    request, _ = _request(request_path)
+    decision = MapSourceDecision.from_dict(load_json(decision_path))
+    pages = tuple(parse_atlas_page_argument(argument) for argument in atlas_page_arguments)
+    report = normalize_tilemap_atlases(repo_root, request, decision, pages, out_dir, allow_non_native=allow_non_native)
+    report_path = out_dir.resolve() / "atlas-normalization-report.json"
+    return {
+        "schema_version": 1,
+        "status": report.status.value,
+        "report_path": str(report_path),
+        "pages": [
+            {"atlas_id": page.atlas_id, "status": page.status.value, "output_path": page.output_path}
+            for page in report.pages
+        ],
+        "normalized_page_ids": [page.atlas_id for page in report.pages if page.status.value == "normalized"],
+        "unchanged_page_ids": [page.atlas_id for page in report.pages if page.status.value == "not_required"],
+    }
+
+
 def run_tilemap_preflight_assets(
     request_path: Path,
     architecture_path: Path,
@@ -116,9 +144,13 @@ def run_tilemap_preflight_assets(
     object_asset_arguments: list[str],
     repo_root: Path,
     out_dir: Path,
+    decision_path: Path | None = None,
+    normalization_report_path: Path | None = None,
 ) -> dict[str, Any]:
     request, _ = _request(request_path)
     architecture = TileMapArchitectureDecision.from_dict(load_json(architecture_path))
+    decision = None if decision_path is None else MapSourceDecision.from_dict(load_json(decision_path))
+    normalization_report = None if normalization_report_path is None else AtlasNormalizationReport.from_dict(load_json(normalization_report_path))
     candidates = []
     for argument in atlas_page_arguments:
         atlas_id, path = parse_atlas_page_argument(argument)
@@ -127,7 +159,16 @@ def run_tilemap_preflight_assets(
     for argument in object_asset_arguments:
         asset_id, path = parse_object_asset_argument(argument)
         candidates.append((asset_id, "object", path))
-    report = preflight_tilemap_assets(repo_root, request, architecture, candidates, out_dir.resolve())
+    report = preflight_tilemap_assets(
+        repo_root,
+        request,
+        architecture,
+        candidates,
+        out_dir.resolve(),
+        decision=decision,
+        normalization_report=normalization_report,
+        normalization_report_path=normalization_report_path,
+    )
     return {"schema_version": 1, "status": report.deterministic_status.value, "report_path": str((out_dir / "critical-assets-report.json").resolve()), "review_sheet_path": str((out_dir / report.review_sheet_path).resolve())}
 
 
