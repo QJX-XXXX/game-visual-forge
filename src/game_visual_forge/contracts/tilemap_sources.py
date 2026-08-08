@@ -55,6 +55,8 @@ class TileMapSourceSet:
     preassembly_review_sha256: str | None = None
     critical_assets_report_path: str | None = None
     critical_assets_report_sha256: str | None = None
+    atlas_normalization_report_path: str | None = None
+    atlas_normalization_report_sha256: str | None = None
 
     def __post_init__(self) -> None:
         if self.schema_version != 1:
@@ -69,6 +71,13 @@ class TileMapSourceSet:
         object_ids = [item.asset_id for item in self.objects]
         if len(object_ids) != len(set(object_ids)):
             raise ValueError("object sources must have unique ids")
+        if (self.atlas_normalization_report_path is None) != (self.atlas_normalization_report_sha256 is None):
+            raise ValueError("atlas normalization report path and hash must be provided together")
+        if self.atlas_normalization_report_path is not None:
+            if "\\" in self.atlas_normalization_report_path or self.atlas_normalization_report_path.startswith("/") or ".." in self.atlas_normalization_report_path.split("/"):
+                raise ValueError("atlas_normalization_report_path must be a safe forward-slash path")
+            if not isinstance(self.atlas_normalization_report_sha256, str) or len(self.atlas_normalization_report_sha256) != 64 or any(char not in "0123456789abcdef" for char in self.atlas_normalization_report_sha256):
+                raise ValueError("atlas_normalization_report_sha256 must be a lowercase SHA-256 hex digest")
 
     def to_dict(self) -> dict[str, Any]:
         return {
@@ -79,6 +88,8 @@ class TileMapSourceSet:
             "preassembly_review_sha256": self.preassembly_review_sha256,
             "critical_assets_report_path": self.critical_assets_report_path,
             "critical_assets_report_sha256": self.critical_assets_report_sha256,
+            "atlas_normalization_report_path": self.atlas_normalization_report_path,
+            "atlas_normalization_report_sha256": self.atlas_normalization_report_sha256,
         }
 
     @classmethod
@@ -89,7 +100,17 @@ class TileMapSourceSet:
         objects = value.get("objects", [])
         if not isinstance(objects, list):
             raise TypeError("TileMapSourceSet objects must be a JSON array")
-        return cls(1, tuple(TileAtlasSourceRecord.from_dict(item) for item in pages), tuple(TileObjectSourceRecord.from_dict(item) for item in objects), value.get("preassembly_review_path"), value.get("preassembly_review_sha256"), value.get("critical_assets_report_path"), value.get("critical_assets_report_sha256"))
+        return cls(
+            1,
+            tuple(TileAtlasSourceRecord.from_dict(item) for item in pages),
+            tuple(TileObjectSourceRecord.from_dict(item) for item in objects),
+            value.get("preassembly_review_path"),
+            value.get("preassembly_review_sha256"),
+            value.get("critical_assets_report_path"),
+            value.get("critical_assets_report_sha256"),
+            value.get("atlas_normalization_report_path"),
+            value.get("atlas_normalization_report_sha256"),
+        )
 
 
 def load_tilemap_source_set(payload: dict[str, Any], request: TileMapRequest) -> TileMapSourceSet:

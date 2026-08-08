@@ -2,6 +2,7 @@ from __future__ import annotations
 
 from dataclasses import replace
 from pathlib import Path, PurePosixPath
+import shutil
 from typing import Any
 
 from game_visual_forge.cli.planning import build_tilemap_execution_plan
@@ -258,10 +259,12 @@ def run_tilemap_ingest(
     critical_assets_report_path: Path | None = None,
 ) -> dict[str, Any]:
     request, fingerprint = _request(request_path)
+    critical_report: TilemapCriticalAssetReport | None = None
     if request.intake is not None:
         if preassembly_review_path is None or critical_assets_report_path is None:
             raise ValueError("new two-gate tilemap ingest requires an accepted preassembly review")
         report = TilemapCriticalAssetReport.from_dict(load_json(critical_assets_report_path))
+        critical_report = report
         review = TilemapPreassemblyReview.from_dict(load_json(preassembly_review_path))
         validate_preassembly_review(report, review)
         validate_preassembly_candidate_files(report, repo_root)
@@ -297,17 +300,31 @@ def run_tilemap_ingest(
             raise ValueError(f"object asset arguments must match request object assets: expected {expected_object_ids}")
         review_copy = out_path.parent / "preassembly-review.json"
         report_copy = out_path.parent / "critical-assets-report.json"
+        normalization_copy_path: Path | None = None
+        normalization_copy_sha256: str | None = None
         if request.intake is not None:
             dump_json(review_copy, review.to_dict())
             dump_json(report_copy, report.to_dict())
+        if critical_report is not None and critical_report.normalization_report_path:
+            report_source_path = repo_root.resolve() / PurePosixPath(critical_report.normalization_report_path)
+            if not report_source_path.is_file() or sha256_file(report_source_path) != critical_report.normalization_report_sha256:
+                raise ValueError("atlas normalization report changed after preassembly review")
+            normalization_copy_path = out_path.parent / "atlas-normalization-report.json"
+            shutil.copyfile(report_source_path, normalization_copy_path)
+            normalization_copy_sha256 = sha256_file(normalization_copy_path)
+            normalization_report = AtlasNormalizationReport.from_dict(load_json(normalization_copy_path))
+            final_pages = tuple(parse_atlas_page_argument(argument) for argument in atlas_page_arguments)
+            validate_atlas_normalization_report(repo_root, request, decision, normalization_report, final_pages, allow_non_native=decision.source_type is not MapSourceType.AGENT_NATIVE)
         source_set = TileMapSourceSet(
-            1,
-            tuple(pages),
-            tuple(objects),
-            "preassembly-review.json" if request.intake is not None else None,
-            sha256_file(review_copy) if request.intake is not None else None,
-            "critical-assets-report.json" if request.intake is not None else None,
-            sha256_file(report_copy) if request.intake is not None else None,
+            schema_version=1,
+            pages=tuple(pages),
+            objects=tuple(objects),
+            preassembly_review_path="preassembly-review.json" if request.intake is not None else None,
+            preassembly_review_sha256=sha256_file(review_copy) if request.intake is not None else None,
+            critical_assets_report_path="critical-assets-report.json" if request.intake is not None else None,
+            critical_assets_report_sha256=sha256_file(report_copy) if request.intake is not None else None,
+            atlas_normalization_report_path=PurePosixPath(normalization_copy_path.resolve().relative_to(repo_root.resolve()).as_posix()).as_posix() if normalization_copy_path is not None else None,
+            atlas_normalization_report_sha256=normalization_copy_sha256,
         )
         expected_ids = tuple(page.atlas_id for page in request.resolved_atlas_pages)
         if tuple(page.atlas_id for page in source_set.pages) != expected_ids:

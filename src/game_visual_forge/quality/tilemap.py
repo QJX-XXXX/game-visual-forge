@@ -48,6 +48,7 @@ def _paths(processing: TileMapProcessingResult) -> tuple[str, ...]:
         *(path for path in (processing.gameplay_crop_path, processing.collision_preview_path) if path),
         *(path for path in (processing.foundation_path, processing.foundation_prompt_path, processing.foundation_recomposition_path) if path),
         *(path for path in (processing.review_sheet_path,) if path),
+        *(path for path in (processing.atlas_normalization_path,) if path),
     )
 
 
@@ -263,6 +264,7 @@ def build_tilemap_asset_manifest(
         **(({processing.building_entrances_path: "building-entrances"} if processing.building_entrances_path else {})),
         processing.preview_path: "tilemap-preview",
         **({processing.review_sheet_path: "review-sheet"} if processing.review_sheet_path else {}),
+        **({processing.atlas_normalization_path: "atlas-normalization-report"} if processing.atlas_normalization_path else {}),
         processing.quality_metrics_path: "tilemap-quality-metrics",
         processing.seam_preview_path: "tile-seam-preview",
         processing.usage_preview_path: "tile-usage-preview",

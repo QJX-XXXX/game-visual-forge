@@ -5,8 +5,8 @@ from pathlib import Path, PurePosixPath
 import shutil
 from typing import Any
 
-from game_visual_forge.contracts import AtlasPageDefinition, RawImageRecord, TileMapRequest, TileMapSourceSet, TileSetProfile, load_tilemap_source_set
-from game_visual_forge.contracts.serialization import dump_json
+from game_visual_forge.contracts import AtlasNormalizationReport, AtlasPageDefinition, RawImageRecord, TileMapRequest, TileMapSourceSet, TileSetProfile, load_tilemap_source_set
+from game_visual_forge.contracts.serialization import dump_json, load_json
 from game_visual_forge.errors import ErrorCode, ForgeError
 from game_visual_forge.processing.images import _load_pillow, sha256_file, verify_image_unchanged
 from game_visual_forge.processing.tilemap_quality import analyze_tilemap_quality, render_seam_preview, render_usage_preview, seam_samples, _tile_images
@@ -38,6 +38,7 @@ class TileMapProcessingResult:
     foundation_prompt_path: str = ""
     foundation_recomposition_path: str = ""
     review_sheet_path: str = ""
+    atlas_normalization_path: str = ""
 
     @property
     def tileset_path(self) -> str:
@@ -70,6 +71,7 @@ class TileMapProcessingResult:
             "foundation_prompt_path": self.foundation_prompt_path,
             "foundation_recomposition_path": self.foundation_recomposition_path,
             "review_sheet_path": self.review_sheet_path,
+            "atlas_normalization_path": self.atlas_normalization_path,
         }
 
     @classmethod
@@ -102,6 +104,7 @@ class TileMapProcessingResult:
             foundation_prompt_path=str(value.get("foundation_prompt_path", "")),
             foundation_recomposition_path=str(value.get("foundation_recomposition_path", "")),
             review_sheet_path=str(value.get("review_sheet_path", "")),
+            atlas_normalization_path=str(value.get("atlas_normalization_path", "")),
         )
 
 
@@ -138,6 +141,18 @@ def process_tilemap(
     source_set = load_tilemap_source_set(record.to_dict(), request)
     if not isinstance(source_set, TileMapSourceSet):
         raise TypeError("tilemap source must be RawImageRecord or TileMapSourceSet")
+    normalization_report: AtlasNormalizationReport | None = None
+    if source_set.atlas_normalization_report_path:
+        report_path = repo_root.resolve() / PurePosixPath(source_set.atlas_normalization_report_path)
+        if not report_path.is_file() or sha256_file(report_path) != source_set.atlas_normalization_report_sha256:
+            raise ForgeError(ErrorCode.INVALID_REQUEST, "atlas normalization report hash changed", recoverable=True, context={"path": source_set.atlas_normalization_report_path})
+        normalization_report = AtlasNormalizationReport.from_dict(load_json(report_path))
+        expected_ids = tuple(page.atlas_id for page in request.resolved_atlas_pages)
+        if tuple(page.atlas_id for page in normalization_report.pages) != expected_ids:
+            raise ForgeError(ErrorCode.INVALID_REQUEST, "atlas normalization report pages do not match request", recoverable=True, context={})
+        for source, normalized in zip(source_set.pages, normalization_report.pages):
+            if normalized.output_path != source.image.path or normalized.output_sha256 != source.image.sha256:
+                raise ForgeError(ErrorCode.INVALID_REQUEST, "atlas source does not match normalization report", recoverable=True, context={"atlas_id": source.atlas_id})
     for page in source_set.pages:
         verify_image_unchanged(repo_root, page.image)
     Image = _load_pillow()
@@ -161,6 +176,13 @@ def process_tilemap(
     source_hash = source_set.pages[0].image.sha256
     staging = output_dir.parent / f".{output_dir.name}.tile-staging-{source_hash[:12]}-{fingerprint[:8]}"
     staging.mkdir(parents=True, exist_ok=True)
+    atlas_normalization_path = ""
+    if normalization_report is not None:
+        shutil.copyfile(
+            repo_root.resolve() / PurePosixPath(source_set.atlas_normalization_report_path),
+            staging / "atlas-normalization-report.json",
+        )
+        atlas_normalization_path = "atlas-normalization-report.json"
     tileset_paths = []
     for index, source in enumerate(source_set.pages, start=1):
         filename = "tileset.png" if len(source_set.pages) == 1 else f"tileset-{source.atlas_id}.png"
@@ -306,7 +328,6 @@ def process_tilemap(
         metrics = replace(metrics, needs_attention=not matches or bool(metrics.invalid_bridge_connectivity), foundation_recomposition_match=matches)
         foundation_paths["foundation_recomposition_path"] = "foundation-recomposition.png"
         unity_path = staging / "unity-tilemap.json"
-        from game_visual_forge.contracts.serialization import load_json
         unity_payload = load_json(unity_path)
         unity_payload["foundation_recomposition_sha256"] = sha256_file(staging / "foundation-recomposition.png")
         dump_json(unity_path, unity_payload)
@@ -328,7 +349,6 @@ def process_tilemap(
         },
     )
     unity_path = staging / "unity-tilemap.json"
-    from game_visual_forge.contracts.serialization import load_json
     unity_payload = load_json(unity_path)
     unity_payload["review_sheet"] = review_sheet_path
     unity_payload["review_sheet_sha256"] = sha256_file(staging / review_sheet_path)
@@ -361,4 +381,5 @@ def process_tilemap(
         **foundation_paths,
         **object_paths,
         review_sheet_path=review_sheet_path,
+        atlas_normalization_path=atlas_normalization_path,
     )
