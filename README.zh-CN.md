@@ -34,7 +34,47 @@ Game Visual Forge 是一个仓库内使用的 Codex Skills 集合，包含三项
 
 ![HD 背景移除效果对比](assets/readme/rembg-production-comparison-on-gray.jpg)
 
-本地处理器会导出透明素材，并记录清理结果。
+清理不是一个不透明的单步滤镜，而是由多个本地步骤组成：
+
+- Pillow 负责 RGBA 转换，以及透明 PNG/GIF 导出。
+- NumPy/SciPy 负责 alpha 遮罩和已知背景重建。
+- rembg 默认使用 `birefnet-general` 做语义前景分割，相比单纯按颜色抠图，
+  更能保留头发、布料和其他柔和边缘。
+- 已知洋红背景重建会减少抗锯齿边缘的色边；如果 CUDA 失败，处理器会尝试
+  CPU；模型仍失败时会记录原因并使用确定性的 Chroma fallback。
+- 可选的 PyMatting 可进一步处理困难的半透明边缘，但速度更慢，也不保证对
+  每一张素材都更好。
+
+#### HD 清理安装
+
+先安装项目 extra，再根据机器选择对应的 rembg ONNX Runtime 后端：
+
+```powershell
+# 仅使用 Pillow 的本地图像处理
+python -m pip install -e ".[image]"
+
+# HD 清理所需的 rembg、NumPy 和 SciPy
+python -m pip install -e ".[background]"
+
+# 二选一：CPU 兼容性最好；GPU 需要 CUDA 环境
+python -m pip install "rembg[cpu]"
+python -m pip install "rembg[gpu]"
+
+# 可选 PyMatting 精细处理；先选择一个 rembg 后端
+python -m pip install -e ".[matting]"
+```
+
+首次使用前初始化默认模型，让项目复用本地模型缓存：
+
+```powershell
+python -c "from rembg import new_session; new_session('birefnet-general')"
+```
+
+设置了 `U2NET_HOME` 时模型保存在该目录，否则使用 `~/.u2net`。如果需要，
+可把 `U2NET_HOME` 指向一个有写权限的共享模型目录。仓库不会静默安装依赖、
+下载模型或选择 GPU。兼容性优先选 CPU；批量处理高分辨率素材且 CUDA 已验证时
+选 GPU；纯色背景且追求速度时选 Chroma；只有确实需要柔边精修时再启用
+PyMatting。
 
 ## 安装
 
