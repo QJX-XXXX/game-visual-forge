@@ -149,6 +149,8 @@ def normalize_tilemap_atlases(
                 top = request.atlas_margin + row * (page.tile_height + request.atlas_spacing)
                 normalized.paste(cell, (left, top))
         output_path = _inside(root, out_dir / f"{atlas_id}.png", f"output path for {atlas_id}")
+        if output_path == source_path:
+            raise ValueError(f"atlas {atlas_id} normalization output must not overwrite its source")
         normalized.save(output_path, format="PNG")
         output_digest = sha256_file(output_path)
         records.append(

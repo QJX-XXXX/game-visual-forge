@@ -123,6 +123,21 @@ class NormalizeTileAtlasTests(unittest.TestCase):
             report = normalize_tilemap_atlases(root, request, external, (("page-01", source), ("page-02", source), ("page-03", source)), root / "normalized", allow_non_native=True)
             self.assertEqual(report.pages[0].resampling, "lanczos")
 
+    def test_normalization_never_overwrites_source(self) -> None:
+        with tempfile.TemporaryDirectory() as temp:
+            root = Path(temp)
+            request = make_request()
+            source = root / "page-01.png"
+            Image.new("RGBA", (1024, 1024), (20, 30, 40, 255)).save(source)
+            with self.assertRaisesRegex(ValueError, "must not overwrite"):
+                normalize_tilemap_atlases(
+                    root,
+                    request,
+                    native_decision(request),
+                    (("page-01", source), ("page-02", source), ("page-03", source)),
+                    root,
+                )
+
 
 if __name__ == "__main__":
     unittest.main()
