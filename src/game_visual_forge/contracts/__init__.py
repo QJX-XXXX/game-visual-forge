@@ -71,6 +71,7 @@ from .tilemap_objects import (
 )
 from .tilemap_sources import TileAtlasSourceRecord, TileMapSourceSet, TileObjectSourceRecord, load_tilemap_source_set, parse_atlas_page_argument, parse_object_asset_argument
 from .tilemap_intake import LayoutStrategy, TileMapImportMode, TileMapIntake, TileMapIntakeAssessment, TileMapIntakeStatus, TileMapQuestionGroup, assess_tilemap_intake, canonical_tilemap_confirmation_summary, tilemap_confirmation_sha256
+from .tilemap_asset_review import CandidateAsset, CandidateAssetKind, CriticalAssetCheck, PreassemblyAssetDecision, PreassemblyReviewStatus, TilemapCriticalAssetReport, TilemapPreassemblyReview, record_preassembly_review, validate_preassembly_review
 
 __all__ = [
     "ArtifactRecord",
@@ -164,4 +165,13 @@ __all__ = [
     "assess_tilemap_intake",
     "canonical_tilemap_confirmation_summary",
     "tilemap_confirmation_sha256",
+    "CandidateAsset",
+    "CandidateAssetKind",
+    "CriticalAssetCheck",
+    "PreassemblyAssetDecision",
+    "PreassemblyReviewStatus",
+    "TilemapCriticalAssetReport",
+    "TilemapPreassemblyReview",
+    "record_preassembly_review",
+    "validate_preassembly_review",
 ]
