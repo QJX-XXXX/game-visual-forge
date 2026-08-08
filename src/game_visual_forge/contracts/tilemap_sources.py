@@ -51,6 +51,10 @@ class TileMapSourceSet:
     schema_version: int
     pages: tuple[TileAtlasSourceRecord, ...]
     objects: tuple[TileObjectSourceRecord, ...] = ()
+    preassembly_review_path: str | None = None
+    preassembly_review_sha256: str | None = None
+    critical_assets_report_path: str | None = None
+    critical_assets_report_sha256: str | None = None
 
     def __post_init__(self) -> None:
         if self.schema_version != 1:
@@ -67,7 +71,15 @@ class TileMapSourceSet:
             raise ValueError("object sources must have unique ids")
 
     def to_dict(self) -> dict[str, Any]:
-        return {"schema_version": 1, "pages": [page.to_dict() for page in self.pages], "objects": [item.to_dict() for item in self.objects]}
+        return {
+            "schema_version": 1,
+            "pages": [page.to_dict() for page in self.pages],
+            "objects": [item.to_dict() for item in self.objects],
+            "preassembly_review_path": self.preassembly_review_path,
+            "preassembly_review_sha256": self.preassembly_review_sha256,
+            "critical_assets_report_path": self.critical_assets_report_path,
+            "critical_assets_report_sha256": self.critical_assets_report_sha256,
+        }
 
     @classmethod
     def from_dict(cls, value: dict[str, Any]) -> "TileMapSourceSet":
@@ -77,7 +89,7 @@ class TileMapSourceSet:
         objects = value.get("objects", [])
         if not isinstance(objects, list):
             raise TypeError("TileMapSourceSet objects must be a JSON array")
-        return cls(1, tuple(TileAtlasSourceRecord.from_dict(item) for item in pages), tuple(TileObjectSourceRecord.from_dict(item) for item in objects))
+        return cls(1, tuple(TileAtlasSourceRecord.from_dict(item) for item in pages), tuple(TileObjectSourceRecord.from_dict(item) for item in objects), value.get("preassembly_review_path"), value.get("preassembly_review_sha256"), value.get("critical_assets_report_path"), value.get("critical_assets_report_sha256"))
 
 
 def load_tilemap_source_set(payload: dict[str, Any], request: TileMapRequest) -> TileMapSourceSet:

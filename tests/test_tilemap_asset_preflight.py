@@ -3,6 +3,7 @@ from __future__ import annotations
 import tempfile
 import unittest
 from pathlib import Path
+import json
 
 from PIL import Image, ImageDraw
 
@@ -59,6 +60,17 @@ class TilemapAssetPreflightTests(unittest.TestCase):
         changed = preflight_tilemap_assets(self.root, self.request, self.architecture, self.candidates(), self.root / "second")
         with self.assertRaisesRegex(ValueError, "candidate hashes"):
             validate_preassembly_review(changed, review)
+
+    def test_record_asset_review_writes_rejected_review_without_job_rejection(self) -> None:
+        from game_visual_forge.cli.tilemap import run_tilemap_record_asset_review
+
+        out = self.root / "preflight"
+        report = preflight_tilemap_assets(self.root, self.request, self.architecture, self.candidates(), out)
+        decisions = self.root / "decisions.json"
+        decisions.write_text(json.dumps({"schema_version": 1, "assets": [{"asset_id": item.asset_id, "status": "rejected", "reason_code": "visual-fail", "reason": "replace"} for item in report.candidates]}), encoding="utf-8")
+        result = run_tilemap_record_asset_review(out / "critical-assets-report.json", decisions, self.root / "review.json", "2026-08-09T00:00:00Z")
+        self.assertEqual(result["status"], "rejected")
+        self.assertTrue((self.root / "review.json").is_file())
 
 
 if __name__ == "__main__":

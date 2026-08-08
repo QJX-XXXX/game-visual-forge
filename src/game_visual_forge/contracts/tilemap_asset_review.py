@@ -3,6 +3,8 @@ from __future__ import annotations
 from dataclasses import dataclass
 from enum import StrEnum
 from typing import Any
+from pathlib import Path, PurePosixPath
+import hashlib
 
 from .quality import QualityCheck, QualityStatus
 
@@ -132,3 +134,11 @@ def validate_preassembly_review(report: TilemapCriticalAssetReport, review: Tile
         raise ValueError("candidate hashes or ordering changed after preassembly review")
     if report.deterministic_status is not QualityStatus.PASSED:
         raise ValueError("candidate deterministic checks are not passed")
+
+
+def validate_preassembly_candidate_files(report: TilemapCriticalAssetReport, repo_root: Path) -> None:
+    for candidate in report.candidates:
+        path = repo_root.resolve() / PurePosixPath(candidate.path)
+        digest = hashlib.sha256(path.read_bytes()).hexdigest()
+        if digest != candidate.sha256:
+            raise ValueError("candidate hashes changed after preassembly review")

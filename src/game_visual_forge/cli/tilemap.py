@@ -24,6 +24,12 @@ from game_visual_forge.contracts import (
     TileMapSourceSet,
     TileAtlasSourceRecord,
     TileObjectSourceRecord,
+    TilemapCriticalAssetReport,
+    TilemapPreassemblyReview,
+    PreassemblyAssetDecision,
+    record_preassembly_review,
+    validate_preassembly_review,
+    validate_preassembly_candidate_files,
     RejectedArtifact,
     parse_atlas_page_argument,
     parse_object_asset_argument,
@@ -36,8 +42,9 @@ from game_visual_forge.jobs import fingerprint_request, load_job, save_job, tran
 from game_visual_forge.processing.images import ingest_image, sha256_file
 from game_visual_forge.processing.sprite import publish_verified_outputs
 from game_visual_forge.processing.tilemap import TileMapProcessingResult, process_tilemap
+from game_visual_forge.processing.tilemap_asset_preflight import preflight_tilemap_assets
 from game_visual_forge.quality.tilemap import apply_tilemap_visual_review, build_tilemap_asset_manifest, validate_tilemap_outputs
-from game_visual_forge.routing import route_map, select_tilemap_architecture
+from game_visual_forge.routing import route_map, select_tilemap_architecture, TileMapArchitectureDecision
 
 
 def run_tilemap_reject(
@@ -100,6 +107,37 @@ def run_tilemap_record_approval(
     record = record_user_approval(TilemapApprovalGate(gate), tuple(artifacts), repo_root, now)
     dump_json(out_path, record.to_dict())
     return {"schema_version": 1, "status": record.status.value, "gate": record.gate.value, "approval_path": str(out_path)}
+
+
+def run_tilemap_preflight_assets(
+    request_path: Path,
+    architecture_path: Path,
+    atlas_page_arguments: list[str],
+    object_asset_arguments: list[str],
+    repo_root: Path,
+    out_dir: Path,
+) -> dict[str, Any]:
+    request, _ = _request(request_path)
+    architecture = TileMapArchitectureDecision.from_dict(load_json(architecture_path))
+    candidates = []
+    for argument in atlas_page_arguments:
+        atlas_id, path = parse_atlas_page_argument(argument)
+        kind = "foundation" if architecture.selected_profile.value == "coherent_foundation" and not candidates else "atlas"
+        candidates.append((atlas_id, kind, path))
+    for argument in object_asset_arguments:
+        asset_id, path = parse_object_asset_argument(argument)
+        candidates.append((asset_id, "object", path))
+    report = preflight_tilemap_assets(repo_root, request, architecture, candidates, out_dir.resolve())
+    return {"schema_version": 1, "status": report.deterministic_status.value, "report_path": str((out_dir / "critical-assets-report.json").resolve()), "review_sheet_path": str((out_dir / report.review_sheet_path).resolve())}
+
+
+def run_tilemap_record_asset_review(report_path: Path, decisions_path: Path, out_path: Path, now: str) -> dict[str, Any]:
+    report = TilemapCriticalAssetReport.from_dict(load_json(report_path))
+    payload = load_json(decisions_path)
+    decisions = tuple(PreassemblyAssetDecision.from_dict(item) for item in payload.get("assets", []))
+    review = record_preassembly_review(report, decisions, now)
+    dump_json(out_path, review.to_dict())
+    return {"schema_version": 1, "status": review.status.value, "review_path": str(out_path)}
 
 
 def _request(path: Path) -> tuple[TileMapRequest, str]:
@@ -175,8 +213,17 @@ def run_tilemap_ingest(
     now: str,
     object_asset_arguments: list[str] | None = None,
     style_approval_path: Path | None = None,
+    preassembly_review_path: Path | None = None,
+    critical_assets_report_path: Path | None = None,
 ) -> dict[str, Any]:
     request, fingerprint = _request(request_path)
+    if request.intake is not None:
+        if preassembly_review_path is None or critical_assets_report_path is None:
+            raise ValueError("new two-gate tilemap ingest requires an accepted preassembly review")
+        report = TilemapCriticalAssetReport.from_dict(load_json(critical_assets_report_path))
+        review = TilemapPreassemblyReview.from_dict(load_json(preassembly_review_path))
+        validate_preassembly_review(report, review)
+        validate_preassembly_candidate_files(report, repo_root)
     if request.approval_workflow.value == "two_gate":
         if style_approval_path is None:
             raise ValueError("two-gate tilemap ingest requires --style-approval")
@@ -207,7 +254,20 @@ def run_tilemap_ingest(
         expected_object_ids = tuple(item.asset_id for item in request.object_assets)
         if tuple(item.asset_id for item in objects) != expected_object_ids:
             raise ValueError(f"object asset arguments must match request object assets: expected {expected_object_ids}")
-        source_set = TileMapSourceSet(1, tuple(pages), tuple(objects))
+        review_copy = out_path.parent / "preassembly-review.json"
+        report_copy = out_path.parent / "critical-assets-report.json"
+        if request.intake is not None:
+            dump_json(review_copy, review.to_dict())
+            dump_json(report_copy, report.to_dict())
+        source_set = TileMapSourceSet(
+            1,
+            tuple(pages),
+            tuple(objects),
+            "preassembly-review.json" if request.intake is not None else None,
+            sha256_file(review_copy) if request.intake is not None else None,
+            "critical-assets-report.json" if request.intake is not None else None,
+            sha256_file(report_copy) if request.intake is not None else None,
+        )
         expected_ids = tuple(page.atlas_id for page in request.resolved_atlas_pages)
         if tuple(page.atlas_id for page in source_set.pages) != expected_ids:
             raise ValueError(f"atlas page arguments must match request pages: expected {expected_ids}")
