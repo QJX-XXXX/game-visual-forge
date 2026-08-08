@@ -28,6 +28,8 @@ from game_visual_forge.contracts import (
     parse_atlas_page_argument,
     parse_object_asset_argument,
     load_json,
+    assess_tilemap_intake,
+    TileMapIntakeStatus,
 )
 from game_visual_forge.contracts.serialization import dump_json
 from game_visual_forge.jobs import fingerprint_request, load_job, save_job, transition_job
@@ -35,7 +37,7 @@ from game_visual_forge.processing.images import ingest_image, sha256_file
 from game_visual_forge.processing.sprite import publish_verified_outputs
 from game_visual_forge.processing.tilemap import TileMapProcessingResult, process_tilemap
 from game_visual_forge.quality.tilemap import apply_tilemap_visual_review, build_tilemap_asset_manifest, validate_tilemap_outputs
-from game_visual_forge.routing import route_map
+from game_visual_forge.routing import route_map, select_tilemap_architecture
 
 
 def run_tilemap_reject(
@@ -106,12 +108,32 @@ def _request(path: Path) -> tuple[TileMapRequest, str]:
 
 
 def run_tilemap_plan(request_path: Path, out_dir: Path, now: str) -> dict[str, Any]:
+    payload = load_json(request_path)
+    assessment = assess_tilemap_intake(payload)
+    two_gate = payload.get("approval_workflow") == "two_gate"
+    if (payload.get("intake") is not None and assessment.status is TileMapIntakeStatus.NEEDS_USER_INPUT) or (two_gate and assessment.intake is None):
+        groups = assessment.question_groups
+        if not groups:
+            groups = tuple(
+                type(item)(item.question_group_id, item.fields, item.fields, item.label)
+                for item in assess_tilemap_intake({"intake": {}}).question_groups
+            )
+        return {"schema_version": 1, "status": TileMapIntakeStatus.NEEDS_USER_INPUT.value, "question_groups": [item.to_dict() for item in groups]}
+    if assessment.status is TileMapIntakeStatus.NEEDS_USER_CONFIRMATION:
+        return {
+            "schema_version": 1,
+            "status": TileMapIntakeStatus.NEEDS_USER_CONFIRMATION.value,
+            "confirmation_summary": assessment.confirmation_summary,
+            "confirmation_sha256": assessment.confirmation_sha256,
+        }
     request, fingerprint = _request(request_path)
     out_dir = out_dir.resolve()
     dump_json(out_dir / "tilemap-request.json", request.to_dict())
-    dump_json(out_dir / "execution-plan.json", build_tilemap_execution_plan(request).to_dict())
+    architecture = select_tilemap_architecture(request, fingerprint)
+    dump_json(out_dir / "architecture-decision.json", architecture.to_dict())
+    dump_json(out_dir / "execution-plan.json", build_tilemap_execution_plan(request, architecture).to_dict())
     save_job(out_dir / "job-state.json", JobState(1, f"job-{request.asset_id}", request.asset_id, JobStatus.PLANNED, now, now, fingerprint))
-    return {"schema_version": 1, "status": "planned", "request_path": "tilemap-request.json", "plan_path": "execution-plan.json", "state_path": "job-state.json"}
+    return {"schema_version": 1, "status": "planned", "request_path": "tilemap-request.json", "architecture_path": "architecture-decision.json", "plan_path": "execution-plan.json", "state_path": "job-state.json"}
 
 
 def run_tilemap_route(
