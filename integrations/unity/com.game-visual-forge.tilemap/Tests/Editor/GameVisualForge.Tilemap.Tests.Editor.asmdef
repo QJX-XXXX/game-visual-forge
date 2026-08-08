@@ -2,14 +2,15 @@
   "name": "GameVisualForge.Tilemap.Tests.Editor",
   "rootNamespace": "GameVisualForge.Unity.Tests",
   "references": [
-    "GameVisualForge.Tilemap.Editor",
-    "UnityEngine.TestRunner",
-    "UnityEditor.TestRunner"
+    "GameVisualForge.Tilemap.Editor"
   ],
   "includePlatforms": [
     "Editor"
   ],
   "overrideReferences": true,
+  "optionalUnityReferences": [
+    "TestAssemblies"
+  ],
   "precompiledReferences": [
     "nunit.framework.dll"
   ],

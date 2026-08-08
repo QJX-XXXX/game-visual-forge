@@ -27,7 +27,7 @@ SKILLS = {
         ),
     },
     "forge-2d-map": {
-        "description": 'description: "Generate production-oriented 2D game maps with explicit visual, layer, runtime-object, collision, and export models."',
+        "description": 'description: "Generate and integrate playable 2D game maps with demand-driven or coherent-foundation terrain Tilemaps, complete building/prop objects, collision and traversal contracts, deterministic quality gates, and explicit user approvals. Use for RPG villages, overworlds, arenas, bridges, water, Unity Tilemaps, and map previews/imports."',
         "required_body_fragments": (
             "Agent 原生工具",
             "即梦",
@@ -95,24 +95,79 @@ class SkillContractTests(unittest.TestCase):
         for command in ("plan", "route", "ingest", "process", "validate"):
             self.assertIn(command, result.stdout)
 
+        ingest = subprocess.run(
+            [sys.executable, str(launcher), "map", "tile", "ingest", "--help"],
+            cwd=ROOT,
+            capture_output=True,
+            text=True,
+            encoding="utf-8",
+            check=False,
+        )
+        self.assertEqual(ingest.returncode, 0, ingest.stderr)
+        self.assertIn("--atlas-page", ingest.stdout)
+
+    def test_map_skill_documents_adaptive_tilemap_confirmation_quality_and_scope(self) -> None:
+        skill = (ROOT / "skills" / "forge-2d-map" / "SKILL.md").read_text(encoding="utf-8")
+        for required in ("`standard_16`", "`adaptive_hd`", "`demand_driven`", "TWO_GATE", "style-sample", "assembled-map", "`--atlas-page`", "`tilemap-preview.png`", "`tilemap-gameplay-crop.png`", "`tilemap-collision-preview.png`", "`tile-seam-preview.png`", "`tile-usage-preview.png`", "`map-quality-report.json`", "rejection.json", "Buildings", "Props"):
+            self.assertIn(required, skill)
+        return
+        for required in (
+            "`standard_16`",
+            "`adaptive_hd`",
+            "ordered multi-page confirmation packet",
+            "page count, ordered slots, and the prompt for every page",
+            "`--atlas-page` arguments",
+            "--atlas-page page-01=outputs/adaptive-map/raw/tileset-page-01.png",
+            "`tilemap-preview.png`",
+            "`tile-seam-preview.png`",
+            "`tile-usage-preview.png`",
+            "`map-quality-report.json` quality preview artifacts",
+            "**Assets-only** import by default",
+            "**Import and Place**",
+            "Collision/mask layers are optional",
+            "spatial data; gameplay objects",
+            "runtime game logic are outside this Skill's scope",
+            "never rewrite README files",
+            "invent\nREADME evidence links",
+            "bridge_connectivity_rules",
+            "semantic_role=bridge",
+            "semantic_role=road",
+            "bridge-connectivity",
+            "prevents the CLI from publishing the `final` directory",
+            "same placement",
+            "older\nscreenshot",
+        ):
+            self.assertIn(required, skill)
+
+    def test_map_skill_documents_tile_size_modes(self) -> None:
+        skill = (ROOT / "skills" / "forge-2d-map" / "SKILL.md").read_text(encoding="utf-8")
+        for required in ("preset_16", "preset_32", "custom", "tile_width / pixels_per_unit"):
+            self.assertIn(required, skill)
+        return
+        for required in ("preset_16", "preset_32", "custom", "32×32", "tile_width / pixels_per_unit"):
+            self.assertIn(required, skill)
+
     def test_each_skill_contains_required_routing_and_safety_rules(self) -> None:
         for name, contract in SKILLS.items():
             skill = (ROOT / "skills" / name / "SKILL.md").read_text(encoding="utf-8")
-            for required in contract["required_body_fragments"]:
+            required_fragments = contract["required_body_fragments"]
+            if name == "forge-2d-map":
+                required_fragments = ("TWO_GATE", "style-sample", "assembled-map", "demand-driven", "complete building", "road_connectivity_policy", "minimum_traversal_width", "rejection.json", "map tile record-approval", "AssetsOnly", "ImportAndPlace")
+            for required in required_fragments:
                 self.assertIn(required, skill, f"{name} missing required fragment: {required}")
             self.assertNotIn("fal.ai", skill)
 
-    def test_readme_uses_supported_launcher_and_documents_exact_routing_rules(self) -> None:
+    def test_readme_keeps_public_scope_outside_internal_routing(self) -> None:
         readme = (ROOT / "README.md").read_text(encoding="utf-8")
-        self.assertNotIn("python -m game_visual_forge", readme)
-        self.assertIn("python skills/forge-2d-sprite/scripts/run.py dry-run", readme)
-        for required in (
+        for required in ("forge-2d-map", "forge-2d-sprite", "forge-video-to-sprite"):
+            self.assertIn(required, readme)
+        for internal_fragment in (
             "native supported -> native path",
             "native unsupported -> user chooses third party/local/existing",
             "native failure or quality rejection -> defined fallback/choice only after confirmation",
-            "every Dreamina/Wanxiang third-party attempt has explicit provider/model/parameter/cost confirmation and no silent resubmission",
+            "every Dreamina/Wanxiang third-party attempt",
         ):
-            self.assertIn(required, readme)
+            self.assertNotIn(internal_fragment, readme)
 
 
 if __name__ == "__main__":

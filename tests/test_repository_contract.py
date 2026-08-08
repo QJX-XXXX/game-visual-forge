@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import subprocess
 import unittest
 
 from tests._bootstrap import ROOT
@@ -30,10 +31,47 @@ class RepositoryContractTests(unittest.TestCase):
         self.assertFalse((ROOT / ".codex-plugin").exists())
         self.assertFalse((ROOT / ".gitmodules").exists())
         ignore_rules = (ROOT / ".gitignore").read_text(encoding="utf-8").splitlines()
-        self.assertFalse((ROOT / "docs").exists())
-        self.assertFalse((ROOT / ".superpowers").exists())
+        self.assertTrue((ROOT / "docs" / "superpowers" / "specs").is_dir())
         self.assertIn("docs/", ignore_rules)
         self.assertIn(".superpowers/", ignore_rules)
+
+        result = subprocess.run(
+            ["git", "ls-files", ".superpowers"],
+            cwd=ROOT,
+            capture_output=True,
+            text=True,
+            encoding="utf-8",
+            check=False,
+        )
+        self.assertEqual(result.returncode, 0, result.stderr)
+        self.assertEqual(result.stdout.strip(), "")
+
+    def test_readmes_expose_public_skill_and_install_entrypoints(self) -> None:
+        for readme_name in ("README.md", "README.zh-CN.md"):
+            text = (ROOT / readme_name).read_text(encoding="utf-8")
+            for required in (
+                "forge-2d-map",
+                "forge-2d-sprite",
+                "forge-video-to-sprite",
+                "install/codex/README.md",
+                "install/claude/README.md",
+            ):
+                self.assertIn(required, text, f"{readme_name} missing public entrypoint: {required}")
+
+    def test_readmes_stay_concise_and_do_not_duplicate_workflow(self) -> None:
+        forbidden_fragments = (
+            "map plan -> map route -> map ingest -> map process -> map validate",
+            "### M0",
+            "### M1",
+            "### M2",
+            "`map-quality-report.json`",
+            "`Reports/unity-import-report.json`",
+        )
+        for readme_name in ("README.md", "README.zh-CN.md"):
+            text = (ROOT / readme_name).read_text(encoding="utf-8")
+            self.assertLessEqual(len(text.splitlines()), 180, readme_name)
+            for forbidden in forbidden_fragments:
+                self.assertNotIn(forbidden, text, f"{readme_name} duplicates internal workflow: {forbidden}")
 
     def test_install_guides_are_manual_and_repo_local(self) -> None:
         for agent in ("codex", "claude"):

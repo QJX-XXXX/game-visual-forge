@@ -1,4 +1,4 @@
 interface:
   display_name: "Forge 2D Map"
-  short_description: "Plan layered, collision-aware 2D game maps"
-  default_prompt: "Use $forge-2d-map to create and validate a zero-network AssetBrief and execution Dry-run."
+  short_description: "Build reviewed playable 2D maps with Unity parity"
+  default_prompt: "Use $forge-2d-map to collect one grouped map brief, route its terrain architecture, preflight critical assets, pass the two user approvals, and verify Unity placement."

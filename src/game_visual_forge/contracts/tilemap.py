@@ -7,6 +7,16 @@ from typing import Any
 
 from .asset import SourcePreference
 from .pathing import normalize_repo_relative_path
+from .tilemap_objects import (
+    GridRect,
+    RoadConnectionRequirement,
+    RoadConnectivityPolicy,
+    TileMapApprovalWorkflow,
+    TileObjectAssetDefinition,
+    TileObjectEntrance,
+    TileObjectPlacement,
+)
+from .tilemap_intake import TileMapIntake
 
 
 _SLUG_PATTERN = re.compile(r"[a-z0-9][a-z0-9-]{0,63}")
@@ -41,8 +51,91 @@ class TileFilterMode(StrEnum):
     BILINEAR = "bilinear"
 
 
+class TileSizeMode(StrEnum):
+    PRESET_16 = "preset_16"
+    PRESET_32 = "preset_32"
+    CUSTOM = "custom"
+
+
+def _infer_tile_size_mode(width: int, height: int) -> TileSizeMode:
+    if (width, height) == (16, 16):
+        return TileSizeMode.PRESET_16
+    if (width, height) == (32, 32):
+        return TileSizeMode.PRESET_32
+    return TileSizeMode.CUSTOM
+
+
 class TilemapEngineTarget(StrEnum):
     UNITY_TILEMAP = "Unity_Tilemap"
+
+
+class TileSetProfile(StrEnum):
+    STANDARD_16 = "standard_16"
+    ADAPTIVE_HD = "adaptive_hd"
+    DEMAND_DRIVEN = "demand_driven"
+    COHERENT_FOUNDATION = "coherent_foundation"
+
+
+class TileSemanticRole(StrEnum):
+    UNSPECIFIED = "unspecified"
+    TERRAIN = "terrain"
+    TERRAIN_TRANSITION = "terrain-transition"
+    ROAD = "road"
+    WATER = "water"
+    BRIDGE = "bridge"
+    DECORATION = "decoration"
+    PROP = "prop"
+    DOORWAY = "doorway"
+
+
+class TileDirection(StrEnum):
+    NORTH = "north"
+    EAST = "east"
+    SOUTH = "south"
+    WEST = "west"
+
+
+class BridgeOrientation(StrEnum):
+    HORIZONTAL = "horizontal"
+    VERTICAL = "vertical"
+
+
+@dataclass(frozen=True)
+class AtlasPageDefinition:
+    atlas_id: str
+    columns: int
+    rows: int
+    tile_width: int
+    tile_height: int
+    prompt: str
+
+    def __post_init__(self) -> None:
+        if not _SLUG_PATTERN.fullmatch(self.atlas_id):
+            raise ValueError("atlas_id must be a lowercase slug")
+        for field_name in ("columns", "rows", "tile_width", "tile_height"):
+            _positive_int(getattr(self, field_name), field_name)
+        _non_empty(self.prompt, "prompt")
+
+    def to_dict(self) -> dict[str, Any]:
+        return {
+            "id": self.atlas_id,
+            "columns": self.columns,
+            "rows": self.rows,
+            "tile_width": self.tile_width,
+            "tile_height": self.tile_height,
+            "prompt": self.prompt,
+        }
+
+    @classmethod
+    def from_dict(cls, value: dict[str, Any]) -> "AtlasPageDefinition":
+        return cls(
+            atlas_id=str(value["id"]),
+            columns=int(value["columns"]),
+            rows=int(value["rows"]),
+            tile_width=int(value["tile_width"]),
+            tile_height=int(value["tile_height"]),
+            prompt=str(value["prompt"]),
+        )
 
 
 @dataclass(frozen=True)
@@ -51,6 +144,8 @@ class TileDefinition:
     atlas_column: int
     atlas_row: int
     collider_type: TileColliderType = TileColliderType.NONE
+    atlas_id: str = "page-01"
+    semantic_role: TileSemanticRole = TileSemanticRole.UNSPECIFIED
 
     def __post_init__(self) -> None:
         if not _SLUG_PATTERN.fullmatch(self.tile_id):
@@ -59,6 +154,10 @@ class TileDefinition:
         _non_negative_int(self.atlas_row, "atlas_row")
         if not isinstance(self.collider_type, TileColliderType):
             raise TypeError("collider_type must be TileColliderType")
+        if not _SLUG_PATTERN.fullmatch(self.atlas_id):
+            raise ValueError("atlas_id must be a lowercase slug")
+        if not isinstance(self.semantic_role, TileSemanticRole):
+            raise TypeError("semantic_role must be TileSemanticRole")
 
     def to_dict(self) -> dict[str, Any]:
         return {
@@ -66,6 +165,8 @@ class TileDefinition:
             "atlas_column": self.atlas_column,
             "atlas_row": self.atlas_row,
             "collider_type": self.collider_type.value,
+            "atlas_id": self.atlas_id,
+            "semantic_role": self.semantic_role.value,
         }
 
     @classmethod
@@ -75,6 +176,142 @@ class TileDefinition:
             atlas_column=_non_negative_int(value["atlas_column"], "atlas_column"),
             atlas_row=_non_negative_int(value["atlas_row"], "atlas_row"),
             collider_type=TileColliderType(value.get("collider_type", "none")),
+            atlas_id=str(value.get("atlas_id", "page-01")),
+            semantic_role=TileSemanticRole(value.get("semantic_role", "unspecified")),
+        )
+
+
+@dataclass(frozen=True)
+class TileAdjacencyRule:
+    tile_id: str
+    direction: TileDirection
+    allowed_neighbors: tuple[str, ...]
+
+    def __post_init__(self) -> None:
+        if not _SLUG_PATTERN.fullmatch(self.tile_id):
+            raise ValueError("tile_id must be a lowercase slug")
+        if not isinstance(self.direction, TileDirection):
+            raise TypeError("direction must be TileDirection")
+        if not self.allowed_neighbors or not all(_SLUG_PATTERN.fullmatch(item) for item in self.allowed_neighbors):
+            raise ValueError("allowed_neighbors must contain lowercase slugs")
+        if len(self.allowed_neighbors) != len(set(self.allowed_neighbors)):
+            raise ValueError("allowed_neighbors must be unique")
+
+    def to_dict(self) -> dict[str, Any]:
+        return {
+            "tile_id": self.tile_id,
+            "direction": self.direction.value,
+            "allowed_neighbors": list(self.allowed_neighbors),
+        }
+
+    @classmethod
+    def from_dict(cls, value: dict[str, Any]) -> "TileAdjacencyRule":
+        neighbors = value["allowed_neighbors"]
+        if not isinstance(neighbors, list):
+            raise TypeError("allowed_neighbors must be a JSON array")
+        return cls(
+            tile_id=str(value["tile_id"]),
+            direction=TileDirection(value["direction"]),
+            allowed_neighbors=tuple(str(item) for item in neighbors),
+        )
+
+
+@dataclass(frozen=True)
+class BridgeConnectivityRule:
+    rule_id: str
+    orientation: BridgeOrientation
+    bridge_layer_id: str
+    start_x: int
+    start_y: int
+    end_x: int
+    end_y: int
+    approach_layer_id: str | None = None
+    traversable: bool = True
+    minimum_traversal_width: int | None = 1
+
+    def __post_init__(self) -> None:
+        if not _SLUG_PATTERN.fullmatch(self.rule_id):
+            raise ValueError("rule_id must be a lowercase slug")
+        orientation = self.orientation
+        if isinstance(orientation, str):
+            orientation = BridgeOrientation(orientation)
+            object.__setattr__(self, "orientation", orientation)
+        elif not isinstance(orientation, BridgeOrientation):
+            raise TypeError("orientation must be BridgeOrientation")
+        for field_name in ("start_x", "start_y", "end_x", "end_y"):
+            _non_negative_int(getattr(self, field_name), field_name)
+        if not _SLUG_PATTERN.fullmatch(self.bridge_layer_id):
+            raise ValueError("bridge_layer_id must be a lowercase slug")
+        approach_layer_id = self.approach_layer_id or self.bridge_layer_id
+        if not _SLUG_PATTERN.fullmatch(approach_layer_id):
+            raise ValueError("approach_layer_id must be a lowercase slug")
+        object.__setattr__(self, "approach_layer_id", approach_layer_id)
+        if not isinstance(self.traversable, bool):
+            raise TypeError("traversable must be a boolean")
+        if self.minimum_traversal_width is not None:
+            _positive_int(self.minimum_traversal_width, "minimum_traversal_width")
+        if self.traversable and self.minimum_traversal_width is None:
+            raise ValueError("traversable bridges require minimum_traversal_width")
+        if orientation is BridgeOrientation.HORIZONTAL and self.start_y != self.end_y:
+            raise ValueError("horizontal bridge span must keep start_y and end_y aligned")
+        if orientation is BridgeOrientation.VERTICAL and self.start_x != self.end_x:
+            raise ValueError("vertical bridge span must keep start_x and end_x aligned")
+
+    @property
+    def min_x(self) -> int:
+        return min(self.start_x, self.end_x)
+
+    @property
+    def max_x(self) -> int:
+        return max(self.start_x, self.end_x)
+
+    @property
+    def min_y(self) -> int:
+        return min(self.start_y, self.end_y)
+
+    @property
+    def max_y(self) -> int:
+        return max(self.start_y, self.end_y)
+
+    def bridge_coordinates(self) -> tuple[tuple[int, int], ...]:
+        if self.orientation is BridgeOrientation.HORIZONTAL:
+            return tuple((x, self.start_y) for x in range(self.min_x, self.max_x + 1))
+        return tuple((self.start_x, y) for y in range(self.min_y, self.max_y + 1))
+
+    def approach_coordinates(self) -> tuple[tuple[int, int], ...]:
+        if self.orientation is BridgeOrientation.HORIZONTAL:
+            return ((self.min_x - 1, self.start_y), (self.max_x + 1, self.start_y))
+        return ((self.start_x, self.min_y - 1), (self.start_x, self.max_y + 1))
+
+    def to_dict(self) -> dict[str, Any]:
+        return {
+            "id": self.rule_id,
+            "orientation": self.orientation.value,
+            "bridge_layer_id": self.bridge_layer_id,
+            "approach_layer_id": self.approach_layer_id,
+            "start": {"x": self.start_x, "y": self.start_y},
+            "end": {"x": self.end_x, "y": self.end_y},
+            "traversable": self.traversable,
+            "minimum_traversal_width": self.minimum_traversal_width,
+        }
+
+    @classmethod
+    def from_dict(cls, value: dict[str, Any]) -> "BridgeConnectivityRule":
+        start = value["start"]
+        end = value["end"]
+        if not isinstance(start, dict) or not isinstance(end, dict):
+            raise TypeError("bridge rule start and end must be objects")
+        return cls(
+            rule_id=str(value.get("id", value.get("rule_id"))),
+            orientation=BridgeOrientation(value["orientation"]),
+            bridge_layer_id=str(value["bridge_layer_id"]),
+            start_x=int(start["x"]),
+            start_y=int(start["y"]),
+            end_x=int(end["x"]),
+            end_y=int(end["y"]),
+            approach_layer_id=None if value.get("approach_layer_id") is None else str(value["approach_layer_id"]),
+            traversable=bool(value.get("traversable", True)),
+            minimum_traversal_width=None if value.get("minimum_traversal_width", 1) is None else int(value.get("minimum_traversal_width", 1)),
         )
 
 
@@ -117,6 +354,52 @@ class TileLayer:
 
 
 @dataclass(frozen=True)
+class BuildingEntrance:
+    entrance_id: str
+    layer_id: str
+    x: int
+    y: int
+    target_scene_id: str
+    target_spawn_id: str
+
+    def __post_init__(self) -> None:
+        if not _SLUG_PATTERN.fullmatch(self.entrance_id):
+            raise ValueError("entrance_id must be a lowercase slug")
+        if not _SLUG_PATTERN.fullmatch(self.layer_id):
+            raise ValueError("layer_id must be a lowercase slug")
+        _non_negative_int(self.x, "x")
+        _non_negative_int(self.y, "y")
+        _non_empty(self.target_scene_id, "target_scene_id")
+        if "\\" in self.target_scene_id or ".." in self.target_scene_id:
+            raise ValueError("target_scene_id must be a safe forward-slash path")
+        if not _SLUG_PATTERN.fullmatch(self.target_spawn_id):
+            raise ValueError("target_spawn_id must be a lowercase slug")
+
+    def to_dict(self) -> dict[str, Any]:
+        return {
+            "id": self.entrance_id,
+            "layer_id": self.layer_id,
+            "cell": {"x": self.x, "y": self.y},
+            "target_scene_id": self.target_scene_id,
+            "target_spawn_id": self.target_spawn_id,
+        }
+
+    @classmethod
+    def from_dict(cls, value: dict[str, Any]) -> "BuildingEntrance":
+        cell = value["cell"]
+        if not isinstance(cell, dict):
+            raise TypeError("building entrance cell must be an object")
+        return cls(
+            entrance_id=str(value["id"]),
+            layer_id=str(value["layer_id"]),
+            x=int(cell["x"]),
+            y=int(cell["y"]),
+            target_scene_id=str(value["target_scene_id"]),
+            target_spawn_id=str(value["target_spawn_id"]),
+        )
+
+
+@dataclass(frozen=True)
 class TileMapRequest:
     schema_version: int
     asset_id: str
@@ -138,7 +421,24 @@ class TileMapRequest:
     atlas_spacing: int = 0
     filter_mode: TileFilterMode = TileFilterMode.POINT
     engine_target: TilemapEngineTarget = TilemapEngineTarget.UNITY_TILEMAP
+    tile_size_mode: TileSizeMode | None = None
     reference_paths: tuple[str, ...] = ()
+    tileset_profile: TileSetProfile = TileSetProfile.STANDARD_16
+    max_tile_count: int = 16
+    atlas_pages: tuple[AtlasPageDefinition, ...] = ()
+    adjacency_rules: tuple[TileAdjacencyRule, ...] = ()
+    bridge_connectivity_rules: tuple[BridgeConnectivityRule, ...] = ()
+    building_entrances: tuple[BuildingEntrance, ...] = ()
+    road_connectivity_policy: RoadConnectivityPolicy = RoadConnectivityPolicy.NONE
+    road_layer_ids: tuple[str, ...] = ()
+    road_connection_requirements: tuple[RoadConnectionRequirement, ...] = ()
+    object_assets: tuple[TileObjectAssetDefinition, ...] = ()
+    object_placements: tuple[TileObjectPlacement, ...] = ()
+    object_entrances: tuple[TileObjectEntrance, ...] = ()
+    approval_workflow: TileMapApprovalWorkflow = TileMapApprovalWorkflow.LEGACY_VISUAL
+    gameplay_crop: GridRect | None = None
+    foundation_prompt_path: str | None = None
+    intake: TileMapIntake | None = None
 
     def __post_init__(self) -> None:
         if self.schema_version != 1:
@@ -149,6 +449,16 @@ class TileMapRequest:
         object.__setattr__(self, "output_dir", normalize_repo_relative_path(self.output_dir, field_name="output_dir"))
         for field_name in ("tile_width", "tile_height", "atlas_columns", "atlas_rows", "map_width", "map_height", "pixels_per_unit"):
             _positive_int(getattr(self, field_name), field_name)
+        tile_size_mode = self.tile_size_mode
+        if tile_size_mode is None:
+            tile_size_mode = _infer_tile_size_mode(self.tile_width, self.tile_height)
+        elif not isinstance(tile_size_mode, TileSizeMode):
+            raise TypeError("tile_size_mode must be TileSizeMode")
+        if tile_size_mode is TileSizeMode.PRESET_16 and (self.tile_width, self.tile_height) != (16, 16):
+            raise ValueError("preset_16 requires 16x16 tile dimensions")
+        if tile_size_mode is TileSizeMode.PRESET_32 and (self.tile_width, self.tile_height) != (32, 32):
+            raise ValueError("preset_32 requires 32x32 tile dimensions")
+        object.__setattr__(self, "tile_size_mode", tile_size_mode)
         _non_negative_int(self.atlas_margin, "atlas_margin")
         _non_negative_int(self.atlas_spacing, "atlas_spacing")
         if not isinstance(self.source_preference, SourcePreference):
@@ -157,6 +467,68 @@ class TileMapRequest:
             raise TypeError("filter_mode must be TileFilterMode")
         if self.engine_target is not TilemapEngineTarget.UNITY_TILEMAP:
             raise ValueError("engine_target must be Unity_Tilemap")
+        if not isinstance(self.tileset_profile, TileSetProfile):
+            raise TypeError("tileset_profile must be TileSetProfile")
+        if not isinstance(self.atlas_pages, tuple) or not all(isinstance(page, AtlasPageDefinition) for page in self.atlas_pages):
+            raise TypeError("atlas_pages must contain AtlasPageDefinition values")
+        if not isinstance(self.adjacency_rules, tuple) or not all(isinstance(rule, TileAdjacencyRule) for rule in self.adjacency_rules):
+            raise TypeError("adjacency_rules must contain TileAdjacencyRule values")
+        if not isinstance(self.bridge_connectivity_rules, tuple) or not all(isinstance(rule, BridgeConnectivityRule) for rule in self.bridge_connectivity_rules):
+            raise TypeError("bridge_connectivity_rules must contain BridgeConnectivityRule values")
+        if not isinstance(self.building_entrances, tuple) or not all(isinstance(item, BuildingEntrance) for item in self.building_entrances):
+            raise TypeError("building_entrances must contain BuildingEntrance values")
+        if isinstance(self.road_connectivity_policy, str):
+            object.__setattr__(self, "road_connectivity_policy", RoadConnectivityPolicy(self.road_connectivity_policy))
+        elif not isinstance(self.road_connectivity_policy, RoadConnectivityPolicy):
+            raise TypeError("road_connectivity_policy must be RoadConnectivityPolicy")
+        if not isinstance(self.road_layer_ids, tuple) or not all(isinstance(item, str) and _SLUG_PATTERN.fullmatch(item) for item in self.road_layer_ids):
+            raise ValueError("road_layer_ids must contain lowercase slugs")
+        if not isinstance(self.road_connection_requirements, tuple) or not all(isinstance(item, RoadConnectionRequirement) for item in self.road_connection_requirements):
+            raise TypeError("road_connection_requirements must contain RoadConnectionRequirement values")
+        if self.road_connectivity_policy is RoadConnectivityPolicy.NONE and self.road_connection_requirements:
+            raise ValueError("road_connection_requirements must be empty when road connectivity policy is none")
+        if self.road_connectivity_policy is not RoadConnectivityPolicy.NONE and not self.road_connection_requirements:
+            raise ValueError(f"{self.road_connectivity_policy.value} road connectivity policy requires declared road_connection_requirements")
+        if len({item.rule_id for item in self.road_connection_requirements}) != len(self.road_connection_requirements):
+            raise ValueError("road connection requirement ids must be unique")
+        if not isinstance(self.object_assets, tuple) or not all(isinstance(item, TileObjectAssetDefinition) for item in self.object_assets):
+            raise TypeError("object_assets must contain TileObjectAssetDefinition values")
+        if not isinstance(self.object_placements, tuple) or not all(isinstance(item, TileObjectPlacement) for item in self.object_placements):
+            raise TypeError("object_placements must contain TileObjectPlacement values")
+        if not isinstance(self.object_entrances, tuple) or not all(isinstance(item, TileObjectEntrance) for item in self.object_entrances):
+            raise TypeError("object_entrances must contain TileObjectEntrance values")
+        if len({item.asset_id for item in self.object_assets}) != len(self.object_assets):
+            raise ValueError("object asset ids must be unique")
+        if len({item.instance_id for item in self.object_placements}) != len(self.object_placements):
+            raise ValueError("object placement ids must be unique")
+        known_assets = {item.asset_id: item for item in self.object_assets}
+        known_instances = {item.instance_id: item for item in self.object_placements}
+        for placement in self.object_placements:
+            if placement.asset_id not in known_assets:
+                raise ValueError(f"object placement references unknown asset: {placement.instance_id}")
+            definition = known_assets[placement.asset_id]
+            if placement.x + definition.footprint.width > self.map_width or placement.y + definition.footprint.height > self.map_height:
+                raise ValueError(f"object placement is outside the map: {placement.instance_id}")
+        entrance_ids = [item.entrance_id for item in self.object_entrances]
+        if len(entrance_ids) != len(set(entrance_ids)):
+            raise ValueError("object entrance ids must be unique")
+        for entrance in self.object_entrances:
+            if entrance.instance_id not in known_instances:
+                raise ValueError(f"object entrance references unknown instance: {entrance.entrance_id}")
+        if isinstance(self.approval_workflow, str):
+            object.__setattr__(self, "approval_workflow", TileMapApprovalWorkflow(self.approval_workflow))
+        elif not isinstance(self.approval_workflow, TileMapApprovalWorkflow):
+            raise TypeError("approval_workflow must be TileMapApprovalWorkflow")
+        if self.gameplay_crop is not None and not isinstance(self.gameplay_crop, GridRect):
+            raise TypeError("gameplay_crop must be GridRect")
+        if self.intake is not None:
+            if not isinstance(self.intake, TileMapIntake):
+                raise TypeError("intake must be TileMapIntake")
+            if self.intake.engine_target != self.engine_target.value:
+                raise ValueError("intake engine_target must match engine_target")
+        _positive_int(self.max_tile_count, "max_tile_count")
+        if self.tileset_profile not in {TileSetProfile.DEMAND_DRIVEN, TileSetProfile.COHERENT_FOUNDATION} and self.max_tile_count not in {16, 32, 48}:
+            raise ValueError("max_tile_count must be one of 16, 32, or 48")
         _non_empty(self.palette_name, "palette_name")
         if "/" in self.palette_name or "\\" in self.palette_name:
             raise ValueError("palette_name must not contain path separators")
@@ -164,15 +536,60 @@ class TileMapRequest:
             raise ValueError("unity_generated_root must be a forward-slash Assets path")
         if not self.tiles or not all(isinstance(tile, TileDefinition) for tile in self.tiles):
             raise ValueError("tiles must contain at least one TileDefinition")
+        pages = self.resolved_atlas_pages
+        if any((page.tile_width, page.tile_height) != (self.tile_width, self.tile_height) for page in pages):
+            raise ValueError("all atlas pages must use the request tile dimensions")
+        page_ids = [page.atlas_id for page in pages]
+        if len(page_ids) != len(set(page_ids)):
+            raise ValueError("atlas page ids must be unique")
+        if self.tileset_profile is TileSetProfile.COHERENT_FOUNDATION:
+            if len(pages) != 1 or pages[0].columns != self.map_width or pages[0].rows != self.map_height:
+                raise ValueError("coherent_foundation atlas dimensions must match map dimensions")
+            if self.max_tile_count != self.map_width * self.map_height:
+                raise ValueError("coherent_foundation max_tile_count must equal one tile per map cell")
+            if self.foundation_prompt_path is None:
+                raise ValueError("coherent_foundation requires foundation_prompt_path")
+            object.__setattr__(self, "foundation_prompt_path", normalize_repo_relative_path(self.foundation_prompt_path, field_name="foundation_prompt_path"))
+        elif self.tileset_profile is TileSetProfile.ADAPTIVE_HD:
+            if not 1 <= len(pages) <= 3:
+                raise ValueError("adaptive_hd must contain one to three atlas pages")
+            if any(page.columns != 4 or page.rows != 4 for page in pages):
+                raise ValueError("adaptive_hd atlas pages must use a 4x4 grid")
+        elif self.tileset_profile is TileSetProfile.DEMAND_DRIVEN:
+            if not 1 <= len(pages) <= 4:
+                raise ValueError("demand_driven must contain one to four atlas pages")
+            if any(page.columns > 4 or page.rows > 4 for page in pages):
+                raise ValueError("demand_driven atlas pages must use at most a 4x4 grid")
+            if self.max_tile_count > sum(page.columns * page.rows for page in pages):
+                raise ValueError("max_tile_count must not exceed declared atlas capacity")
+        elif len(pages) != 1:
+            raise ValueError("standard_16 must contain exactly one atlas page")
+        if len(self.tiles) > self.max_tile_count:
+            raise ValueError("tiles must not exceed max_tile_count")
+        if self.tileset_profile is TileSetProfile.COHERENT_FOUNDATION and len(self.tiles) != self.map_width * self.map_height:
+            raise ValueError("coherent_foundation requires one tile per map cell")
         tile_ids = [tile.tile_id for tile in self.tiles]
         if len(tile_ids) != len(set(tile_ids)):
             raise ValueError("tile ids must be unique")
-        atlas_cells = [(tile.atlas_column, tile.atlas_row) for tile in self.tiles]
+        known_page_ids = set(page_ids)
+        atlas_cells = [(tile.atlas_id, tile.atlas_column, tile.atlas_row) for tile in self.tiles]
         if len(atlas_cells) != len(set(atlas_cells)):
             raise ValueError("tile atlas cells must be unique")
         for tile in self.tiles:
-            if tile.atlas_column >= self.atlas_columns or tile.atlas_row >= self.atlas_rows:
+            if tile.atlas_id not in known_page_ids:
+                raise ValueError(f"tile references unknown atlas page: {tile.tile_id}")
+            page = next(item for item in pages if item.atlas_id == tile.atlas_id)
+            if tile.atlas_column >= page.columns or tile.atlas_row >= page.rows:
                 raise ValueError(f"tile is outside the atlas grid: {tile.tile_id}")
+        if self.approval_workflow is TileMapApprovalWorkflow.TWO_GATE:
+            if self.gameplay_crop is None:
+                raise ValueError("two_gate approval workflow requires gameplay_crop")
+            if self.gameplay_crop.x + self.gameplay_crop.width > self.map_width or self.gameplay_crop.y + self.gameplay_crop.height > self.map_height:
+                raise ValueError("gameplay_crop must fit inside the map")
+            if any(tile.semantic_role in {TileSemanticRole.PROP, TileSemanticRole.DOORWAY} for tile in self.tiles):
+                raise ValueError("two_gate terrain tiles must not use prop or doorway roles")
+            if self.building_entrances:
+                raise ValueError("two_gate building entrances must use object contracts")
         if not self.layers or not all(isinstance(layer, TileLayer) for layer in self.layers):
             raise ValueError("layers must contain at least one TileLayer")
         layer_ids = [layer.layer_id for layer in self.layers]
@@ -186,14 +603,76 @@ class TileMapRequest:
             unknown = {item for item in layer.cells if item is not None and item not in known_tiles}
             if unknown:
                 raise ValueError(f"layer references unknown tiles: {layer.layer_id}: {sorted(unknown)}")
+        if self.tileset_profile is TileSetProfile.COHERENT_FOUNDATION:
+            if len(self.layers) != 1:
+                raise ValueError("coherent_foundation requires exactly one terrain layer")
+            tile_coordinates = {(tile.atlas_column, tile.atlas_row): tile.tile_id for tile in self.tiles}
+            expected_coordinates = {(x, y) for y in range(self.map_height) for x in range(self.map_width)}
+            if set(tile_coordinates) != expected_coordinates:
+                raise ValueError("coherent_foundation requires one tile per map cell")
+            for index, tile_id in enumerate(self.layers[0].cells):
+                coordinate = (index % self.map_width, index // self.map_width)
+                if tile_id != tile_coordinates[coordinate]:
+                    raise ValueError("coherent_foundation layer cells must reference the tile at the matching atlas coordinate")
+        adjacency_keys = [(rule.tile_id, rule.direction) for rule in self.adjacency_rules]
+        if len(adjacency_keys) != len(set(adjacency_keys)):
+            raise ValueError("adjacency rules must be unique per tile and direction")
+        for rule in self.adjacency_rules:
+            if rule.tile_id not in known_tiles or any(item not in known_tiles for item in rule.allowed_neighbors):
+                raise ValueError("adjacency rules must reference known tiles")
+        bridge_rule_ids = [rule.rule_id for rule in self.bridge_connectivity_rules]
+        if len(bridge_rule_ids) != len(set(bridge_rule_ids)):
+            raise ValueError("bridge connectivity rule ids must be unique")
+        known_layer_ids = set(layer_ids)
+        for rule in self.bridge_connectivity_rules:
+            if rule.bridge_layer_id not in known_layer_ids:
+                raise ValueError(f"bridge connectivity rule references unknown bridge layer: {rule.rule_id}")
+            if rule.approach_layer_id not in known_layer_ids:
+                raise ValueError(f"bridge connectivity rule references unknown approach layer: {rule.rule_id}")
+            if any(not (0 <= x < self.map_width and 0 <= y < self.map_height) for x, y in (*rule.bridge_coordinates(), *rule.approach_coordinates())):
+                raise ValueError(f"bridge connectivity rule coordinates are outside the map: {rule.rule_id}")
+        entrance_ids = [item.entrance_id for item in self.building_entrances]
+        if len(entrance_ids) != len(set(entrance_ids)):
+            raise ValueError("building entrance ids must be unique")
+        tiles_by_id = {tile.tile_id: tile for tile in self.tiles}
+        layers_by_id = {layer.layer_id: layer for layer in self.layers}
+        for entrance in self.building_entrances:
+            if entrance.layer_id not in layers_by_id:
+                raise ValueError(f"building entrance references unknown layer: {entrance.entrance_id}")
+            if not (0 <= entrance.x < self.map_width and 0 <= entrance.y < self.map_height):
+                raise ValueError(f"building entrance coordinates are outside the map: {entrance.entrance_id}")
+            layer = layers_by_id[entrance.layer_id]
+            tile_id = layer.cells[entrance.y * self.map_width + entrance.x]
+            if tile_id is None:
+                raise ValueError(f"building entrance cell is empty: {entrance.entrance_id}")
+            tile = tiles_by_id[tile_id]
+            if tile.semantic_role is not TileSemanticRole.DOORWAY:
+                raise ValueError(f"building entrance cell must use doorway tile: {entrance.entrance_id}")
+            if tile.collider_type is not TileColliderType.NONE:
+                raise ValueError(f"building entrance doorway must be walkable: {entrance.entrance_id}")
         object.__setattr__(self, "reference_paths", tuple(normalize_repo_relative_path(path, field_name="reference_paths") for path in self.reference_paths))
 
     @property
+    def resolved_atlas_pages(self) -> tuple[AtlasPageDefinition, ...]:
+        if self.atlas_pages:
+            return self.atlas_pages
+        return (AtlasPageDefinition("page-01", self.atlas_columns, self.atlas_rows, self.tile_width, self.tile_height, self.prompt),)
+
+    @property
+    def expected_atlas_sizes(self) -> dict[str, tuple[int, int]]:
+        return {
+            page.atlas_id: (
+                self.atlas_margin * 2 + page.columns * page.tile_width + (page.columns - 1) * self.atlas_spacing,
+                self.atlas_margin * 2 + page.rows * page.tile_height + (page.rows - 1) * self.atlas_spacing,
+            )
+            for page in self.resolved_atlas_pages
+        }
+
+    @property
     def expected_atlas_size(self) -> tuple[int, int]:
-        return (
-            self.atlas_margin * 2 + self.atlas_columns * self.tile_width + (self.atlas_columns - 1) * self.atlas_spacing,
-            self.atlas_margin * 2 + self.atlas_rows * self.tile_height + (self.atlas_rows - 1) * self.atlas_spacing,
-        )
+        if len(self.resolved_atlas_pages) != 1:
+            raise ValueError("expected_atlas_size is only available for single-page requests")
+        return next(iter(self.expected_atlas_sizes.values()))
 
     def to_dict(self) -> dict[str, Any]:
         return {
@@ -211,6 +690,7 @@ class TileMapRequest:
             "map_width": self.map_width,
             "map_height": self.map_height,
             "pixels_per_unit": self.pixels_per_unit,
+            "tile_size_mode": self.tile_size_mode.value,
             "filter_mode": self.filter_mode.value,
             "engine_target": self.engine_target.value,
             "palette_name": self.palette_name,
@@ -218,6 +698,22 @@ class TileMapRequest:
             "tiles": [tile.to_dict() for tile in self.tiles],
             "layers": [layer.to_dict() for layer in self.layers],
             "reference_paths": list(self.reference_paths),
+            "tileset_profile": self.tileset_profile.value,
+            "max_tile_count": self.max_tile_count,
+            "atlas_pages": [page.to_dict() for page in self.atlas_pages],
+            "adjacency_rules": [rule.to_dict() for rule in self.adjacency_rules],
+            "bridge_connectivity_rules": [rule.to_dict() for rule in self.bridge_connectivity_rules],
+            "building_entrances": [item.to_dict() for item in self.building_entrances],
+            "road_connectivity_policy": self.road_connectivity_policy.value,
+            "road_layer_ids": list(self.road_layer_ids),
+            "road_connection_requirements": [item.to_dict() for item in self.road_connection_requirements],
+            "object_assets": [item.to_dict() for item in self.object_assets],
+            "object_placements": [item.to_dict() for item in self.object_placements],
+            "object_entrances": [item.to_dict() for item in self.object_entrances],
+            "approval_workflow": self.approval_workflow.value,
+            "gameplay_crop": None if self.gameplay_crop is None else self.gameplay_crop.to_dict(),
+            "foundation_prompt_path": self.foundation_prompt_path,
+            "intake": None if self.intake is None else self.intake.to_dict(),
         }
 
     @classmethod
@@ -239,9 +735,26 @@ class TileMapRequest:
             pixels_per_unit=int(value.get("pixels_per_unit", value["tile_width"])),
             filter_mode=TileFilterMode(value.get("filter_mode", "point")),
             engine_target=TilemapEngineTarget(value.get("engine_target", "Unity_Tilemap")),
+            tile_size_mode=TileSizeMode(value["tile_size_mode"]) if "tile_size_mode" in value else None,
             palette_name=str(value["palette_name"]),
             unity_generated_root=str(value["unity_generated_root"]),
             tiles=tuple(TileDefinition.from_dict(item) for item in value["tiles"]),
             layers=tuple(TileLayer.from_dict(item) for item in value["layers"]),
             reference_paths=tuple(str(item) for item in value.get("reference_paths", [])),
+            tileset_profile=TileSetProfile(value.get("tileset_profile", "standard_16")),
+            max_tile_count=int(value.get("max_tile_count", 16)),
+            atlas_pages=tuple(AtlasPageDefinition.from_dict(item) for item in value.get("atlas_pages", [])),
+            adjacency_rules=tuple(TileAdjacencyRule.from_dict(item) for item in value.get("adjacency_rules", [])),
+            bridge_connectivity_rules=tuple(BridgeConnectivityRule.from_dict(item) for item in value.get("bridge_connectivity_rules", [])),
+            building_entrances=tuple(BuildingEntrance.from_dict(item) for item in value.get("building_entrances", [])),
+            road_connectivity_policy=RoadConnectivityPolicy(value.get("road_connectivity_policy", "none")),
+            road_layer_ids=tuple(str(item) for item in value.get("road_layer_ids", [])),
+            road_connection_requirements=tuple(RoadConnectionRequirement.from_dict(item) for item in value.get("road_connection_requirements", [])),
+            object_assets=tuple(TileObjectAssetDefinition.from_dict(item) for item in value.get("object_assets", [])),
+            object_placements=tuple(TileObjectPlacement.from_dict(item) for item in value.get("object_placements", [])),
+            object_entrances=tuple(TileObjectEntrance.from_dict(item) for item in value.get("object_entrances", [])),
+            approval_workflow=TileMapApprovalWorkflow(value.get("approval_workflow", "legacy_visual")),
+            gameplay_crop=None if value.get("gameplay_crop") is None else GridRect.from_dict(value["gameplay_crop"]),
+            foundation_prompt_path=None if value.get("foundation_prompt_path") is None else str(value["foundation_prompt_path"]),
+            intake=None if value.get("intake") is None else TileMapIntake.from_dict(value["intake"]),
         )

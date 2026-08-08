@@ -20,8 +20,14 @@ class UnityTilemapIntegrationTests(unittest.TestCase):
         self.assertIn("SetSpriteRects", source)
         self.assertIn("ISpriteNameFileIdDataProvider", source)
         self.assertNotIn("TextureImporter.spritesheet", source)
-        self.assertNotIn("EditorSceneManager", source)
         self.assertIn("PrefabUtility.SaveAsPrefabAsset", source)
+        self.assertIn("tilesets", source)
+        self.assertIn("atlas_id", source)
+        self.assertIn('atlas_id = "page-01"', source)
+        self.assertIn("path = manifest.tileset", source)
+        self.assertIn("ImportMode.AssetsOnly", source)
+        self.assertIn("ResolveBundleFile", source)
+        self.assertIn("building_entrances_asset", source)
 
     def test_optional_unity_runtime_checks_are_packaged(self) -> None:
         package_root = ROOT / "integrations" / "unity" / "com.game-visual-forge.tilemap"
@@ -30,7 +36,39 @@ class UnityTilemapIntegrationTests(unittest.TestCase):
         self.assertTrue(editor_tests.is_file())
         self.assertTrue(playmode_tests.is_file())
         self.assertIn("TilemapCollider2D", editor_tests.read_text(encoding="utf-8"))
-        self.assertIn("Object.Instantiate", playmode_tests.read_text(encoding="utf-8"))
+        self.assertIn("TilemapRenderer", playmode_tests.read_text(encoding="utf-8"))
+
+    def test_multi_page_import_and_report_sources_are_packaged(self) -> None:
+        package_root = ROOT / "integrations" / "unity" / "com.game-visual-forge.tilemap"
+        contracts = (package_root / "Editor" / "TilemapBundleContracts.cs").read_text(encoding="utf-8")
+        placer = (package_root / "Editor" / "TilemapScenePlacer.cs").read_text(encoding="utf-8")
+        writer = (package_root / "Editor" / "TilemapImportReportWriter.cs").read_text(encoding="utf-8")
+        self.assertIn("AssetsOnly", contracts)
+        self.assertIn("ImportAndPlace", contracts)
+        self.assertIn("atlas_page_paths", contracts)
+        self.assertIn("tile_paths", contracts)
+        self.assertIn("had_existing_assets", contracts)
+        self.assertIn("resource_guids_stable", contracts)
+        self.assertIn("building_entrances", contracts)
+        self.assertIn("building_entrances_asset", contracts)
+        self.assertIn("PlaceOrUpdate", placer)
+        self.assertIn("quality_report_sha256", writer)
+        self.assertIn("ComputeSha256", writer)
+        self.assertIn("building_entrances_asset", writer)
+        self.assertIn("ImportAndPlaceBundleForAutomation", importer := (package_root / "Editor" / "TilemapBundleImporter.cs").read_text(encoding="utf-8"))
+        self.assertIn("CaptureExistingResourceGuids", importer)
+
+    def test_hybrid_importer_has_approval_preflight_and_object_layers(self) -> None:
+        package_root = ROOT / "integrations" / "unity" / "com.game-visual-forge.tilemap"
+        importer = (package_root / "Editor" / "TilemapBundleImporter.cs").read_text(encoding="utf-8")
+        object_importer = (package_root / "Editor" / "TilemapObjectImporter.cs").read_text(encoding="utf-8")
+        validator = (package_root / "Editor" / "TilemapApprovalValidator.cs").read_text(encoding="utf-8")
+        self.assertIn("TilemapApprovalValidator.Validate", importer)
+        self.assertIn("ImportObjects", importer)
+        self.assertIn("AttachObjects", importer)
+        self.assertIn("Buildings", object_importer)
+        self.assertIn("Props", object_importer)
+        self.assertIn("Rejected tilemap runs cannot be imported", validator)
 
 
 if __name__ == "__main__":

@@ -145,7 +145,11 @@ def build_map_execution_plan(request: MapRequest) -> ExecutionPlan:
     return execution_plan_from_actions(request.asset_id, request.source_preference.value, actions)
 
 
-def build_tilemap_execution_plan(request: TileMapRequest) -> ExecutionPlan:
+def build_tilemap_execution_plan(request: TileMapRequest, architecture=None) -> ExecutionPlan:
+    if architecture is None and request.intake is not None:
+        from game_visual_forge.routing.tilemap_architecture import select_tilemap_architecture
+        from game_visual_forge.jobs import fingerprint_request
+        architecture = select_tilemap_architecture(request, fingerprint_request(request.to_dict()))
     if request.source_preference in {SourcePreference.JIMENG, SourcePreference.WANXIANG}:
         source_actions = (
             ("route-tileset-source", "agent", False),
@@ -159,6 +163,14 @@ def build_tilemap_execution_plan(request: TileMapRequest) -> ExecutionPlan:
             ("route-tileset-source", "agent", False),
             ("obtain-local-tileset", "agent", False),
         )
+    if architecture is not None and architecture.selected_profile.value == "coherent_foundation":
+        obtain_action = "obtain-coherent-foundation-and-objects"
+    elif architecture is not None and architecture.selected_profile.value == "demand_driven":
+        obtain_action = "obtain-demand-driven-tiles-and-objects"
+    else:
+        obtain_action = "obtain-local-tileset-pages" if request.tileset_profile.value == "adaptive_hd" else "obtain-local-tileset"
+    if source_actions[-1][0] == "obtain-local-tileset":
+        source_actions = source_actions[:-1] + ((obtain_action, source_actions[-1][1], source_actions[-1][2]),)
     actions = source_actions + (
         ("ingest-local-tileset", "local-runtime", False),
         ("slice-and-compose-tilemap", "local-runtime", False),

@@ -2,13 +2,12 @@
   "name": "GameVisualForge.Tilemap.Tests.PlayMode",
   "rootNamespace": "GameVisualForge.Unity.Tests",
   "references": [
-    "UnityEngine.TestRunner",
-    "UnityEditor.TestRunner"
-  ],
-  "includePlatforms": [
-    "Editor"
+    "UnityEditor"
   ],
   "overrideReferences": true,
+  "optionalUnityReferences": [
+    "TestAssemblies"
+  ],
   "precompiledReferences": [
     "nunit.framework.dll"
   ],

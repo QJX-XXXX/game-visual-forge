@@ -39,6 +39,7 @@ class JobStatus(StrEnum):
     SUBMISSION_UNKNOWN = "submission_unknown"
     NEEDS_ATTENTION = "needs_attention"
     CANCELLED = "cancelled"
+    REJECTED = "rejected"
 
 
 @dataclass(frozen=True)

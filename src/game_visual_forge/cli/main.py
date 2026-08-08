@@ -17,8 +17,12 @@ from game_visual_forge.cli.map import (
 )
 from game_visual_forge.cli.tilemap import (
     run_tilemap_ingest,
+    run_tilemap_record_approval,
     run_tilemap_plan,
+    run_tilemap_preflight_assets,
+    run_tilemap_record_asset_review,
     run_tilemap_process,
+    run_tilemap_reject,
     run_tilemap_route,
     run_tilemap_validate,
 )
@@ -112,7 +116,12 @@ def build_parser() -> argparse.ArgumentParser:
     tilemap_ingest = tilemap_commands.add_parser("ingest")
     tilemap_ingest.add_argument("--request", type=Path, required=True)
     tilemap_ingest.add_argument("--decision", type=Path, required=True)
-    tilemap_ingest.add_argument("--image", type=Path, required=True)
+    tilemap_ingest.add_argument("--image", type=Path)
+    tilemap_ingest.add_argument("--atlas-page", action="append", default=[])
+    tilemap_ingest.add_argument("--object-asset", action="append", default=[])
+    tilemap_ingest.add_argument("--style-approval", type=Path)
+    tilemap_ingest.add_argument("--preassembly-review", type=Path)
+    tilemap_ingest.add_argument("--critical-assets-report", type=Path)
     tilemap_ingest.add_argument("--repo-root", type=Path, required=True)
     tilemap_ingest.add_argument("--out", type=Path, required=True)
     tilemap_ingest.add_argument("--state", type=Path, required=True)
@@ -134,8 +143,39 @@ def build_parser() -> argparse.ArgumentParser:
     tilemap_validate.add_argument("--staging-dir", type=Path, required=True)
     tilemap_validate.add_argument("--final-dir", type=Path, required=True)
     tilemap_validate.add_argument("--visual-review", type=Path)
+    tilemap_validate.add_argument("--style-approval", type=Path)
+    tilemap_validate.add_argument("--assembled-approval", type=Path)
     tilemap_validate.add_argument("--state", type=Path, required=True)
     tilemap_validate.add_argument("--now", required=True)
+
+    tilemap_reject_parser = tilemap_commands.add_parser("reject")
+    tilemap_reject_parser.add_argument("--state", type=Path, required=True)
+    tilemap_reject_parser.add_argument("--run-root", type=Path, required=True)
+    tilemap_reject_parser.add_argument("--out", type=Path, required=True)
+    tilemap_reject_parser.add_argument("--reason-code", required=True)
+    tilemap_reject_parser.add_argument("--reason", required=True)
+    tilemap_reject_parser.add_argument("--now", required=True)
+
+    tilemap_approval = tilemap_commands.add_parser("record-approval")
+    tilemap_approval.add_argument("--gate", choices=["style-sample", "assembled-map"], required=True)
+    tilemap_approval.add_argument("--artifact", action="append", default=[])
+    tilemap_approval.add_argument("--out", type=Path, required=True)
+    tilemap_approval.add_argument("--repo-root", type=Path, default=Path.cwd())
+    tilemap_approval.add_argument("--now", required=True)
+
+    tilemap_preflight = tilemap_commands.add_parser("preflight-assets")
+    tilemap_preflight.add_argument("--request", type=Path, required=True)
+    tilemap_preflight.add_argument("--architecture", type=Path, required=True)
+    tilemap_preflight.add_argument("--atlas-page", action="append", default=[])
+    tilemap_preflight.add_argument("--object-asset", action="append", default=[])
+    tilemap_preflight.add_argument("--repo-root", type=Path, required=True)
+    tilemap_preflight.add_argument("--out-dir", type=Path, required=True)
+
+    tilemap_review = tilemap_commands.add_parser("record-asset-review")
+    tilemap_review.add_argument("--report", type=Path, required=True)
+    tilemap_review.add_argument("--decisions", type=Path, required=True)
+    tilemap_review.add_argument("--out", type=Path, required=True)
+    tilemap_review.add_argument("--now", required=True)
 
     show_state = commands.add_parser("show-state")
     show_state.add_argument("--state", type=Path, required=True)
@@ -241,11 +281,19 @@ def main(argv: list[str] | None = None) -> int:
         elif args.command == "map" and args.map_command == "tile" and args.tilemap_command == "route":
             payload = run_tilemap_route(args.request, args.capabilities, args.selection, args.preflight, args.out, args.state, args.now)
         elif args.command == "map" and args.map_command == "tile" and args.tilemap_command == "ingest":
-            payload = run_tilemap_ingest(args.request, args.decision, args.image, args.repo_root, args.out, args.state, args.now)
+            payload = run_tilemap_ingest(args.request, args.decision, args.image, args.atlas_page, args.repo_root, args.out, args.state, args.now, args.object_asset, args.style_approval, args.preassembly_review, args.critical_assets_report)
         elif args.command == "map" and args.map_command == "tile" and args.tilemap_command == "process":
             payload = run_tilemap_process(args.request, args.raw_image, args.repo_root, args.out_dir, args.state, args.now)
         elif args.command == "map" and args.map_command == "tile" and args.tilemap_command == "validate":
-            payload = run_tilemap_validate(args.request, args.raw_image, args.processing_result, args.repo_root, args.staging_dir, args.final_dir, args.visual_review, args.state, args.now)
+            payload = run_tilemap_validate(args.request, args.raw_image, args.processing_result, args.repo_root, args.staging_dir, args.final_dir, args.visual_review, args.state, args.now, args.style_approval, args.assembled_approval)
+        elif args.command == "map" and args.map_command == "tile" and args.tilemap_command == "reject":
+            payload = run_tilemap_reject(args.state, args.run_root, args.out, args.reason_code, args.reason, args.now)
+        elif args.command == "map" and args.map_command == "tile" and args.tilemap_command == "record-approval":
+            payload = run_tilemap_record_approval(args.gate, args.artifact, args.out, args.now, args.repo_root)
+        elif args.command == "map" and args.map_command == "tile" and args.tilemap_command == "preflight-assets":
+            payload = run_tilemap_preflight_assets(args.request, args.architecture, args.atlas_page, args.object_asset, args.repo_root, args.out_dir)
+        elif args.command == "map" and args.map_command == "tile" and args.tilemap_command == "record-asset-review":
+            payload = run_tilemap_record_asset_review(args.report, args.decisions, args.out, args.now)
         elif args.command == "sprite" and args.sprite_command == "plan":
             payload = run_sprite_plan(args.request, args.out_dir, args.now)
         elif args.command == "sprite" and args.sprite_command == "route":

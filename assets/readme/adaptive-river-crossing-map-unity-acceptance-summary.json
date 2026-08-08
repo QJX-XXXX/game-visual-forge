@@ -1,0 +1,33 @@
+{
+  "schema_version": 1,
+  "asset_id": "adaptive-river-crossing-map",
+  "generated_root": "Assets/GameVisualForgeMaps/adaptive-river-crossing-map-v8",
+  "assets_only": {
+    "had_existing_assets": false,
+    "resource_guids_stable": true,
+    "scene_action": "unchanged",
+    "scene_dirty": false,
+    "tile_count": 32,
+    "atlas_page_count": 2,
+    "layer_count": 3
+  },
+  "import_and_place_first": {
+    "had_existing_assets": true,
+    "resource_guids_stable": true,
+    "scene_action": "placed",
+    "scene_dirty": true
+  },
+  "import_and_place_second": {
+    "had_existing_assets": true,
+    "resource_guids_stable": true,
+    "scene_action": "updated",
+    "scene_dirty": true
+  },
+  "final_hierarchy": {
+    "adaptive_instances": 1,
+    "autumn_creek_demo_active": false,
+    "standard_simple_demo_active": false
+  },
+  "scene_path": "Assets/Scenes/SampleScene.unity",
+  "scene_saved_automatically": false
+}
