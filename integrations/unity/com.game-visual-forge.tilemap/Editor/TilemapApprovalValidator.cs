@@ -22,7 +22,7 @@ namespace GameVisualForge.Unity
             if (!string.Equals(manifest.approval_workflow, "two_gate", StringComparison.Ordinal))
                 return;
             ValidateApproval(bundleDirectory, manifest.style_approval, manifest.style_approval_sha256, "style-sample", new[] { "style-sample", "art-direction" });
-            ValidateApproval(bundleDirectory, manifest.assembled_approval, manifest.assembled_approval_sha256, "assembled-map", new[] { "tilemap-preview", "gameplay-crop", "tilemap-placement", "tilemap-objects", "tilemap-collision", "asset-set" });
+            ValidateApproval(bundleDirectory, manifest.assembled_approval, manifest.assembled_approval_sha256, "assembled-map", new[] { "review-sheet", "tilemap-preview", "gameplay-crop", "tilemap-placement", "tilemap-objects", "tilemap-collision", "asset-set" });
         }
 
         private static void ValidateApproval(string bundleDirectory, string relativePath, string expectedHash, string gate, string[] roles)

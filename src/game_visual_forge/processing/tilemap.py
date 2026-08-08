@@ -11,6 +11,7 @@ from game_visual_forge.errors import ErrorCode, ForgeError
 from game_visual_forge.processing.images import _load_pillow, sha256_file, verify_image_unchanged
 from game_visual_forge.processing.tilemap_quality import analyze_tilemap_quality, render_seam_preview, render_usage_preview, seam_samples, _tile_images
 from game_visual_forge.processing.tilemap_objects import emit_object_artifacts
+from game_visual_forge.processing.tilemap_review_sheet import render_assembled_review_sheet
 
 
 @dataclass(frozen=True)
@@ -36,6 +37,7 @@ class TileMapProcessingResult:
     foundation_path: str = ""
     foundation_prompt_path: str = ""
     foundation_recomposition_path: str = ""
+    review_sheet_path: str = ""
 
     @property
     def tileset_path(self) -> str:
@@ -67,6 +69,7 @@ class TileMapProcessingResult:
             "foundation_path": self.foundation_path,
             "foundation_prompt_path": self.foundation_prompt_path,
             "foundation_recomposition_path": self.foundation_recomposition_path,
+            "review_sheet_path": self.review_sheet_path,
         }
 
     @classmethod
@@ -98,6 +101,7 @@ class TileMapProcessingResult:
             foundation_path=str(value.get("foundation_path", "")),
             foundation_prompt_path=str(value.get("foundation_prompt_path", "")),
             foundation_recomposition_path=str(value.get("foundation_recomposition_path", "")),
+            review_sheet_path=str(value.get("review_sheet_path", "")),
         )
 
 
@@ -314,6 +318,22 @@ def process_tilemap(
     if request.object_assets:
         object_paths = emit_object_artifacts(staging, repo_root, request, source_set, preview)
 
+    review_sheet_path = render_assembled_review_sheet(
+        staging,
+        request,
+        {
+            "tilemap-preview": "tilemap-preview.png",
+            "gameplay-crop": object_paths.get("gameplay_crop_path", ""),
+            "tilemap-collision": object_paths.get("collision_preview_path", ""),
+        },
+    )
+    unity_path = staging / "unity-tilemap.json"
+    from game_visual_forge.contracts.serialization import load_json
+    unity_payload = load_json(unity_path)
+    unity_payload["review_sheet"] = review_sheet_path
+    unity_payload["review_sheet_sha256"] = sha256_file(staging / review_sheet_path)
+    dump_json(unity_path, unity_payload)
+
     return TileMapProcessingResult(
         schema_version=1,
         staging_dir=PurePosixPath(staging.resolve().relative_to(repo_root.resolve()).as_posix()).as_posix(),
@@ -340,4 +360,5 @@ def process_tilemap(
         building_entrances_path="building-entrances.json",
         **foundation_paths,
         **object_paths,
+        review_sheet_path=review_sheet_path,
     )

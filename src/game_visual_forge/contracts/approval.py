@@ -78,7 +78,7 @@ class UserApprovalRecord:
 
 
 STYLE_APPROVAL_ROLES = ("style-sample", "art-direction")
-ASSEMBLED_APPROVAL_ROLES = ("tilemap-preview", "gameplay-crop", "tilemap-placement", "tilemap-objects", "tilemap-collision", "asset-set")
+ASSEMBLED_APPROVAL_ROLES = ("review-sheet", "tilemap-preview", "gameplay-crop", "tilemap-placement", "tilemap-objects", "tilemap-collision", "asset-set")
 
 
 def record_user_approval(gate: TilemapApprovalGate, artifact_paths: tuple[tuple[str, Path], ...], repo_root: Path, approved_at: str) -> UserApprovalRecord:

@@ -189,6 +189,8 @@ namespace GameVisualForge.Unity
             public int object_count;
             public string foundation;
             public string foundation_recomposition;
+            public string scene_acceptance_report;
+            public string scene_acceptance_status;
         }
     }
 
@@ -243,5 +245,9 @@ namespace GameVisualForge.Unity
         public int object_count;
         public string foundation;
         public string foundation_recomposition;
+        public string review_sheet;
+        public string review_sheet_sha256;
+        public string scene_acceptance_report;
+        public string scene_acceptance_status;
     }
 }

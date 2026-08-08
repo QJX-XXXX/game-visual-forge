@@ -19,7 +19,7 @@ class TileMapApprovalTests(unittest.TestCase):
             UserApprovalRecord(1, TilemapApprovalGate.STYLE_SAMPLE, ApprovalStatus.APPROVED, "agent", "2026-08-07T04:00:00Z", ())
 
     def test_changed_preview_invalidates_assembled_approval(self) -> None:
-        record = UserApprovalRecord(1, TilemapApprovalGate.ASSEMBLED_MAP, ApprovalStatus.APPROVED, "user", "2026-08-07T04:00:00Z", tuple(ApprovalArtifact(role, f"source/{role}.bin", "a" * 64) for role in ("tilemap-preview", "gameplay-crop", "tilemap-placement", "tilemap-objects", "tilemap-collision", "asset-set")))
+        record = UserApprovalRecord(1, TilemapApprovalGate.ASSEMBLED_MAP, ApprovalStatus.APPROVED, "user", "2026-08-07T04:00:00Z", tuple(ApprovalArtifact(role, f"source/{role}.bin", "a" * 64) for role in ("review-sheet", "tilemap-preview", "gameplay-crop", "tilemap-placement", "tilemap-objects", "tilemap-collision", "asset-set")))
         with self.assertRaisesRegex(ValueError, "hash"):
             validate_user_approval(record, TilemapApprovalGate.ASSEMBLED_MAP, {item.role: ("b" * 64 if item.role == "tilemap-preview" else "a" * 64) for item in record.artifacts})
 
