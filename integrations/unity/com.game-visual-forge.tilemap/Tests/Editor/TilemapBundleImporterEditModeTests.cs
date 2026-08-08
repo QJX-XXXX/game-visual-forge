@@ -201,6 +201,8 @@ namespace GameVisualForge.Unity.Tests
             Assert.That(scene.isDirty, Is.EqualTo(wasDirty));
             Assert.That(result.scene_action, Is.EqualTo("unchanged"));
             Assert.That(result.scene_dirty, Is.EqualTo(wasDirty));
+            Assert.That(result.scene_acceptance_status, Is.EqualTo("not_run"));
+            Assert.That(result.scene_acceptance_report, Is.Null);
             Assert.That(result.unity_import_report, Is.EqualTo(reportPath));
 
             var report = ReadUnityReport(reportPath);
@@ -233,10 +235,13 @@ namespace GameVisualForge.Unity.Tests
                 .Count(root => PrefabUtility.GetPrefabAssetPathOfNearestInstanceRoot(root) == second.tilemap_prefab);
 
             Assert.That(first.scene_action, Is.EqualTo("placed"));
+            Assert.That(first.scene_acceptance_status, Is.EqualTo("passed"));
+            Assert.That(first.scene_acceptance_report, Is.EqualTo(_task7GeneratedRoot + "/Reports/unity-scene-acceptance.json"));
             Assert.That(firstReport.scene_action, Is.EqualTo("placed"));
             Assert.That(firstReport.had_existing_assets, Is.False);
             Assert.That(matches, Is.EqualTo(1));
             Assert.That(second.scene_action, Is.EqualTo("updated"));
+            Assert.That(second.scene_acceptance_status, Is.EqualTo("passed"));
             Assert.That(second.scene_dirty, Is.True);
             Assert.That(secondReport.scene_action, Is.EqualTo("updated"));
             Assert.That(secondReport.had_existing_assets, Is.True);

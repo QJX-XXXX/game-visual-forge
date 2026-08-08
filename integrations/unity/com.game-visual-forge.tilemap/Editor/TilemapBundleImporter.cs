@@ -166,6 +166,8 @@ namespace GameVisualForge.Unity
                 object_count = objectResult == null ? 0 : objectResult.object_count,
                 foundation = manifest.foundation,
                 foundation_recomposition = manifest.foundation_recomposition,
+                scene_acceptance_status = "not_run",
+                scene_acceptance_report = null,
             };
             if (mode == ImportMode.ImportAndPlace)
             {
@@ -173,6 +175,9 @@ namespace GameVisualForge.Unity
                 result.scene_action = placementResult.scene_action;
                 result.scene_path = placementResult.scene_path;
                 result.scene_dirty = placementResult.scene_dirty;
+                var sceneAcceptance = TilemapSceneAcceptanceValidator.ValidateAndWrite(manifestFullPath, manifest, prefabPath, placement, objectManifest, gridCellSize, mode);
+                result.scene_acceptance_status = sceneAcceptance.status;
+                result.scene_acceptance_report = sceneAcceptance.report_path;
             }
             result.unity_import_report = TilemapImportReportWriter.Write(manifestFullPath, result, atlasPages.Length, mode);
             return result;

@@ -51,6 +51,8 @@ namespace GameVisualForge.Unity
                 object_count = result.object_count,
                 foundation = result.foundation,
                 foundation_recomposition = result.foundation_recomposition,
+                scene_acceptance_report = result.scene_acceptance_report,
+                scene_acceptance_status = result.scene_acceptance_status,
             };
             var reportsFolder = $"{result.generated_root}/Reports";
             TilemapBundleImporter.EnsureAssetFolder(reportsFolder);
