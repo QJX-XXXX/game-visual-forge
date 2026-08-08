@@ -92,7 +92,7 @@ class SkillContractTests(unittest.TestCase):
         launcher = ROOT / "skills" / "forge-2d-map" / "scripts" / "run.py"
         result = subprocess.run([sys.executable, str(launcher), "map", "tile", "--help"], cwd=ROOT, capture_output=True, text=True, encoding="utf-8", check=False)
         self.assertEqual(result.returncode, 0, result.stderr)
-        for command in ("plan", "route", "ingest", "process", "validate"):
+        for command in ("plan", "route", "ingest", "normalize-atlases", "process", "validate"):
             self.assertIn(command, result.stdout)
 
         ingest = subprocess.run(
@@ -108,8 +108,9 @@ class SkillContractTests(unittest.TestCase):
 
     def test_map_skill_documents_adaptive_tilemap_confirmation_quality_and_scope(self) -> None:
         skill = (ROOT / "skills" / "forge-2d-map" / "SKILL.md").read_text(encoding="utf-8")
-        for required in ("`standard_16`", "`adaptive_hd`", "`demand_driven`", "TWO_GATE", "style-sample", "assembled-map", "`--atlas-page`", "`tilemap-preview.png`", "`tilemap-gameplay-crop.png`", "`tilemap-collision-preview.png`", "`tile-seam-preview.png`", "`tile-usage-preview.png`", "`map-quality-report.json`", "rejection.json", "Buildings", "Props"):
+        for required in ("`standard_16`", "`adaptive_hd`", "`demand_driven`", "TWO_GATE", "style-sample", "assembled-map", "normalize-atlases", "--normalization-report", "coherent_foundation", "`--atlas-page`", "`tilemap-preview.png`", "`tilemap-gameplay-crop.png`", "`tilemap-collision-preview.png`", "`tile-seam-preview.png`", "`tile-usage-preview.png`", "`map-quality-report.json`", "rejection.json", "Buildings", "Props"):
             self.assertIn(required, skill)
+        self.assertLess(skill.index("normalize-atlases"), skill.index("preflight-assets"))
         return
         for required in (
             "`standard_16`",

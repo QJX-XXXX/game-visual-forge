@@ -31,6 +31,16 @@ Compatibility terms: `standard_16` remains the one-page legacy profile; `adaptiv
 - Use hybrid delivery: repeatable ground, roads, water, banks, and bridge deck are Tilemap layers; complete buildings and meaningful props are independent Sprite/Prefab objects.
 - Water is blocked by default. A bridge is traversable only when its contract declares `traversable=true` and a positive `minimum_traversal_width`; then preserve the declared corridor width and verify bridge cells are not terrain blockers. Main roads are not globally required unless the request declares a required `road_connectivity_policy`.
 
+### Native atlas normalization
+
+When the routed source is `agent-native`, normalize every generated atlas page after generation and before critical-asset preflight:
+
+```powershell
+python skills/forge-2d-map/scripts/run.py map tile normalize-atlases --request <run>/tilemap-request.json --decision <run>/source-decision.json --atlas-page page-01=<generated-page-01.png> --atlas-page page-02=<generated-page-02.png> --repo-root <repo> --out-dir <run>/normalized
+```
+
+Use the returned output page paths for every later command. Pass `--decision <run>/source-decision.json --normalization-report <run>/normalized/atlas-normalization-report.json` to `preflight-assets` for the native path. The command preserves generated sources, records source/output hashes, supports the declared standard/adaptive/demand-driven atlas geometry, and rejects `coherent_foundation`. Do not silently normalize user-supplied or external-provider assets. Normalization fixes atlas geometry only; it is not evidence that Tile artwork, seams, bridges, buildings, or visual composition are correct.
+
 ## Candidate preflight
 
 Before ingest, run:
