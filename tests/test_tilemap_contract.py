@@ -5,11 +5,15 @@ import unittest
 from tests._bootstrap import ROOT  # noqa: F401
 from game_visual_forge.contracts import (
     AtlasPageDefinition,
+    BuildingEntrance,
+    BridgeConnectivityRule,
+    BridgeOrientation,
     SourcePreference,
     TileColliderType,
     TileDefinition,
     TileLayer,
     TileMapRequest,
+    TileSemanticRole,
     TileSizeMode,
     TileSetProfile,
 )
@@ -81,6 +85,129 @@ def make_adaptive_tilemap_request(tile_count: int = 32) -> TileMapRequest:
 
 
 class TileMapContractTests(unittest.TestCase):
+    def test_building_entrances_round_trip(self) -> None:
+        request = make_tilemap_request()
+        doorway = TileDefinition(
+            "wall-doorway",
+            1,
+            1,
+            collider_type=TileColliderType.NONE,
+            semantic_role=TileSemanticRole.DOORWAY,
+        )
+        updated = TileMapRequest(**{
+            **request.__dict__,
+            "tiles": (*request.tiles[:-1], doorway),
+            "layers": (
+                request.layers[0],
+                TileLayer("structures", 10, True, (None, "wall-doorway", None, None, None, None)),
+            ),
+            "building_entrances": (
+                BuildingEntrance("inn-entrance", "structures", 1, 0, "interiors/inn", "entry"),
+            ),
+        })
+
+        self.assertEqual(updated.to_dict()["building_entrances"][0]["cell"], {"x": 1, "y": 0})
+        self.assertEqual(TileMapRequest.from_dict(updated.to_dict()), updated)
+
+    def test_building_entrance_requires_walkable_doorway_cell(self) -> None:
+        request = make_tilemap_request()
+        doorway = TileDefinition(
+            "wall-doorway",
+            1,
+            1,
+            collider_type=TileColliderType.NONE,
+            semantic_role=TileSemanticRole.DOORWAY,
+        )
+        valid_base = {
+            **request.__dict__,
+            "tiles": (*request.tiles[:-1], doorway),
+            "layers": (
+                request.layers[0],
+                TileLayer("structures", 10, True, (None, "wall-doorway", None, None, None, None)),
+            ),
+        }
+        bad_cases = (
+            BuildingEntrance("bad-layer", "missing", 1, 0, "interiors/inn", "entry"),
+            BuildingEntrance("bad-bounds", "structures", 3, 0, "interiors/inn", "entry"),
+            BuildingEntrance("bad-role", "structures", 0, 0, "interiors/inn", "entry"),
+            BuildingEntrance("bad-empty", "structures", 2, 0, "interiors/inn", "entry"),
+        )
+        for entrance in bad_cases:
+            with self.assertRaises(ValueError):
+                TileMapRequest(**{**valid_base, "building_entrances": (entrance,)})
+
+        blocked_doorway = TileDefinition(
+            "wall-doorway",
+            1,
+            1,
+            collider_type=TileColliderType.GRID,
+            semantic_role=TileSemanticRole.DOORWAY,
+        )
+        with self.assertRaisesRegex(ValueError, "walkable"):
+            TileMapRequest(**{
+                **valid_base,
+                "tiles": (*request.tiles[:-1], blocked_doorway),
+                "building_entrances": (BuildingEntrance("blocked", "structures", 1, 0, "interiors/inn", "entry"),),
+            })
+
+    def test_building_entrance_ids_must_be_unique(self) -> None:
+        request = make_tilemap_request()
+        doorway = TileDefinition(
+            "wall-doorway",
+            1,
+            1,
+            collider_type=TileColliderType.NONE,
+            semantic_role=TileSemanticRole.DOORWAY,
+        )
+        with self.assertRaisesRegex(ValueError, "unique"):
+            TileMapRequest(**{
+                **request.__dict__,
+                "tiles": (*request.tiles[:-1], doorway),
+                "layers": (request.layers[0], TileLayer("structures", 10, True, (None, "wall-doorway", None, None, None, None))),
+                "building_entrances": (
+                    BuildingEntrance("same", "structures", 1, 0, "interiors/inn", "entry"),
+                    BuildingEntrance("same", "structures", 1, 0, "interiors/inn", "entry"),
+                ),
+            })
+
+    def test_bridge_rules_round_trip_horizontal_vertical_and_legacy_payload(self) -> None:
+        request = make_tilemap_request()
+        request = TileMapRequest(**{
+            **request.__dict__,
+            "map_width": 3,
+            "map_height": 3,
+            "layers": (
+                TileLayer("ground", 0, False, ("grass",) * 9),
+                TileLayer("details", 1, True, (None,) * 9),
+            ),
+        })
+        horizontal = BridgeConnectivityRule("east-bridge", BridgeOrientation.HORIZONTAL, "ground", 1, 1, 1, 1)
+        vertical = BridgeConnectivityRule("north-bridge", BridgeOrientation.VERTICAL, "ground", 1, 1, 1, 1, "details")
+        updated = TileMapRequest(**{**request.__dict__, "bridge_connectivity_rules": (horizontal, vertical)})
+
+        payload = updated.to_dict()
+        self.assertEqual(payload["bridge_connectivity_rules"][0]["start"], {"x": 1, "y": 1})
+        self.assertEqual(payload["bridge_connectivity_rules"][1]["approach_layer_id"], "details")
+        self.assertEqual(TileMapRequest.from_dict(payload), updated)
+        payload.pop("bridge_connectivity_rules")
+        self.assertEqual(TileMapRequest.from_dict(payload).bridge_connectivity_rules, ())
+
+    def test_bridge_rule_rejects_invalid_geometry_and_duplicate_ids(self) -> None:
+        request = make_tilemap_request()
+        cases = (
+            lambda: BridgeConnectivityRule("bad-axis", BridgeOrientation.HORIZONTAL, "ground", 0, 0, 1, 1),
+            lambda: BridgeConnectivityRule("bad-layer", BridgeOrientation.HORIZONTAL, "missing", 0, 0, 1, 0),
+            lambda: BridgeConnectivityRule("bad-end", BridgeOrientation.HORIZONTAL, "ground", 0, 0, 2, 0),
+        )
+        for make_rule in cases:
+            with self.assertRaises(ValueError):
+                rule = make_rule()
+                TileMapRequest(**{**request.__dict__, "bridge_connectivity_rules": (rule,)})
+        with self.assertRaises(ValueError):
+            TileMapRequest(**{**request.__dict__, "bridge_connectivity_rules": (
+                BridgeConnectivityRule("same-id", BridgeOrientation.HORIZONTAL, "ground", 0, 0, 0, 0),
+                BridgeConnectivityRule("same-id", BridgeOrientation.VERTICAL, "ground", 1, 0, 1, 0),
+            )})
     def test_tile_size_mode_is_inferred_for_legacy_requests(self) -> None:
         request_16 = make_tilemap_request()
         request_32 = TileMapRequest(**{**request_16.__dict__, "tile_width": 32, "tile_height": 32, "pixels_per_unit": 32, "tile_size_mode": None})
