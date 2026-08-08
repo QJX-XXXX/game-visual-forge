@@ -9,6 +9,8 @@ from game_visual_forge.processing.images import _load_pillow
 
 def render_assembled_review_sheet(staging: Path, request: TileMapRequest, result_paths: Mapping[str, str]) -> str:
     Image = _load_pillow()
+    from PIL import ImageDraw
+
     panels = []
     for label, relative in result_paths.items():
         if not relative:
@@ -32,8 +34,6 @@ def render_assembled_review_sheet(staging: Path, request: TileMapRequest, result
     margin = 32
     gap = 16
     sheet = Image.new("RGBA", (columns * panel_width + (columns + 1) * gap, rows * (panel_height + margin) + (rows + 1) * gap), (232, 232, 232, 255))
-    draw = Image.Draw.Draw(sheet) if hasattr(Image, "Draw") else None
-    from PIL import ImageDraw
     draw = ImageDraw.Draw(sheet)
     for index, (label, image) in enumerate(panels):
         column = index % columns

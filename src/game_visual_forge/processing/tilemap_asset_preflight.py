@@ -29,6 +29,14 @@ def _check(check_id: str, status: QualityStatus, message: str, asset_ids: Iterab
     return CriticalAssetCheck(check_id, status, message, tuple(asset_ids))
 
 
+def _flattened_pixels(image: Any) -> tuple[Any, ...]:
+    """Read Pillow pixels without triggering the Pillow 14 deprecation path."""
+    getter = getattr(image, "get_flattened_data", None)
+    if getter is not None:
+        return tuple(getter())
+    return tuple(image.getdata())
+
+
 def preflight_tilemap_assets(repo_root: Path, request: TileMapRequest, architecture: Any, candidates: Iterable[CandidateAsset | dict[str, Any] | tuple[str, str, Path]], out_dir: Path) -> TilemapCriticalAssetReport:
     Image = _load_pillow()
     normalized = tuple(_candidate(repo_root, item) for item in candidates)
@@ -52,8 +60,13 @@ def preflight_tilemap_assets(repo_root: Path, request: TileMapRequest, architect
                 alpha = rgba.getchannel("A")
                 if alpha.getbbox() is None:
                     object_alpha_failures.append(item.asset_id)
-                pixels = list(alpha.getdata())
-                border = [*rgba.crop((0, 0, rgba.width, 1)).getdata(), *rgba.crop((0, rgba.height - 1, rgba.width, rgba.height)).getdata(), *rgba.crop((0, 0, 1, rgba.height)).getdata(), *rgba.crop((rgba.width - 1, 0, rgba.width, rgba.height)).getdata()]
+                pixels = _flattened_pixels(alpha)
+                border = [
+                    *_flattened_pixels(rgba.crop((0, 0, rgba.width, 1))),
+                    *_flattened_pixels(rgba.crop((0, rgba.height - 1, rgba.width, rgba.height))),
+                    *_flattened_pixels(rgba.crop((0, 0, 1, rgba.height))),
+                    *_flattened_pixels(rgba.crop((rgba.width - 1, 0, rgba.width, rgba.height))),
+                ]
                 if any(pixel[3] > 0 for pixel in border):
                     edge_failures.append(item.asset_id)
                 if pixels and all(pixel[3] == 255 for pixel in border):
