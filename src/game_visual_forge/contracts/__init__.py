@@ -70,6 +70,7 @@ from .tilemap_objects import (
     TileObjectPlacement,
 )
 from .tilemap_sources import TileAtlasSourceRecord, TileMapSourceSet, TileObjectSourceRecord, load_tilemap_source_set, parse_atlas_page_argument, parse_object_asset_argument
+from .tilemap_intake import LayoutStrategy, TileMapImportMode, TileMapIntake, TileMapIntakeAssessment, TileMapIntakeStatus, TileMapQuestionGroup, assess_tilemap_intake, canonical_tilemap_confirmation_summary, tilemap_confirmation_sha256
 
 __all__ = [
     "ArtifactRecord",
@@ -154,4 +155,13 @@ __all__ = [
     "load_tilemap_source_set",
     "parse_atlas_page_argument",
     "parse_object_asset_argument",
+    "LayoutStrategy",
+    "TileMapImportMode",
+    "TileMapIntake",
+    "TileMapIntakeAssessment",
+    "TileMapIntakeStatus",
+    "TileMapQuestionGroup",
+    "assess_tilemap_intake",
+    "canonical_tilemap_confirmation_summary",
+    "tilemap_confirmation_sha256",
 ]

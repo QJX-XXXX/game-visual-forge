@@ -16,6 +16,7 @@ from .tilemap_objects import (
     TileObjectEntrance,
     TileObjectPlacement,
 )
+from .tilemap_intake import TileMapIntake
 
 
 _SLUG_PATTERN = re.compile(r"[a-z0-9][a-z0-9-]{0,63}")
@@ -437,6 +438,7 @@ class TileMapRequest:
     approval_workflow: TileMapApprovalWorkflow = TileMapApprovalWorkflow.LEGACY_VISUAL
     gameplay_crop: GridRect | None = None
     foundation_prompt_path: str | None = None
+    intake: TileMapIntake | None = None
 
     def __post_init__(self) -> None:
         if self.schema_version != 1:
@@ -519,6 +521,11 @@ class TileMapRequest:
             raise TypeError("approval_workflow must be TileMapApprovalWorkflow")
         if self.gameplay_crop is not None and not isinstance(self.gameplay_crop, GridRect):
             raise TypeError("gameplay_crop must be GridRect")
+        if self.intake is not None:
+            if not isinstance(self.intake, TileMapIntake):
+                raise TypeError("intake must be TileMapIntake")
+            if self.intake.engine_target != self.engine_target.value:
+                raise ValueError("intake engine_target must match engine_target")
         _positive_int(self.max_tile_count, "max_tile_count")
         if self.tileset_profile not in {TileSetProfile.DEMAND_DRIVEN, TileSetProfile.COHERENT_FOUNDATION} and self.max_tile_count not in {16, 32, 48}:
             raise ValueError("max_tile_count must be one of 16, 32, or 48")
@@ -706,6 +713,7 @@ class TileMapRequest:
             "approval_workflow": self.approval_workflow.value,
             "gameplay_crop": None if self.gameplay_crop is None else self.gameplay_crop.to_dict(),
             "foundation_prompt_path": self.foundation_prompt_path,
+            "intake": None if self.intake is None else self.intake.to_dict(),
         }
 
     @classmethod
@@ -748,4 +756,5 @@ class TileMapRequest:
             approval_workflow=TileMapApprovalWorkflow(value.get("approval_workflow", "legacy_visual")),
             gameplay_crop=None if value.get("gameplay_crop") is None else GridRect.from_dict(value["gameplay_crop"]),
             foundation_prompt_path=None if value.get("foundation_prompt_path") is None else str(value["foundation_prompt_path"]),
+            intake=None if value.get("intake") is None else TileMapIntake.from_dict(value["intake"]),
         )
