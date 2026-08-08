@@ -57,3 +57,36 @@ Update the repository README tests to assert the compact public contract:
 
 Run the full Python test suite and Markdown link/path checks before committing
 the implementation.
+
+## Approved revision: HD sprite cleanup detail
+
+The compact landing-page structure remains unchanged, but the HD sprite cleanup
+showcase must explain enough for a user to understand and install the feature.
+Both README files add the same four-part summary:
+
+1. **Tool chain and advantages.** Name Pillow, NumPy/SciPy, rembg with the
+   default `birefnet-general` model, known-background reconstruction,
+   deterministic chroma fallback, and optional PyMatting. Explain that semantic
+   segmentation preserves soft foreground detail, known-background processing
+   reduces magenta fringe, CUDA falls back to CPU, and a deterministic chroma
+   result remains available when model execution fails.
+2. **Installation choices.** Document the repository extras and the rembg
+   hardware backend separately:
+   - local image operations: `python -m pip install -e ".[image]"`;
+   - CPU HD cleanup: install `.[background]`, then `rembg[cpu]`;
+   - NVIDIA/CUDA HD cleanup: install `.[background]`, then `rembg[gpu]` after
+     checking the current ONNX Runtime/CUDA compatibility;
+   - optional PyMatting: install `.[matting]` after choosing a rembg backend.
+3. **Model cache.** Show how to initialize `birefnet-general` with
+   `new_session`, explain that rembg stores local models under `U2NET_HOME` or
+   the default `~/.u2net`, and state that this project does not install or
+   download dependencies silently.
+4. **Selection guidance.** Recommend CPU for compatibility, GPU for repeated
+   high-resolution batches on a verified CUDA environment, chroma for fast
+   deterministic solid-key input, and PyMatting only when difficult soft edges
+   justify extra processing cost.
+
+The detailed section should add roughly 30–40 lines per language and keep each
+README below the existing 180-line contract. Repository tests must retain the
+installation commands, default model name, CPU/GPU fallback description, and
+optional PyMatting guidance.
