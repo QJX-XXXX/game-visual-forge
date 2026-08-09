@@ -34,6 +34,20 @@ from game_visual_forge.cli.sprite import (
     run_sprite_route,
     run_sprite_validate,
 )
+from game_visual_forge.cli.video import (
+    run_video_assess,
+    run_video_ingest,
+    run_video_plan,
+    run_video_process,
+    run_video_provider_download,
+    run_video_provider_estimate,
+    run_video_provider_models,
+    run_video_provider_preflight,
+    run_video_provider_query,
+    run_video_provider_submit,
+    run_video_route,
+    run_video_validate,
+)
 from game_visual_forge.contracts import AssetBrief, JobState, JobStatus, load_json
 from game_visual_forge.contracts import MapSourceType
 from game_visual_forge.contracts.serialization import dump_json
@@ -236,6 +250,78 @@ def build_parser() -> argparse.ArgumentParser:
     validate.add_argument("--visual-review", type=Path)
     validate.add_argument("--state", type=Path, required=True)
     validate.add_argument("--now", required=True)
+
+    video = commands.add_parser("video")
+    video_commands = video.add_subparsers(dest="video_command", required=True)
+    video_sprite = video_commands.add_parser("sprite")
+    video_sprite_commands = video_sprite.add_subparsers(dest="video_sprite_command", required=True)
+    video_plan = video_sprite_commands.add_parser("plan")
+    video_plan.add_argument("--request", type=Path, required=True)
+    video_plan.add_argument("--out-dir", type=Path, required=True)
+    video_plan.add_argument("--now", required=True)
+    video_route = video_sprite_commands.add_parser("route")
+    video_route.add_argument("--request", type=Path, required=True)
+    video_route.add_argument("--selection")
+    video_route.add_argument("--backend")
+    video_route.add_argument("--available", type=Path)
+    video_route.add_argument("--out", type=Path, required=True)
+    video_route.add_argument("--state", type=Path, required=True)
+    video_route.add_argument("--now", required=True)
+    video_ingest = video_sprite_commands.add_parser("ingest")
+    video_ingest.add_argument("--request", type=Path, required=True)
+    video_ingest.add_argument("--video", type=Path, required=True)
+    video_ingest.add_argument("--repo-root", type=Path, required=True)
+    video_ingest.add_argument("--ffprobe", type=Path)
+    video_ingest.add_argument("--out", type=Path, required=True)
+    video_ingest.add_argument("--state", type=Path, required=True)
+    video_ingest.add_argument("--now", required=True)
+    video_process = video_sprite_commands.add_parser("process")
+    video_process.add_argument("--request", type=Path, required=True)
+    video_process.add_argument("--source", type=Path, required=True)
+    video_process.add_argument("--raw-frames", type=Path, required=True)
+    video_process.add_argument("--repo-root", type=Path, required=True)
+    video_process.add_argument("--out-dir", type=Path, required=True)
+    video_process.add_argument("--state", type=Path, required=True)
+    video_process.add_argument("--now", required=True)
+    video_review = video_sprite_commands.add_parser("record-review")
+    video_review.add_argument("--request", type=Path, required=True)
+    video_review.add_argument("--source", type=Path, required=True)
+    video_review.add_argument("--processing-result", type=Path, required=True)
+    video_review.add_argument("--repo-root", type=Path, required=True)
+    video_review.add_argument("--quality-report", type=Path, required=True)
+    video_review.add_argument("--out", type=Path, required=True)
+    video_review.add_argument("--now", required=True)
+    video_validate = video_sprite_commands.add_parser("validate")
+    video_validate.add_argument("--request", type=Path, required=True)
+    video_validate.add_argument("--source", type=Path, required=True)
+    video_validate.add_argument("--processing-result", type=Path, required=True)
+    video_validate.add_argument("--review", type=Path, required=True)
+    video_validate.add_argument("--quality-report", type=Path, required=True)
+    video_validate.add_argument("--repo-root", type=Path, required=True)
+    video_validate.add_argument("--final-dir", type=Path, required=True)
+    video_validate.add_argument("--now", required=True)
+
+    provider = video_commands.add_parser("provider")
+    provider_commands = provider.add_subparsers(dest="video_provider_command", required=True)
+    for command in ("models", "preflight", "estimate"):
+        item = provider_commands.add_parser(command)
+        item.add_argument("--executable", type=Path, required=True)
+        item.add_argument("--payload", type=Path, required=True)
+        item.add_argument("--out", type=Path, required=True)
+    submit = provider_commands.add_parser("submit")
+    submit.add_argument("--attempt", type=Path, required=True)
+    submit.add_argument("--confirmation", type=Path, required=True)
+    submit.add_argument("--executable", type=Path, required=True)
+    submit.add_argument("--now", required=True)
+    query = provider_commands.add_parser("query")
+    query.add_argument("--attempt", type=Path, required=True)
+    query.add_argument("--executable", type=Path, required=True)
+    query.add_argument("--now", required=True)
+    download = provider_commands.add_parser("download")
+    download.add_argument("--attempt", type=Path, required=True)
+    download.add_argument("--executable", type=Path, required=True)
+    download.add_argument("--output-dir", type=Path, required=True)
+    download.add_argument("--now", required=True)
     return parser
 
 
@@ -317,6 +403,30 @@ def main(argv: list[str] | None = None) -> int:
             payload = run_sprite_process(args.request, args.raw_image, args.repo_root, args.out_dir, args.state, args.now)
         elif args.command == "sprite" and args.sprite_command == "validate":
             payload = run_sprite_validate(args.request, args.raw_image, args.processing_result, args.repo_root, args.staging_dir, args.final_dir, args.visual_review, args.state, args.now)
+        elif args.command == "video" and args.video_command == "sprite" and args.video_sprite_command == "plan":
+            payload = run_video_plan(args.request, args.out_dir, args.now)
+        elif args.command == "video" and args.video_command == "sprite" and args.video_sprite_command == "route":
+            payload = run_video_route(args.request, args.selection, args.backend, args.available, args.out, args.state, args.now)
+        elif args.command == "video" and args.video_command == "sprite" and args.video_sprite_command == "ingest":
+            payload = run_video_ingest(args.request, args.video, args.repo_root, args.out, args.state, args.now, args.ffprobe)
+        elif args.command == "video" and args.video_command == "sprite" and args.video_sprite_command == "process":
+            payload = run_video_process(args.request, args.source, args.raw_frames, args.repo_root, args.out_dir, args.state, args.now)
+        elif args.command == "video" and args.video_command == "sprite" and args.video_sprite_command == "record-review":
+            payload = run_video_assess(args.request, args.source, args.processing_result, args.repo_root, args.quality_report)
+        elif args.command == "video" and args.video_command == "sprite" and args.video_sprite_command == "validate":
+            payload = run_video_validate(args.request, args.source, args.processing_result, args.review, args.quality_report, args.repo_root, args.final_dir, args.now)
+        elif args.command == "video" and args.video_command == "provider" and args.video_provider_command == "models":
+            payload = run_video_provider_models(args.executable, args.payload, args.out)
+        elif args.command == "video" and args.video_command == "provider" and args.video_provider_command == "preflight":
+            payload = run_video_provider_preflight(args.executable, args.payload, args.out)
+        elif args.command == "video" and args.video_command == "provider" and args.video_provider_command == "estimate":
+            payload = run_video_provider_estimate(args.executable, args.payload, args.out)
+        elif args.command == "video" and args.video_command == "provider" and args.video_provider_command == "submit":
+            payload = run_video_provider_submit(args.attempt, args.confirmation, args.executable, args.now)
+        elif args.command == "video" and args.video_command == "provider" and args.video_provider_command == "query":
+            payload = run_video_provider_query(args.attempt, args.executable, args.now)
+        elif args.command == "video" and args.video_command == "provider" and args.video_provider_command == "download":
+            payload = run_video_provider_download(args.attempt, args.executable, args.output_dir, args.now)
         else:
             raise ValueError("unsupported command")
         print(json.dumps(payload, ensure_ascii=False, indent=2, sort_keys=True))
