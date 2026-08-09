@@ -105,6 +105,17 @@ class RepositoryContractTests(unittest.TestCase):
             self.assertNotIn("curl |", guide.lower())
             self.assertNotIn("invoke-webrequest", guide.lower())
 
+    def test_video_processing_docs_and_dependencies_are_explicit(self) -> None:
+        for readme_name in ("README.md", "README.zh-CN.md"):
+            text = (ROOT / readme_name).read_text(encoding="utf-8")
+            for fragment in ("FFmpeg", "FFprobe", "mmx", "dreamina", "MINIMAX_API_KEY", "JIMENG_ACCESS_KEY"):
+                self.assertIn(fragment, text, f"{readme_name} missing video setup guidance: {fragment}")
+        pyproject = (ROOT / "pyproject.toml").read_text(encoding="utf-8")
+        base = pyproject.split("[project.optional-dependencies]", 1)[0]
+        self.assertNotIn("ffmpeg", base.lower())
+        self.assertNotIn("minimax", base.lower())
+        self.assertNotIn("jimeng", base.lower())
+
     def test_package_declares_m0_version(self) -> None:
         from game_visual_forge import __version__
 

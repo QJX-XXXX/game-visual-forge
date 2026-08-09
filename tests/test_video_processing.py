@@ -48,8 +48,9 @@ class VideoProcessingTests(unittest.TestCase):
             self.assertEqual(len(result.frame_records), 4)
             from PIL import Image
             delivery = root / result.artifacts["frames:4"] / "frame-000.png"
-            self.assertEqual(Image.open(delivery).size, (64, 64))
-            self.assertEqual(Image.open(delivery).getpixel((0, 0))[3], 0)
+            with Image.open(delivery) as image:
+                self.assertEqual(image.size, (64, 64))
+                self.assertEqual(image.getpixel((0, 0))[3], 0)
 
     def test_pixel_mode_uses_one_canvas_for_every_frame(self) -> None:
         with tempfile.TemporaryDirectory(dir=ROOT) as directory:
@@ -59,7 +60,11 @@ class VideoProcessingTests(unittest.TestCase):
             result = process_video_sprite(root, request, record, make_raw_frames(root), frame_counts=(4,))
             from PIL import Image
             paths = [root / result.artifacts["frames:4"] / f"frame-{index:03d}.png" for index in range(4)]
-            self.assertEqual({Image.open(path).size for path in paths}, {(48, 48)})
+            sizes = []
+            for path in paths:
+                with Image.open(path) as image:
+                    sizes.append(image.size)
+            self.assertEqual(set(sizes), {(48, 48)})
 
     def test_cleanup_failure_without_valid_fallback_needs_attention(self) -> None:
         with tempfile.TemporaryDirectory(dir=ROOT) as directory:

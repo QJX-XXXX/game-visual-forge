@@ -17,7 +17,11 @@ def _load_delivery_frames(root: Path, processing: Any, density: int) -> tuple[An
     from PIL import Image
     directory = root / processing.artifacts[f"frames:{density}"]
     paths = sorted(directory.glob("frame-*.png"))
-    return tuple(Image.open(path).convert("RGBA") for path in paths)
+    frames = []
+    for path in paths:
+        with Image.open(path) as image:
+            frames.append(image.convert("RGBA"))
+    return tuple(frames)
 
 
 def assess_video_outputs(repo_root: Path, request: VideoSpriteRequest, source: VideoSourceRecord, processing: Any) -> VideoQualityReport:
