@@ -73,6 +73,20 @@ from .tilemap_sources import TileAtlasSourceRecord, TileMapSourceSet, TileObject
 from .tilemap_intake import LayoutStrategy, TileMapImportMode, TileMapIntake, TileMapIntakeAssessment, TileMapIntakeStatus, TileMapQuestionGroup, assess_tilemap_intake, canonical_tilemap_confirmation_summary, tilemap_confirmation_sha256
 from .tilemap_asset_review import CandidateAsset, CandidateAssetKind, CriticalAssetCheck, PreassemblyAssetDecision, PreassemblyReviewStatus, TilemapCriticalAssetReport, TilemapPreassemblyReview, record_preassembly_review, validate_preassembly_review, validate_preassembly_candidate_files
 from .tilemap_atlas_normalization import AtlasNormalizationPageRecord, AtlasNormalizationReport, AtlasNormalizationStatus
+from .video import (
+    MAX_FRAME_COUNT,
+    VideoAnchor,
+    VideoBackgroundMode,
+    VideoFrameRecord,
+    VideoGenerationMode,
+    VideoOutput,
+    VideoProcessingMode,
+    VideoProcessingResult,
+    VideoSourceDecision,
+    VideoSourcePreference,
+    VideoSourceRecord,
+    VideoSpriteRequest,
+)
 
 __all__ = [
     "ArtifactRecord",
@@ -179,4 +193,16 @@ __all__ = [
     "AtlasNormalizationPageRecord",
     "AtlasNormalizationReport",
     "AtlasNormalizationStatus",
+    "MAX_FRAME_COUNT",
+    "VideoAnchor",
+    "VideoBackgroundMode",
+    "VideoFrameRecord",
+    "VideoGenerationMode",
+    "VideoOutput",
+    "VideoProcessingMode",
+    "VideoProcessingResult",
+    "VideoSourceDecision",
+    "VideoSourcePreference",
+    "VideoSourceRecord",
+    "VideoSpriteRequest",
 ]
