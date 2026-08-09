@@ -24,6 +24,10 @@ Game Visual Forge 是一个仓库内使用的 Codex Skills 集合，包含三项
   处理过程保留生成源文件并记录输入/输出哈希，只统一图集几何，不修复美术、
   接缝或地图拓扑。
 - 对付费或外部任务提供 Provider、费用和提交确认门禁。
+- `forge-video-to-sprite` 使用 FFmpeg/FFprobe 在本地处理视频，支持按时间戳
+  抽帧、rembg/Chroma 清理、稳定对齐、精灵条、图集、GIF 和动作质量证据。
+- 生成视频必须明确选择海螺（MiniMax Hailuo）或即梦，以及 API 或官方 CLI
+  兼容后端；工具和凭证由用户手动配置，流程不会自动切换。
 
 ## 效果展示
 
@@ -103,6 +107,12 @@ PyMatting。
 使用 forge-video-to-sprite 处理我提供的 MP4，导出脚部对齐的 24 帧精灵条和预览 GIF。
 ```
 
+处理本地视频前请手动安装 FFmpeg/FFprobe，并安装 Pillow：
+`python -m pip install -e ".[image]"`。需要语义清理时，可按文档选择
+`.[background]` 或 `.[matting]`，再选择 rembg CPU 或 CUDA 后端。海螺 API
+使用 `MINIMAX_API_KEY`；即梦 API 使用 `JIMENG_ACCESS_KEY` 和
+`JIMENG_SECRET_KEY`。官方 `mmx` 与 `dreamina` CLI 是可选兼容路径。
+
 ## Unity 集成
 
 Unity 包位于
@@ -125,8 +135,7 @@ install/      手动安装指南
 请在仓库根目录（即包含 `tests/` 的目录）运行测试：
 
 ```powershell
-# 请将以下示例替换为仓库的实际路径：
-Set-Location "D:\Projects\game-visual-forge"
+Set-Location "game-visual-forge项目路径"
 python -m unittest discover -s tests -q
 ```
 

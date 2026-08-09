@@ -1,6 +1,6 @@
 # Install Game Visual Forge Skills in Codex
 
-This M0 repository ships three manual Codex Skills:
+This repository ships three manual Codex Skills:
 
 - `forge-2d-sprite`
 - `forge-2d-map`
@@ -13,7 +13,7 @@ Manual install only:
 - Copying only an individual Skill directory is not executable by itself unless you also provide a matching `src/` tree and package layout that the launcher can resolve.
 - Restart the Codex task or session after the repository-local setup or full repository copy so Skill discovery reloads.
 
-M0 safety limits:
+Safety limits:
 
 - This install flow does not install dependencies, providers, FFmpeg, rembg, or credentials.
 - It does not write into your profile automatically.
@@ -25,4 +25,5 @@ After installation, keep using repository-local commands for verification, for e
 ```powershell
 python -m unittest discover -s tests -v
 python skills/forge-2d-sprite/scripts/run.py --help
+python skills/forge-video-to-sprite/scripts/run.py video --help
 ```

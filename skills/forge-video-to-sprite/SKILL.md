@@ -1,19 +1,69 @@
 ---
 name: forge-video-to-sprite
-description: "Convert generated or existing video into 2D Sprite animation with safe provider selection, recoverable jobs, frame extraction, sampling, cleanup, alignment, and exports."
+description: "Convert an existing or explicitly generated video into validated 2D Sprite animation with timestamp sampling, cleanup, stable alignment, quality review, and recoverable MiniMax Hailuo or Jimeng API/CLI workflows."
 ---
 
 # Forge Video to Sprite
 
-先确认动作、角色、视角、循环、起止状态、镜头和背景，再建立 `AssetBrief`。用户提供已有 MP4 时跳过图像与视频生成；当前 M0 只支持零网络 `dry-run`，不调用服务商或 FFmpeg。
+Use this Skill for a local MP4, MOV, WebM, or an explicitly selected generated
+motion clip that must become game-ready Sprite frames. Keep the repository root
+and shared `src/` package available; the launcher is
+`skills/forge-video-to-sprite/scripts/run.py`.
 
-需要首帧或参考图时，默认先使用 Agent 原生工具。原生不支持或质量不达标时，要求用户选择替代来源；每次都由用户选择即梦或万相。
+## Standard interaction
 
-任何第三方任务都必须先明确选择来源，再展示模型、模式、素材和费用，并取得独立付费确认。不得自动安装工具，不得自动重新提交失败或 `submission_unknown` 的任务；查询、恢复、下载或本地拆帧失败都不能触发新的视频生成。
+1. Extract the character, action, view, camera, loop, start/end pose,
+   background, frame densities, outputs, anchor, canvas, processing mode, and
+   engine notes from the request and conversation.
+2. Ask one consolidated creative/delivery confirmation for missing or
+   contradictory fields. Do not preflight a provider or create a paid task
+   before this confirmation.
+3. Route explicitly to `existing-file`, `minimax`, or `jimeng`. For generated
+   video ask for `api` or `cli` in the same route choice. Detection reports
+   availability; it never chooses or switches a backend.
+4. For generated video, refresh the provider model snapshot, show provider,
+   backend, region, model, mode, references and hashes, duration, resolution,
+   billing context, estimate status, and request fingerprint. Ask for one
+   paid-submit confirmation. An unverified estimate is labelled unverified and
+   must be acknowledged explicitly. The current MiniMax-H3 profile is visible;
+   a discovered-unprofiled model is shown but cannot be submitted through API.
+5. Submit exactly once after the confirmation is persisted. Query or download
+   an existing task when recovering; never resubmit `submission_unknown`.
+6. Ingest the immutable video, sample by presentation timestamp, clean and
+   align frames, export the requested densities, and run deterministic checks.
+7. Present source interval, timestamped contact sheet, transparent GIF,
+   motion-difference image, anchor diagnostic, strips, and sheets for the final
+   motion review. Only a current approved review allows publication.
 
-后续里程碑会在 clean-room 边界内处理视频媒体；当前仅规划：
+Existing-video work never invokes a provider. Local processing changes reuse the
+same source video and do not create a new paid task.
+
+## Commands
 
 ```powershell
-python skills/forge-video-to-sprite/scripts/run.py dry-run `
-  --brief <brief.json> --out-dir <output> --now <utc-rfc3339>
+python skills/forge-video-to-sprite/scripts/run.py video sprite plan --request inputs/video-request.json --out-dir runs/video --now 2026-08-09T00:00:00Z
+python skills/forge-video-to-sprite/scripts/run.py video sprite route --request inputs/video-request.json --out runs/video/source-decision.json --state runs/video/job-state.json --now 2026-08-09T00:00:00Z
+python skills/forge-video-to-sprite/scripts/run.py video sprite ingest --request inputs/video-request.json --video inputs/source.mp4 --repo-root . --out runs/video/video-source-record.json --state runs/video/job-state.json --now 2026-08-09T00:00:00Z
+python skills/forge-video-to-sprite/scripts/run.py video sprite process --request inputs/video-request.json --source runs/video/video-source-record.json --raw-frames runs/video/raw-frames.json --repo-root . --out-dir runs/video --state runs/video/job-state.json --now 2026-08-09T00:00:00Z
+python skills/forge-video-to-sprite/scripts/run.py video sprite record-review --request inputs/video-request.json --source runs/video/video-source-record.json --processing-result runs/video/processing-result.json --repo-root . --quality-report runs/video/video-quality-report.json --out runs/video/video-motion-review.json --now 2026-08-09T00:00:00Z
+python skills/forge-video-to-sprite/scripts/run.py video sprite validate --request inputs/video-request.json --source runs/video/video-source-record.json --processing-result runs/video/processing-result.json --review runs/video/video-motion-review.json --quality-report runs/video/video-quality-report.json --repo-root . --final-dir outputs/video --now 2026-08-09T00:00:00Z
 ```
+
+Provider adapter commands are documented in
+[`references/provider-workflow.md`](references/provider-workflow.md). Local
+sampling, cleanup, output, and quality details are in
+[`references/processing-and-quality.md`](references/processing-and-quality.md).
+
+The provider command surface is `video provider models`, `preflight`,
+`estimate`, `submit`, `query`, and `download`. Local source work uses FFmpeg
+and FFprobe without modifying the source video.
+
+## Safety rules
+
+- Never install FFmpeg, `mmx`, `dreamina`, Python extras, models, or credentials.
+- Never write credentials, authorization headers, Base64 media, signed URLs, or
+  raw provider responses to repository artifacts.
+- Never retry a paid request automatically, and never switch API/CLI after a
+  task has been created.
+- Treat automatic metrics as review evidence, not proof of identity, anatomy,
+  action semantics, or loop quality.

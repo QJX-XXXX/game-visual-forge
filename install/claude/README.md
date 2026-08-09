@@ -1,6 +1,6 @@
 # Install Game Visual Forge Skills in Claude
 
-This M0 repository ships three manual Skills:
+This repository ships three manual Skills:
 
 - `forge-2d-sprite`
 - `forge-2d-map`
@@ -18,7 +18,7 @@ Authority and compatibility notes:
 - `SKILL.md` is the authoritative instruction file for Claude.
 - `agents/openai.yaml` is ignored by Claude. It may remain in a copied full repository for Codex-side metadata compatibility, but Claude does not use it to execute the Skill.
 
-M0 safety limits:
+Safety limits:
 
 - This install flow does not install dependencies, providers, FFmpeg, rembg, or credentials.
 - It does not write into your profile automatically.
@@ -29,4 +29,5 @@ After installation, verify from the repository with commands such as:
 ```powershell
 python -m unittest discover -s tests -v
 python skills/forge-video-to-sprite/scripts/run.py --help
+python skills/forge-video-to-sprite/scripts/run.py video --help
 ```

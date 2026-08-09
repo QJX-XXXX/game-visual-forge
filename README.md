@@ -30,6 +30,12 @@ asset bundle or an engine-ready handoff.
   publishes source/output hashes for auditability, and standardizes atlas
   geometry only; it does not repair artwork, seams, or map topology.
 - Provider, cost, and submission confirmation gates for paid or external work.
+- `forge-video-to-sprite` processes existing video locally with FFmpeg/FFprobe,
+  timestamp sampling, rembg/Chroma cleanup, stable alignment, strips, sheets,
+  GIF previews, and motion-quality evidence.
+- Generated video routes support explicit MiniMax Hailuo or Jimeng selection with
+  either their API or official CLI compatibility backend; tools and credentials
+  are configured manually and never switched automatically.
 
 ## Showcase
 
@@ -117,6 +123,13 @@ Use forge-video-to-sprite with my existing MP4 and export a feet-aligned
 24-frame sprite strip plus a preview GIF.
 ```
 
+For local video processing, install FFmpeg and FFprobe yourself and install the
+Pillow extra with `python -m pip install -e ".[image]"`. For semantic cleanup,
+use the documented `.[background]` or `.[matting]` extras and choose a rembg CPU
+or CUDA backend. MiniMax API uses `MINIMAX_API_KEY`; Jimeng API uses
+`JIMENG_ACCESS_KEY` and `JIMENG_SECRET_KEY`. The official `mmx` and `dreamina`
+CLIs are optional compatibility paths.
+
 ## Unity integration
 
 The Unity package lives at
@@ -140,8 +153,7 @@ Run the test suite from the repository root (the directory that contains
 `tests/`):
 
 ```powershell
-# Replace this example with the actual repository path:
-Set-Location "D:\Projects\game-visual-forge"
+Set-Location "game-visual-forge项目路径"
 python -m unittest discover -s tests -q
 ```
 

@@ -39,15 +39,22 @@ SKILLS = {
         ),
     },
     "forge-video-to-sprite": {
-        "description": 'description: "Convert generated or existing video into 2D Sprite animation with safe provider selection, recoverable jobs, frame extraction, sampling, cleanup, alignment, and exports."',
+        "description": 'description: "Convert an existing or explicitly generated video into validated 2D Sprite animation with timestamp sampling, cleanup, stable alignment, quality review, and recoverable MiniMax Hailuo or Jimeng API/CLI workflows."',
         "required_body_fragments": (
-            "Agent 原生工具",
-            "即梦",
-            "万相",
-            "每次都由用户选择",
-            "任何第三方任务都必须先明确选择来源",
-            "不得自动安装工具",
-            "不得自动重新提交",
+            "MiniMax Hailuo",
+            "Jimeng",
+            "existing-file",
+            "api",
+            "cli",
+            "MiniMax-H3",
+            "discovered-unprofiled",
+            "submission_unknown",
+            "video sprite plan",
+            "video provider models",
+            "video sprite record-review",
+            "FFmpeg",
+            "presentation timestamp",
+            "motion-difference",
             "submission_unknown",
         ),
     },
@@ -80,6 +87,17 @@ class SkillContractTests(unittest.TestCase):
         self.assertEqual(result.returncode, 0, result.stderr)
         for command in ("plan", "route", "ingest", "process", "validate"):
             self.assertIn(command, result.stdout)
+
+    def test_video_launcher_exposes_p0_p1_commands(self) -> None:
+        launcher = ROOT / "skills" / "forge-video-to-sprite" / "scripts" / "run.py"
+        result = subprocess.run([sys.executable, str(launcher), "video", "sprite", "--help"], cwd=ROOT, capture_output=True, text=True, encoding="utf-8", check=False)
+        self.assertEqual(result.returncode, 0, result.stderr)
+        for command in ("plan", "route", "ingest", "process", "record-review", "validate"):
+            self.assertIn(command, result.stdout)
+        provider = subprocess.run([sys.executable, str(launcher), "video", "provider", "--help"], cwd=ROOT, capture_output=True, text=True, encoding="utf-8", check=False)
+        self.assertEqual(provider.returncode, 0, provider.stderr)
+        for command in ("models", "preflight", "estimate", "submit", "query", "download"):
+            self.assertIn(command, provider.stdout)
 
     def test_map_launcher_exposes_m2_commands(self) -> None:
         launcher = ROOT / "skills" / "forge-2d-map" / "scripts" / "run.py"

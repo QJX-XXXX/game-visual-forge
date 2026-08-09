@@ -1,4 +1,4 @@
 interface:
   display_name: "Forge Video to Sprite"
-  short_description: "Plan recoverable video-to-sprite workflows"
-  default_prompt: "Use $forge-video-to-sprite to create and validate a zero-network AssetBrief and execution Dry-run."
+  short_description: "Convert video into validated 2D Sprite animation"
+  default_prompt: "Use $forge-video-to-sprite to convert or generate a video and deliver a validated Sprite animation."
