@@ -14,11 +14,13 @@ class MediaKind(StrEnum):
 class ExternalProvider(StrEnum):
     DREAMINA = "dreamina"
     JIMENG = "jimeng"
+    MINIMAX = "minimax"
     WANXIANG = "wanxiang"
 
 
 class ProviderCommand(StrEnum):
     CAPABILITIES = "capabilities"
+    MODELS = "models"
     PREFLIGHT = "preflight"
     ESTIMATE = "estimate"
     PREPARE = "prepare"

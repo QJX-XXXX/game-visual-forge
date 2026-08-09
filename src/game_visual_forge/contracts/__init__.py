@@ -87,6 +87,15 @@ from .video import (
     VideoSourceRecord,
     VideoSpriteRequest,
 )
+from .video_provider import (
+    VideoAttemptStatus,
+    VideoGenerationAttempt,
+    VideoModelCatalogSnapshot,
+    VideoModelProfile,
+    VideoModelSupport,
+    VideoPaidConfirmation,
+    VideoProviderBackend,
+)
 
 __all__ = [
     "ArtifactRecord",
@@ -205,4 +214,11 @@ __all__ = [
     "VideoSourcePreference",
     "VideoSourceRecord",
     "VideoSpriteRequest",
+    "VideoAttemptStatus",
+    "VideoGenerationAttempt",
+    "VideoModelCatalogSnapshot",
+    "VideoModelProfile",
+    "VideoModelSupport",
+    "VideoPaidConfirmation",
+    "VideoProviderBackend",
 ]
