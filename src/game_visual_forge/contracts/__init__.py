@@ -97,6 +97,7 @@ from .video_provider import (
     VideoProviderBackend,
 )
 from .video_review import VideoMotionReview
+from .video_quality import VideoQualityReport
 
 __all__ = [
     "ArtifactRecord",
@@ -223,4 +224,5 @@ __all__ = [
     "VideoPaidConfirmation",
     "VideoProviderBackend",
     "VideoMotionReview",
+    "VideoQualityReport",
 ]
