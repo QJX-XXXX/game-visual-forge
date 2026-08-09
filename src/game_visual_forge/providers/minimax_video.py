@@ -2,6 +2,9 @@ from __future__ import annotations
 
 import os
 import subprocess
+import json
+import urllib.request
+from datetime import datetime, timezone
 from dataclasses import dataclass
 from pathlib import Path
 from typing import Any, Callable, Protocol
@@ -63,7 +66,8 @@ class MiniMaxAdapter:
                 profiles.append(VideoModelProfile(1, self.provider, "MiniMax-H3", "v2", "/v2/video_generation", (VideoGenerationMode.T2V, VideoGenerationMode.I2V_FIRST, VideoGenerationMode.I2V_FIRST_TAIL, VideoGenerationMode.REFERENCE_TO_VIDEO), ("first_frame", "last_frame", "reference"), (6,), ("768P",), ("16:9", "9:16"), False, (VideoProviderBackend.API, VideoProviderBackend.CLI), "2026-08-09"))
             elif model_id:
                 profiles.append({"model": str(model_id)})
-        return VideoModelCatalogSnapshot.create(provider=self.provider, backend=VideoProviderBackend.API, region=self.region, refreshed_at="2026-08-09T00:00:00Z", adapter_version="1.0", models=tuple(profiles), source="minimax:/v1/models")
+        refreshed_at = datetime.now(timezone.utc).replace(microsecond=0).isoformat().replace("+00:00", "Z")
+        return VideoModelCatalogSnapshot.create(provider=self.provider, backend=VideoProviderBackend.API, region=self.region, refreshed_at=refreshed_at, adapter_version="1.0", models=tuple(profiles), source="minimax:/v1/models")
 
     def prepare(self, snapshot: VideoModelCatalogSnapshot, model: str, mode: VideoGenerationMode, parameters: dict[str, Any]) -> dict[str, Any]:
         profile = snapshot.model(model)
@@ -127,7 +131,14 @@ def run_command(command: str, payload: dict[str, Any]) -> dict[str, Any]:
 
 class _UrllibTransport:
     def __init__(self, base_url: str) -> None:
-        self.base_url = base_url
+        self.base_url = base_url or "https://api.minimax.io"
 
     def request(self, method: str, path: str, *, body: dict[str, Any] | None = None, headers: dict[str, str] | None = None) -> dict[str, Any]:
-        raise RuntimeError("live MiniMax transport is available only through configured adapter integration")
+        request = urllib.request.Request(self.base_url.rstrip("/") + path, method=method, headers=headers or {})
+        if body is not None:
+            request.data = json.dumps(body, ensure_ascii=False).encode("utf-8")
+        with urllib.request.urlopen(request, timeout=120) as response:
+            value = json.loads(response.read().decode("utf-8"))
+        if not isinstance(value, dict):
+            raise RuntimeError("MiniMax returned a non-object response")
+        return value

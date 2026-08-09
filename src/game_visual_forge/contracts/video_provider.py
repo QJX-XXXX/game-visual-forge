@@ -249,6 +249,8 @@ class VideoPaidConfirmation:
     @classmethod
     def from_dict(cls, value: dict[str, Any]) -> "VideoPaidConfirmation":
         result = cls(schema_version=int(value["schema_version"]), attempt_id=str(value["attempt_id"]), provider=ExternalProvider(value["provider"]), backend=VideoProviderBackend(value["backend"]), region=str(value["region"]), model=str(value["model"]), model_snapshot_sha256=str(value["model_snapshot_sha256"]), mode=VideoGenerationMode(value["mode"]), parameters=dict(value["parameters"]), reference_sha256=tuple(str(item) for item in value.get("reference_sha256", [])), quantity=int(value["quantity"]), estimate=CostEstimate.from_dict(value["estimate"]), estimate_acknowledged=bool(value.get("estimate_acknowledged", False)), request_fingerprint=str(value["request_fingerprint"]), confirmed_at=str(value["confirmed_at"]), binding_fingerprint=str(value["binding_fingerprint"]), consumed_at=value.get("consumed_at"))
+        if not result.estimate.verified and not result.estimate_acknowledged:
+            raise ValueError("unverified estimate requires acknowledgement")
         result._assert_binding(attempt_id=result.attempt_id, provider=result.provider, backend=result.backend, region=result.region, model=result.model, model_snapshot_sha256=result.model_snapshot_sha256, mode=result.mode, parameters=result.parameters, reference_sha256=result.reference_sha256, quantity=result.quantity, estimate=result.estimate, request_fingerprint=result.request_fingerprint)
         return result
 

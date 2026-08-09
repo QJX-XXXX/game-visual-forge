@@ -73,14 +73,15 @@ def validate_reviewed_video_outputs(repo_root: Path, request: VideoSpriteRequest
 def build_video_asset_manifest(repo_root: Path, request: VideoSpriteRequest, source: VideoSourceRecord, processing: Any, report: VideoQualityReport) -> AssetManifest:
     root = repo_root.resolve()
     artifacts = [ArtifactRecord("source-video", source.path, source.sha256)]
+    staging_root = root / processing.staging_dir
     for role, path in sorted(processing.artifacts.items()):
         artifact_path = root / path
         if artifact_path.is_dir():
             for child in sorted(artifact_path.iterdir()):
                 if child.is_file():
-                    artifacts.append(ArtifactRecord(f"video-{role}", f"{request.output_dir}/{child.relative_to(root).as_posix()}", sha256_file(child)))
+                    artifacts.append(ArtifactRecord(f"video-{role}", f"{request.output_dir}/{child.relative_to(staging_root).as_posix()}", sha256_file(child)))
         elif artifact_path.is_file():
-            artifacts.append(ArtifactRecord(f"video-{role}", f"{request.output_dir}/{artifact_path.relative_to(root).as_posix()}", sha256_file(artifact_path)))
+            artifacts.append(ArtifactRecord(f"video-{role}", f"{request.output_dir}/{artifact_path.relative_to(staging_root).as_posix()}", sha256_file(artifact_path)))
     quality_path = root / processing.staging_dir / "video-quality-report.json"
     if quality_path.is_file():
         artifacts.append(ArtifactRecord("video-quality-report", f"{request.output_dir}/video-quality-report.json", sha256_file(quality_path)))

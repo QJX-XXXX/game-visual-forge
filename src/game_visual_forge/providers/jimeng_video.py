@@ -6,12 +6,14 @@ import hmac
 import json
 import os
 import subprocess
+import urllib.request
+from datetime import datetime, timezone
 from dataclasses import dataclass
 from pathlib import Path
 from typing import Any, Callable, Protocol
 
 from game_visual_forge.contracts.provider import ExternalProvider
-from game_visual_forge.contracts.video_provider import VideoProviderBackend
+from game_visual_forge.contracts.video_provider import VideoModelCatalogSnapshot, VideoProviderBackend
 
 
 class JsonTransport(Protocol):
@@ -50,7 +52,8 @@ class JimengAdapter:
 
     def _headers(self, body: dict[str, Any]) -> dict[str, str]:
         access_key, secret_key = self._credentials()
-        return sign_volcengine_request(method="POST", url="/api/v1/video/generate", headers={"Content-Type": "application/json"}, body=body, access_key=access_key, secret_key=secret_key, now="2026-08-09T00:00:00Z").headers
+        now = datetime.now(timezone.utc).replace(microsecond=0).isoformat().replace("+00:00", "Z")
+        return sign_volcengine_request(method="POST", url="/api/v1/video/generate", headers={"Content-Type": "application/json"}, body=body, access_key=access_key, secret_key=secret_key, now=now).headers
 
     def preflight_api(self) -> dict[str, Any]:
         try:
@@ -62,6 +65,15 @@ class JimengAdapter:
     def estimate(self, parameters: dict[str, Any]) -> dict[str, Any]:
         return {"schema_version": 1, "provider": "jimeng", "currency": None, "amount": None, "verified": False, "notice": "Jimeng estimate must be verified in the provider console before paid confirmation"}
 
+    def models(self) -> VideoModelCatalogSnapshot:
+        access_key, secret_key = self._credentials()
+        now = datetime.now(timezone.utc).replace(microsecond=0).isoformat().replace("+00:00", "Z")
+        signed = sign_volcengine_request(method="GET", url="/api/v1/video/models", headers={}, body={}, access_key=access_key, secret_key=secret_key, now=now)
+        response = self.transport.request("GET", "/api/v1/video/models", headers=signed.headers)
+        discovered = response.get("data", response.get("models", []))
+        models = tuple({"model": item.get("id", item.get("model")) if isinstance(item, dict) else str(item)} for item in discovered if item)
+        return VideoModelCatalogSnapshot.create(provider=self.provider, backend=VideoProviderBackend.API, region="global", refreshed_at=now, adapter_version="1.0", models=models, source="jimeng:/api/v1/video/models")
+
     def submit(self, parameters: dict[str, Any]) -> dict[str, Any]:
         payload = {key: value for key, value in parameters.items() if key not in {"access_key", "secret_key", "authorization"}}
         response = self.transport.request("POST", "/api/v1/video/generate", body=payload, headers=self._headers(payload))
@@ -72,7 +84,8 @@ class JimengAdapter:
 
     def query(self, external_task_id: str) -> dict[str, Any]:
         access_key, secret_key = self._credentials()
-        signed = sign_volcengine_request(method="GET", url=f"/api/v1/video/tasks/{external_task_id}", headers={}, body={}, access_key=access_key, secret_key=secret_key, now="2026-08-09T00:00:00Z")
+        now = datetime.now(timezone.utc).replace(microsecond=0).isoformat().replace("+00:00", "Z")
+        signed = sign_volcengine_request(method="GET", url=f"/api/v1/video/tasks/{external_task_id}", headers={}, body={}, access_key=access_key, secret_key=secret_key, now=now)
         response = self.transport.request("GET", f"/api/v1/video/tasks/{external_task_id}", headers=signed.headers)
         return {"schema_version": 1, "provider": "jimeng", "backend": "api", "external_task_id": external_task_id, "status": str(response.get("status", "unknown"))}
 
@@ -102,6 +115,8 @@ def run_command(command: str, payload: dict[str, Any]) -> dict[str, Any]:
         return {"schema_version": 1, "provider": "jimeng", "backend": payload.get("backend", "api"), "operations": ["capabilities", "models", "preflight", "estimate", "prepare", "submit", "query", "download"]}
     if command == "preflight":
         return adapter.preflight_api() if payload.get("backend", "api") == "api" else adapter.preflight_cli(Path(payload.get("executable", "dreamina")))
+    if command == "models":
+        return adapter.models().to_dict()
     if command == "estimate":
         return adapter.estimate(payload)
     if command == "submit":
@@ -112,5 +127,15 @@ def run_command(command: str, payload: dict[str, Any]) -> dict[str, Any]:
 
 
 class _UrllibTransport:
+    def __init__(self, base_url: str = "https://visual.volcengineapi.com") -> None:
+        self.base_url = base_url
+
     def request(self, method: str, path: str, *, body: dict[str, Any] | None = None, headers: dict[str, str] | None = None) -> dict[str, Any]:
-        raise RuntimeError("live Jimeng transport is available only through configured adapter integration")
+        request = urllib.request.Request(self.base_url.rstrip("/") + path, method=method, headers=headers or {})
+        if body is not None:
+            request.data = json.dumps(body, ensure_ascii=False).encode("utf-8")
+        with urllib.request.urlopen(request, timeout=120) as response:
+            value = json.loads(response.read().decode("utf-8"))
+        if not isinstance(value, dict):
+            raise RuntimeError("Jimeng returned a non-object response")
+        return value

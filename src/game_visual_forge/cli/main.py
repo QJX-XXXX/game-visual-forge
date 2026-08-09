@@ -45,6 +45,7 @@ from game_visual_forge.cli.video import (
     run_video_provider_preflight,
     run_video_provider_query,
     run_video_provider_submit,
+    run_video_record_review,
     run_video_route,
     run_video_validate,
 )
@@ -278,7 +279,8 @@ def build_parser() -> argparse.ArgumentParser:
     video_process = video_sprite_commands.add_parser("process")
     video_process.add_argument("--request", type=Path, required=True)
     video_process.add_argument("--source", type=Path, required=True)
-    video_process.add_argument("--raw-frames", type=Path, required=True)
+    video_process.add_argument("--raw-frames", type=Path)
+    video_process.add_argument("--ffmpeg", type=Path)
     video_process.add_argument("--repo-root", type=Path, required=True)
     video_process.add_argument("--out-dir", type=Path, required=True)
     video_process.add_argument("--state", type=Path, required=True)
@@ -290,6 +292,7 @@ def build_parser() -> argparse.ArgumentParser:
     video_review.add_argument("--repo-root", type=Path, required=True)
     video_review.add_argument("--quality-report", type=Path, required=True)
     video_review.add_argument("--out", type=Path, required=True)
+    video_review.add_argument("--checks", type=Path, required=True)
     video_review.add_argument("--now", required=True)
     video_validate = video_sprite_commands.add_parser("validate")
     video_validate.add_argument("--request", type=Path, required=True)
@@ -410,9 +413,9 @@ def main(argv: list[str] | None = None) -> int:
         elif args.command == "video" and args.video_command == "sprite" and args.video_sprite_command == "ingest":
             payload = run_video_ingest(args.request, args.video, args.repo_root, args.out, args.state, args.now, args.ffprobe)
         elif args.command == "video" and args.video_command == "sprite" and args.video_sprite_command == "process":
-            payload = run_video_process(args.request, args.source, args.raw_frames, args.repo_root, args.out_dir, args.state, args.now)
+            payload = run_video_process(args.request, args.source, args.raw_frames, args.repo_root, args.out_dir, args.state, args.now, args.ffmpeg)
         elif args.command == "video" and args.video_command == "sprite" and args.video_sprite_command == "record-review":
-            payload = run_video_assess(args.request, args.source, args.processing_result, args.repo_root, args.quality_report)
+            payload = run_video_record_review(args.request, args.source, args.processing_result, args.repo_root, args.quality_report, args.out, args.checks, args.now)
         elif args.command == "video" and args.video_command == "sprite" and args.video_sprite_command == "validate":
             payload = run_video_validate(args.request, args.source, args.processing_result, args.review, args.quality_report, args.repo_root, args.final_dir, args.now)
         elif args.command == "video" and args.video_command == "provider" and args.video_provider_command == "models":
