@@ -5,6 +5,7 @@ from game_visual_forge.contracts.execution import ExecutionPlan, PlanStep
 from game_visual_forge.contracts.sprite import SourceDecision, SourceType, SpriteRequest
 from game_visual_forge.contracts.map import MapRequest
 from game_visual_forge.contracts.tilemap import TileMapRequest
+from game_visual_forge.contracts.video import VideoSourcePreference, VideoSpriteRequest
 
 
 SEQUENCES: dict[SourcePreference, tuple[tuple[str, str, bool], ...]] = {
@@ -178,3 +179,37 @@ def build_tilemap_execution_plan(request: TileMapRequest, architecture=None) -> 
         ("validate-tilemap-artifacts", "local-runtime", False),
     )
     return execution_plan_from_actions(request.asset_id, request.source_preference.value, actions)
+
+
+def build_video_execution_plan(request: VideoSpriteRequest, *, now: str | None = None) -> ExecutionPlan:
+    if request.source_preference is VideoSourcePreference.EXISTING_FILE:
+        actions = (
+            ("creative-delivery-confirmation", "agent", True),
+            ("route-video-source", "agent", False),
+            ("ingest-local-video", "local-runtime", False),
+            ("process-local-video-sprite", "local-runtime", False),
+            ("final-motion-review", "agent", True),
+            ("validate-video-artifacts", "local-runtime", False),
+        )
+    else:
+        actions = (
+            ("creative-delivery-confirmation", "agent", True),
+            ("route-video-source", "agent", False),
+            ("preflight-video-provider", "provider-runtime", False),
+            ("discover-video-models", "provider-runtime", False),
+            ("estimate-video-cost", "provider-runtime", False),
+            ("prepare-video-request", "provider-runtime", False),
+            ("paid-submit-confirmation", "agent", True),
+            ("submit-video-request", "provider-runtime", False),
+            ("query-video-task", "provider-runtime", False),
+            ("download-video", "provider-runtime", False),
+            ("ingest-local-video", "local-runtime", False),
+            ("process-local-video-sprite", "local-runtime", False),
+            ("final-motion-review", "agent", True),
+            ("validate-video-artifacts", "local-runtime", False),
+        )
+    return execution_plan_from_actions(
+        request.asset_id,
+        (request.source_preference.value if request.source_preference is not None else "undecided"),
+        actions,
+    )
