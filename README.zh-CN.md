@@ -134,8 +134,6 @@ install/      手动安装指南
 
 请在仓库根目录（即包含 `tests/` 的目录）运行测试：
 
-`skills/` 目录下的文件统一使用英文；中文公共文档仅保留在 `README.zh-CN.md`。
-
 ```powershell
 Set-Location "game-visual-forge项目路径"
 python -m unittest discover -s tests -q

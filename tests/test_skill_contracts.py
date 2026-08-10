@@ -226,12 +226,5 @@ class SkillContractTests(unittest.TestCase):
         ):
             self.assertNotIn(internal_fragment, readme)
 
-    def test_readmes_document_skill_language_policy(self) -> None:
-        readme = (ROOT / "README.md").read_text(encoding="utf-8")
-        chinese = (ROOT / "README.zh-CN.md").read_text(encoding="utf-8")
-        self.assertIn("All files under `skills/` use English", readme)
-        self.assertIn("`skills/` 目录下的文件统一使用英文", chinese)
-
-
 if __name__ == "__main__":
     unittest.main()

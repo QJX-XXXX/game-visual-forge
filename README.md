@@ -152,8 +152,6 @@ install/      Manual setup guides
 Run the test suite from the repository root (the directory that contains
 `tests/`):
 
-All files under `skills/` use English. Chinese public documentation belongs only in `README.zh-CN.md`.
-
 ```powershell
 Set-Location "game-visual-forge项目路径"
 python -m unittest discover -s tests -q
