@@ -1,1 +1,0 @@
-Replace the previous cropped tree-canopy Tile with a single complete autumn maple tree fully contained inside one square Tilemap cell. Keep the entire canopy, trunk, roots, ground patch, and fallen leaves visible with a clear margin on every side. Do not crop or span neighboring cells.

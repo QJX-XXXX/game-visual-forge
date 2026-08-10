@@ -10,3 +10,10 @@ dist/
 outputs/
 .superpowers/
 docs/
+
+# Local showcase-generation evidence; keep only README-linked final images tracked.
+assets/readme/adaptive-river-crossing-map-*
+!assets/readme/adaptive-river-crossing-map-unity-game-view.png
+assets/readme/autumn-creek-*
+assets/readme/standard-simple-map-*
+assets/readme/tree-canopy-replacement.prompt.txt
