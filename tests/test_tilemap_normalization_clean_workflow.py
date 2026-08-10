@@ -28,7 +28,9 @@ from game_visual_forge.contracts.tilemap_intake import tilemap_confirmation_sha2
 
 class TilemapNormalizationCleanWorkflowTests(unittest.TestCase):
     def test_cli_workflow_publishes_normalization_evidence(self) -> None:
-        with tempfile.TemporaryDirectory(dir=ROOT / "outputs") as temp:
+        output_root = ROOT / "outputs"
+        output_root.mkdir(parents=True, exist_ok=True)
+        with tempfile.TemporaryDirectory(dir=output_root) as temp:
             run = Path(temp)
             source_dir = run / "source"
             generated_dir = run / "generated"

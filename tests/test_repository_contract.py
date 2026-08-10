@@ -31,20 +31,20 @@ class RepositoryContractTests(unittest.TestCase):
         self.assertFalse((ROOT / ".codex-plugin").exists())
         self.assertFalse((ROOT / ".gitmodules").exists())
         ignore_rules = (ROOT / ".gitignore").read_text(encoding="utf-8").splitlines()
-        self.assertTrue((ROOT / "docs" / "superpowers" / "specs").is_dir())
         self.assertIn("docs/", ignore_rules)
         self.assertIn(".superpowers/", ignore_rules)
 
-        result = subprocess.run(
-            ["git", "ls-files", ".superpowers"],
-            cwd=ROOT,
-            capture_output=True,
-            text=True,
-            encoding="utf-8",
-            check=False,
-        )
-        self.assertEqual(result.returncode, 0, result.stderr)
-        self.assertEqual(result.stdout.strip(), "")
+        for internal_path in (".superpowers", "docs/superpowers"):
+            result = subprocess.run(
+                ["git", "ls-files", internal_path],
+                cwd=ROOT,
+                capture_output=True,
+                text=True,
+                encoding="utf-8",
+                check=False,
+            )
+            self.assertEqual(result.returncode, 0, result.stderr)
+            self.assertEqual(result.stdout.strip(), "", internal_path)
 
     def test_readmes_expose_public_skill_and_install_entrypoints(self) -> None:
         for readme_name in ("README.md", "README.zh-CN.md"):
