@@ -26,6 +26,7 @@ class BackgroundResult:
 DEFAULT_REMBG_MODEL = "birefnet-general"
 DEFAULT_REMBG_PROVIDER_TIMEOUT_SECONDS = 120.0
 DEFAULT_CHROMA_FALLBACK_TOLERANCE = 32
+VIDEO_CHROMA_TOLERANCE = 80
 DEFAULT_REMBG_CHROMA_EDGE_RADIUS = 20
 DEFAULT_REMBG_CHROMA_SOFT_DISTANCE = 0.5
 MAX_REMBG_FAILURE_DETAIL_LENGTH = 240
@@ -66,7 +67,46 @@ DIRECT_ONNX_REMBG_MODELS = {
 }
 
 
+def clear_transparent_rgb(image: Any) -> Any:
+    import numpy as np
+    from PIL import Image
+
+    rgba = np.asarray(image.convert("RGBA"), dtype=np.uint8).copy()
+    rgba[rgba[:, :, 3] == 0, :3] = 0
+    return Image.fromarray(rgba, mode="RGBA")
+
+
+def resize_rgba_alpha_safe(image: Any, size: tuple[int, int], *, resample: Any) -> Any:
+    from PIL import Image
+
+    rgba = image.convert("RGBA")
+    if resample == Image.Resampling.NEAREST:
+        return clear_transparent_rgb(rgba.resize(size, resample=resample))
+    premultiplied = rgba.convert("RGBa")
+    return clear_transparent_rgb(premultiplied.resize(size, resample=resample).convert("RGBA"))
+
+
 def remove_chroma(image: Any, color: str, *, tolerance: int = 0) -> Any:
+    try:
+        import numpy as np
+        from PIL import Image
+
+        rgba = np.asarray(image.convert("RGBA"), dtype=np.uint8).copy()
+        target = np.asarray(
+            [int(color[index:index + 2], 16) for index in (1, 3, 5)],
+            dtype=np.int32,
+        )
+        rgb = rgba[:, :, :3].astype(np.int32)
+        distance_squared = np.sum((rgb - target) ** 2, axis=2)
+        rgba[:, :, 3] = np.where(
+            distance_squared <= int(tolerance) ** 2,
+            0,
+            rgba[:, :, 3],
+        ).astype(np.uint8)
+        rgba[rgba[:, :, 3] == 0, :3] = 0
+        return Image.fromarray(rgba, mode="RGBA")
+    except ImportError:
+        pass
     target = tuple(int(color[index:index + 2], 16) for index in (1, 3, 5))
     rgba = image.convert("RGBA")
     pixels = rgba.load()
@@ -78,7 +118,8 @@ def remove_chroma(image: Any, color: str, *, tolerance: int = 0) -> Any:
                 + (green - target[1]) ** 2
                 + (blue - target[2]) ** 2
             )
-            pixels[x, y] = (red, green, blue, 0 if distance <= tolerance ** 2 else alpha)
+            next_alpha = 0 if distance <= tolerance ** 2 else alpha
+            pixels[x, y] = (0, 0, 0, 0) if next_alpha == 0 else (red, green, blue, next_alpha)
     return rgba
 
 

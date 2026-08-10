@@ -16,7 +16,7 @@ from game_visual_forge.contracts.video import (
     VideoSpriteRequest,
     VideoSourceRecord,
 )
-from game_visual_forge.processing.background import BackgroundResult, remove_background, remove_chroma
+from game_visual_forge.processing.background import BackgroundResult, VIDEO_CHROMA_TOLERANCE, remove_background, remove_chroma, resize_rgba_alpha_safe
 from game_visual_forge.processing.frames import trim_alpha
 from game_visual_forge.processing.images import _load_pillow
 from game_visual_forge.processing.video_probe import sha256_file
@@ -26,7 +26,8 @@ def _video_background(image: Any, request: VideoSpriteRequest, remover: Callable
     if request.background_mode is VideoBackgroundMode.PRESERVE:
         return image.convert("RGBA"), "preserve-background", False
     if request.background_mode is VideoBackgroundMode.CHROMA:
-        return remove_chroma(image, request.chroma_color or "#ff00ff"), "chroma", False
+        color = request.chroma_color or "#ff00ff"
+        return remove_chroma(image, color, tolerance=VIDEO_CHROMA_TOLERANCE), "chroma", False
     if remover is not None:
         value = remover(image, request)
         if isinstance(value, BackgroundResult):
@@ -61,7 +62,9 @@ def _delivery_frames(frames: tuple[Any, ...], request: VideoSpriteRequest) -> tu
         cropped = frame.convert("RGBA").crop((left, top, right, bottom))
         width = max(1, round(cropped.width * scale))
         height = max(1, round(cropped.height * scale))
-        scaled = cropped.resize((width, height), resample=resampling)
+        scaled = resize_rgba_alpha_safe(cropped, (width, height), resample=resampling)
+        if request.background_mode is VideoBackgroundMode.CHROMA:
+            scaled = remove_chroma(scaled, request.chroma_color or "#ff00ff", tolerance=VIDEO_CHROMA_TOLERANCE)
         canvas = Image.new("RGBA", (canvas_width, canvas_height), (0, 0, 0, 0))
         x = (canvas_width - width) // 2
         if request.anchor is VideoAnchor.FEET:
