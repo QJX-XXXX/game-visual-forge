@@ -77,4 +77,4 @@ Use `integrations/unity/com.game-visual-forge.tilemap`. Use `AssetsOnly` unless 
 
 After Unity changes, wait for compilation, inspect the console, run EditMode and PlayMode tests, save the target scene, confirm it is clean, and capture an orthographic top-down screenshot that matches the assembled review sheet. Never claim playability from a preview alone.
 
-Provider safety remains explicit: Agent 鍘熺敓宸ュ叿, 鍗虫ⅵ, and 涓囩浉 are source options only when the current request selects them; every paid attempt requires 浠樿垂纭. 姣忔閮界敱鐢ㄦ埛閫夋嫨 the provider/model/parameters, 涓嶅緱鑷姩瀹夎宸ュ叿, and 涓嶅緱鑷姩閲嶆柊鎻愪氦. Native generation remains bounded by the confirmed intake and candidate review.
+Provider safety remains explicit: Agent 原生工具、即梦和万相仅在当前请求明确选择时作为来源；每次付费调用都必须先获得付费确认。每次都由用户选择服务商、模型和参数；不得自动安装工具，也不得自动重新提交失败或状态未知的任务。Native generation remains bounded by the confirmed intake and candidate review.

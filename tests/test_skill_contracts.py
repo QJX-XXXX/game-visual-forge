@@ -19,6 +19,10 @@ SKILLS = {
             "不得自动安装",
             "不得自动重新提交",
             "submission_unknown",
+            "首次只提交一张分组需求卡",
+            "--visual-review",
+            "character-identity-consistency",
+            "semantic-duplicate-frames",
             "sprite plan",
             "sprite route",
             "sprite ingest",
@@ -176,16 +180,13 @@ class SkillContractTests(unittest.TestCase):
         skill = (ROOT / "skills" / "forge-2d-map" / "SKILL.md").read_text(encoding="utf-8")
         for required in ("preset_16", "preset_32", "custom", "tile_width / pixels_per_unit"):
             self.assertIn(required, skill)
-        return
-        for required in ("preset_16", "preset_32", "custom", "32×32", "tile_width / pixels_per_unit"):
-            self.assertIn(required, skill)
 
     def test_each_skill_contains_required_routing_and_safety_rules(self) -> None:
         for name, contract in SKILLS.items():
             skill = (ROOT / "skills" / name / "SKILL.md").read_text(encoding="utf-8")
             required_fragments = contract["required_body_fragments"]
             if name == "forge-2d-map":
-                required_fragments = ("TWO_GATE", "style-sample", "assembled-map", "demand-driven", "complete building", "road_connectivity_policy", "minimum_traversal_width", "rejection.json", "map tile record-approval", "AssetsOnly", "ImportAndPlace")
+                required_fragments = required_fragments + ("TWO_GATE", "style-sample", "assembled-map", "demand-driven", "complete building", "road_connectivity_policy", "minimum_traversal_width", "rejection.json", "map tile record-approval", "AssetsOnly", "ImportAndPlace")
             for required in required_fragments:
                 self.assertIn(required, skill, f"{name} missing required fragment: {required}")
             self.assertNotIn("fal.ai", skill)

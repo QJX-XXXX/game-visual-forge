@@ -5,6 +5,7 @@
 - [Route and backend](#route-and-backend)
 - [MiniMax Hailuo](#minimax-hailuo)
 - [Jimeng](#jimeng)
+- [Local subprocess protocol](#local-subprocess-protocol)
 - [Paid confirmation and recovery](#paid-confirmation-and-recovery)
 
 ## Route and backend

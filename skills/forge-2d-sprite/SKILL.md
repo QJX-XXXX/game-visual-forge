@@ -7,6 +7,10 @@ description: "Generate production-oriented 2D game assets from natural-language 
 
 使用共享 CLI 编排二维精灵生成、导入、处理和质量验证。Skill 负责理解用户请求、调用 Agent 原生图像工具和取得用户选择；本地运行时负责确定性处理。不得在 Skill 中复制图像处理实现或凭据。
 
+## 标准交互
+
+首次只提交一张分组需求卡，一次收集资产类型与身份特征、动作/朝向与帧数、画风与参考图、背景处理、画布/锚点/输出格式、引擎交付和来源策略。合并询问缺失或矛盾的字段，不得逐字段重复提问；用户确认汇总后再进入来源路由。
+
 ## 来源顺序
 
 1. 已有图像优先，直接选择 `existing-file` 并执行 `sprite ingest`。
@@ -49,7 +53,24 @@ python skills/forge-2d-sprite/scripts/run.py sprite validate `
   --request <output/sprite-request.json> --raw-image <output/raw-image.json> `
   --processing-result <staging>/processing-result.json --repo-root <repo> `
   --staging-dir <staging> --final-dir <repo>/outputs/<asset-id> `
+  --visual-review <output/visual-review.json> `
   --state <output/job-state.json> --now <utc-rfc3339>
 ```
 
-首次验证会保留暂存目录并进入 `needs_attention`，等待人工视觉审查；提供完整的六项视觉审查记录后再次运行 `validate`，通过才发布最终目录。
+首次验证会保留暂存目录并进入 `needs_attention`，等待人工视觉审查。审查文件必须使用以下完整且唯一的六项检查；每项值只能是 `passed` 或 `failed`：
+
+```json
+{
+  "schema_version": 1,
+  "checks": {
+    "character-identity-consistency": "passed",
+    "action-and-direction-correctness": "passed",
+    "equipment-continuity": "passed",
+    "anatomy-and-silhouette": "passed",
+    "unwanted-text-or-watermark": "passed",
+    "semantic-duplicate-frames": "passed"
+  }
+}
+```
+
+提供该审查文件后再次运行带 `--visual-review` 的 `validate`；确定性检查和六项视觉检查都通过时才发布最终目录。
