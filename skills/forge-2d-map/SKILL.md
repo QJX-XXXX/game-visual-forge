@@ -77,4 +77,4 @@ Use `integrations/unity/com.game-visual-forge.tilemap`. Use `AssetsOnly` unless 
 
 After Unity changes, wait for compilation, inspect the console, run EditMode and PlayMode tests, save the target scene, confirm it is clean, and capture an orthographic top-down screenshot that matches the assembled review sheet. Never claim playability from a preview alone.
 
-Provider safety remains explicit: Agent 原生工具、即梦和万相仅在当前请求明确选择时作为来源；每次付费调用都必须先获得付费确认。每次都由用户选择服务商、模型和参数；不得自动安装工具，也不得自动重新提交失败或状态未知的任务。Native generation remains bounded by the confirmed intake and candidate review.
+Keep provider safety explicit: use native Agent tools, Jimeng, or Wanxiang only when the current request selects that source. Obtain explicit paid confirmation before every paid attempt. Ask the user to choose the provider, model, and parameters every time. Never install tools automatically. Never resubmit a failed or `submission_unknown` task. Keep native generation within the confirmed intake and candidate review.

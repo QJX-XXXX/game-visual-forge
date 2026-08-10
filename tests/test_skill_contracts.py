@@ -1,10 +1,14 @@
 from __future__ import annotations
 
+import re
 import subprocess
 import sys
 import unittest
 
 from tests._bootstrap import ROOT
+
+
+CJK_PATTERN = re.compile(r"[\u3400-\u4dbf\u4e00-\u9fff\u3040-\u30ff\uac00-\ud7af]")
 
 
 SKILLS = {
@@ -33,13 +37,13 @@ SKILLS = {
     "forge-2d-map": {
         "description": 'description: "Generate and integrate playable 2D game maps with demand-driven or coherent-foundation terrain Tilemaps, complete building/prop objects, collision and traversal contracts, deterministic quality gates, and explicit user approvals. Use for RPG villages, overworlds, arenas, bridges, water, Unity Tilemaps, and map previews/imports."',
         "required_body_fragments": (
-            "Agent 原生工具",
-            "即梦",
-            "万相",
-            "每次都由用户选择",
-            "付费确认",
-            "不得自动安装工具",
-            "不得自动重新提交",
+            "native Agent tools",
+            "Jimeng",
+            "Wanxiang",
+            "Ask the user to choose the provider, model, and parameters every time",
+            "explicit paid confirmation",
+            "Never install tools automatically",
+            "Never resubmit",
         ),
     },
     "forge-video-to-sprite": {
@@ -66,6 +70,16 @@ SKILLS = {
 
 
 class SkillContractTests(unittest.TestCase):
+    def assert_skill_tree_is_english(self, skill_name: str) -> None:
+        skill_root = ROOT / "skills" / skill_name
+        for path in sorted(item for item in skill_root.rglob("*") if item.is_file() and item.suffix.lower() in {".md", ".yaml", ".yml", ".py"}):
+            content = path.read_text(encoding="utf-8")
+            match = CJK_PATTERN.search(content)
+            self.assertIsNone(match, f"{path.relative_to(ROOT)} contains non-English text: {match.group(0) if match else ''}")
+
+    def test_map_skill_package_is_english(self) -> None:
+        self.assert_skill_tree_is_english("forge-2d-map")
+
     def test_each_skill_has_exact_frontmatter_description_agent_metadata_and_launcher(self) -> None:
         for name, contract in SKILLS.items():
             root = ROOT / "skills" / name
