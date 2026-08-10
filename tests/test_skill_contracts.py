@@ -15,15 +15,15 @@ SKILLS = {
     "forge-2d-sprite": {
         "description": 'description: "Generate production-oriented 2D game assets from natural-language requests, references, or existing images, including characters, creatures, props, effects, frames, sheets, and transparent exports."',
         "required_body_fragments": (
-            "已有图像优先",
-            "Agent 原生图像工具",
-            "原生能力不支持时，要求用户选择",
-            "每次都由用户选择即梦或万相",
-            "服务商、模型、非敏感参数、数量、费用、币种和请求指纹",
-            "不得自动安装",
-            "不得自动重新提交",
+            "Prefer an existing image",
+            "native image tool",
+            "If native generation is unavailable, ask the user to choose",
+            "ask the user to choose Jimeng or Wanxiang every time",
+            "provider, model, non-sensitive parameters, quantity, cost, currency, and request fingerprint",
+            "Never install",
+            "Never resubmit",
             "submission_unknown",
-            "首次只提交一张分组需求卡",
+            "Submit one grouped intake card",
             "--visual-review",
             "character-identity-consistency",
             "semantic-duplicate-frames",
@@ -77,8 +77,17 @@ class SkillContractTests(unittest.TestCase):
             match = CJK_PATTERN.search(content)
             self.assertIsNone(match, f"{path.relative_to(ROOT)} contains non-English text: {match.group(0) if match else ''}")
 
-    def test_map_skill_package_is_english(self) -> None:
-        self.assert_skill_tree_is_english("forge-2d-map")
+    def test_public_skill_packages_are_english(self) -> None:
+        skills_root = ROOT / "skills"
+        skill_names = tuple(
+            path.name
+            for path in sorted(skills_root.iterdir())
+            if path.is_dir() and (path / "SKILL.md").is_file()
+        )
+        self.assertEqual(skill_names, ("forge-2d-map", "forge-2d-sprite", "forge-video-to-sprite"))
+        for skill_name in skill_names:
+            with self.subTest(skill=skill_name):
+                self.assert_skill_tree_is_english(skill_name)
 
     def test_each_skill_has_exact_frontmatter_description_agent_metadata_and_launcher(self) -> None:
         for name, contract in SKILLS.items():
