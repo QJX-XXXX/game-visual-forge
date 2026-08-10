@@ -62,7 +62,15 @@ the final output. Raw evidence may remain in the staging run.
 Deterministic blocking checks cover source/request/attempt/model/artifact hash
 mismatches, missing or unordered frames, wrong counts or dimensions, corrupt
 images, empty visible content, out-of-canvas content, fully opaque requested
-transparency, and manifest path/hash mismatches.
+transparency, visible direct-chroma residue, and manifest path/hash mismatches.
+Direct chroma cleanup tolerates small codec color drift, and the residue check
+blocks significant remaining key color before publication.
+
+Direct chroma cleanup uses the declared RGB key with tolerance 80 to absorb
+codec drift, clears hidden RGB on transparent pixels, and uses premultiplied
+alpha for HD resampling. Pixel mode remains nearest-neighbor. The deterministic
+`chroma-residue` check examines every delivered frame at every requested density;
+more than 1.0% visible near-key pixels in any frame fails publication.
 
 Temporal metrics report exact and near duplicates, motion coverage, static
 intervals, bounds and area variation, anchor jitter, loop difference, alpha

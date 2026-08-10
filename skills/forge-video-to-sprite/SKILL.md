@@ -25,8 +25,9 @@ and shared `src/` package available; the launcher is
    backend, region, model, mode, references and hashes, duration, resolution,
    billing context, estimate status, and request fingerprint. Ask for one
    paid-submit confirmation. An unverified estimate is labelled unverified and
-   must be acknowledged explicitly. The current MiniMax-H3 profile is visible;
-   a discovered-unprofiled model is shown but cannot be submitted through API.
+   must be acknowledged explicitly. The current MiniMax-H3 V2 profile and its
+   exact duration, resolution, ratio, and reference limits are visible; a
+   discovered-unprofiled model is shown but cannot be submitted through API.
 5. Submit exactly once after the confirmation is persisted. Query or download
    an existing task when recovering; never resubmit `submission_unknown`.
 6. Ingest the immutable video, sample by presentation timestamp, clean and
@@ -37,6 +38,8 @@ and shared `src/` package available; the launcher is
 
 Existing-video work never invokes a provider. Local processing changes reuse the
 same source video and do not create a new paid task.
+
+- Provider subprocesses use binary UTF-8 JSON, and chroma delivery must pass the all-density residue gate before publication.
 
 ## Commands
 
@@ -63,6 +66,8 @@ and FFprobe without modifying the source video.
 - Never install FFmpeg, `mmx`, `dreamina`, Python extras, models, or credentials.
 - Never write credentials, authorization headers, Base64 media, signed URLs, or
   raw provider responses to repository artifacts.
+- Bind a local first-frame PNG by repository-relative path and SHA-256; create
+  any provider Data URI only in memory immediately before the confirmed submit.
 - Never retry a paid request automatically, and never switch API/CLI after a
   task has been created.
 - Treat automatic metrics as review evidence, not proof of identity, anatomy,

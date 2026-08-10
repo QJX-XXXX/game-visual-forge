@@ -99,6 +99,20 @@ class SkillContractTests(unittest.TestCase):
         for command in ("models", "preflight", "estimate", "submit", "query", "download"):
             self.assertIn(command, provider.stdout)
 
+    def test_video_skill_documents_local_first_frame_safety(self) -> None:
+        workflow = (ROOT / "skills" / "forge-video-to-sprite" / "references" / "provider-workflow.md").read_text(encoding="utf-8")
+        for phrase in ("first_frame_path", "first_frame_sha256", "in memory", "Data URI"):
+            self.assertIn(phrase, workflow)
+
+    def test_video_skill_documents_utf8_and_all_density_chroma_gate(self) -> None:
+        skill = (ROOT / "skills" / "forge-video-to-sprite" / "SKILL.md").read_text(encoding="utf-8")
+        provider = (ROOT / "skills" / "forge-video-to-sprite" / "references" / "provider-workflow.md").read_text(encoding="utf-8")
+        quality = (ROOT / "skills" / "forge-video-to-sprite" / "references" / "processing-and-quality.md").read_text(encoding="utf-8")
+        self.assertIn("UTF-8", skill)
+        self.assertIn("binary UTF-8 JSON", provider)
+        self.assertIn("every requested density", quality)
+        self.assertIn("1.0%", quality)
+
     def test_map_launcher_exposes_m2_commands(self) -> None:
         launcher = ROOT / "skills" / "forge-2d-map" / "scripts" / "run.py"
         result = subprocess.run([sys.executable, str(launcher), "map", "--help"], cwd=ROOT, capture_output=True, text=True, encoding="utf-8", check=False)
