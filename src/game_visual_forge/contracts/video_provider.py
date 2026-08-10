@@ -73,6 +73,7 @@ class VideoAttemptStatus(StrEnum):
     SUBMISSION_UNKNOWN = "submission_unknown"
     FAILED = "failed"
     CANCELLED = "cancelled"
+    SUPERSEDED = "superseded"
 
 
 @dataclass(frozen=True)
