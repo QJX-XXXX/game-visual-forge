@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import io
 import json
 import os
 import unittest
@@ -9,7 +10,7 @@ from unittest.mock import patch
 from tests._bootstrap import ROOT
 
 from game_visual_forge.contracts.video_provider import VideoProviderBackend
-from game_visual_forge.providers.jimeng_video import JimengAdapter, sign_volcengine_request
+from game_visual_forge.providers.jimeng_video import JimengAdapter, main, sign_volcengine_request
 
 
 class FakeTransport:
@@ -44,6 +45,16 @@ class JimengProviderTests(unittest.TestCase):
         result = JimengAdapter(transport=FakeTransport({})).preflight_cli(Path("dreamina"), runner=lambda argv: (0, "dreamina 1.0", ""))
         self.assertTrue(result["available"])
         self.assertEqual(result["backend"], "cli")
+
+    def test_main_round_trips_unicode_through_shared_binary_protocol(self) -> None:
+        source = io.BytesIO('{"schema_version":1,"prompt":"白发少女三连斩"}'.encode("utf-8"))
+        target = io.BytesIO()
+        with patch(
+            "game_visual_forge.providers.jimeng_video.run_command",
+            return_value={"schema_version": 1, "message": "提交成功"},
+        ):
+            self.assertEqual(main(["preflight"], source, target), 0)
+        self.assertEqual(json.loads(target.getvalue().decode("utf-8"))["message"], "提交成功")
 
 
 if __name__ == "__main__":

@@ -6,6 +6,7 @@ import hmac
 import json
 import os
 import subprocess
+import sys
 import urllib.request
 from datetime import datetime, timezone
 from dataclasses import dataclass
@@ -14,6 +15,7 @@ from typing import Any, Callable, Protocol
 
 from game_visual_forge.contracts.provider import ExternalProvider
 from game_visual_forge.contracts.video_provider import VideoModelCatalogSnapshot, VideoProviderBackend
+from game_visual_forge.providers.stdio import read_utf8_json, write_utf8_json
 
 
 class JsonTransport(Protocol):
@@ -124,6 +126,19 @@ def run_command(command: str, payload: dict[str, Any]) -> dict[str, Any]:
     if command == "query":
         return adapter.query(str(payload["external_task_id"]))
     raise ValueError(f"unsupported Jimeng command: {command}")
+
+
+def main(
+    argv: list[str] | None = None,
+    input_stream: Any | None = None,
+    output_stream: Any | None = None,
+) -> int:
+    arguments = sys.argv[1:] if argv is None else argv
+    if len(arguments) != 1:
+        raise SystemExit("usage: jimeng_video.py <command>")
+    payload = read_utf8_json(input_stream)
+    write_utf8_json(run_command(arguments[0], payload), output_stream)
+    return 0
 
 
 class _UrllibTransport:

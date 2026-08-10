@@ -9,10 +9,8 @@ SRC = ROOT / "src"
 if str(SRC) not in sys.path:
     sys.path.insert(0, str(SRC))
 
-from game_visual_forge.providers.minimax_video import run_command
+from game_visual_forge.providers.minimax_video import main
 
 
 if __name__ == "__main__":
-    payload = json.load(sys.stdin)
-    result = run_command(sys.argv[1], payload)
-    print(json.dumps(result, ensure_ascii=False, sort_keys=True))
+    raise SystemExit(main())
