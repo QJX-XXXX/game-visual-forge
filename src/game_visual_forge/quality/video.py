@@ -5,8 +5,12 @@ from pathlib import Path
 from typing import Any
 
 from game_visual_forge.contracts import ArtifactRecord, AssetManifest, QualityCheck, QualityStatus, VideoQualityReport, VideoMotionReview, VideoSpriteRequest, VideoSourceRecord
+from game_visual_forge.processing.background import VIDEO_CHROMA_TOLERANCE
 from game_visual_forge.processing.video_probe import sha256_file
 from game_visual_forge.processing.video_review import calculate_temporal_metrics, validate_video_motion_review
+
+
+MAX_VIDEO_CHROMA_RESIDUE_PERCENT = 1.0
 
 
 def _check(check_id: str, status: QualityStatus, message: str, paths: tuple[str, ...] = ()) -> QualityCheck:
@@ -24,18 +28,47 @@ def _load_delivery_frames(root: Path, processing: Any, density: int) -> tuple[An
     return tuple(frames)
 
 
+def _delivery_frame_paths(root: Path, processing: Any) -> dict[int, tuple[Path, ...]]:
+    result: dict[int, tuple[Path, ...]] = {}
+    for role, relative in processing.artifacts.items():
+        if not role.startswith("frames:"):
+            continue
+        density = int(role.split(":", 1)[1])
+        result[density] = tuple(sorted((root / relative).glob("frame-*.png")))
+    return result
+
+
+def _visible_chroma_residue_percent(image: Any, color: str, *, tolerance: int = VIDEO_CHROMA_TOLERANCE) -> float:
+    import numpy as np
+
+    rgba = np.asarray(image.convert("RGBA"), dtype=np.uint8)
+    target = np.asarray([int(color[index:index + 2], 16) for index in (1, 3, 5)], dtype=np.int32)
+    distance_squared = np.sum((rgba[:, :, :3].astype(np.int32) - target) ** 2, axis=2)
+    visible = rgba[:, :, 3] >= 8
+    visible_pixels = int(np.count_nonzero(visible))
+    if visible_pixels == 0:
+        return 0.0
+    residue_pixels = int(np.count_nonzero(visible & (distance_squared <= int(tolerance) ** 2)))
+    return round(100.0 * residue_pixels / visible_pixels, 4)
+
+
 def assess_video_outputs(repo_root: Path, request: VideoSpriteRequest, source: VideoSourceRecord, processing: Any) -> VideoQualityReport:
     root = repo_root.resolve()
     checks: list[QualityCheck] = []
     source_path = root / source.path
     checks.append(_check("source-hash", QualityStatus.PASSED if source_path.is_file() and sha256_file(source_path) == source.sha256 else QualityStatus.FAILED, "source video hash matches"))
     highest = max(request.frame_counts)
-    frame_dir = root / processing.artifacts.get(f"frames:{highest}", "missing")
-    frame_paths = sorted(frame_dir.glob("frame-*.png")) if frame_dir.is_dir() else []
-    checks.append(_check("frame-count", QualityStatus.PASSED if len(frame_paths) == highest else QualityStatus.FAILED, "highest-density frame count matches"))
+    density_paths = _delivery_frame_paths(root, processing)
+    expected_densities = set(request.frame_counts)
+    frame_count_matches = set(density_paths) == expected_densities and all(
+        len(density_paths[density]) == density for density in expected_densities
+    )
+    checks.append(_check("frame-count", QualityStatus.PASSED if frame_count_matches else QualityStatus.FAILED, "every requested density has the expected frame count"))
+    frame_paths = list(density_paths.get(highest, ()))
+    all_density_paths = tuple((density, path) for density in sorted(density_paths) for path in density_paths[density])
     readable = True
     sizes = set()
-    for path in frame_paths:
+    for _, path in all_density_paths:
         try:
             from PIL import Image
             with Image.open(path) as image:
@@ -45,15 +78,27 @@ def assess_video_outputs(repo_root: Path, request: VideoSpriteRequest, source: V
         except OSError:
             readable = False
     checks.append(_check("frame-readability", QualityStatus.PASSED if readable else QualityStatus.FAILED, "delivery frames are readable"))
-    checks.append(_check("frame-dimensions", QualityStatus.PASSED if len(sizes) == 1 else QualityStatus.FAILED, "delivery frame dimensions are consistent"))
+    checks.append(_check("frame-dimensions", QualityStatus.PASSED if len(sizes) == 1 else QualityStatus.FAILED, "delivery frame dimensions are consistent across densities"))
     if request.background_mode.value != "preserve":
         opaque = False
-        for path in frame_paths:
+        for _, path in all_density_paths:
             from PIL import Image
             with Image.open(path).convert("RGBA") as image:
-                if image.getchannel("A").getbbox() is not None and all(pixel[3] == 255 for pixel in image.getdata()):
+                if image.getchannel("A").getextrema() == (255, 255):
                     opaque = True
         checks.append(_check("transparency", QualityStatus.FAILED if opaque else QualityStatus.PASSED, "transparent output is not fully opaque"))
+    if request.background_mode.value == "chroma" and request.chroma_color is not None:
+        residue_measurements: list[tuple[float, int, Path]] = []
+        for density, path in all_density_paths:
+            try:
+                from PIL import Image
+                with Image.open(path) as image:
+                    residue_measurements.append((_visible_chroma_residue_percent(image, request.chroma_color), density, path))
+            except OSError:
+                continue
+        maximum_residue, residue_density, residue_path = max(residue_measurements, default=(0.0, highest, Path("no-frame")))
+        residue_status = QualityStatus.FAILED if maximum_residue > MAX_VIDEO_CHROMA_RESIDUE_PERCENT else QualityStatus.PASSED
+        checks.append(_check("chroma-residue", residue_status, f"visible chroma residue is at most {MAX_VIDEO_CHROMA_RESIDUE_PERCENT:.1f}% (measured {maximum_residue:.4f}% at density {residue_density} {residue_path.name})"))
     deterministic = QualityStatus.FAILED if any(item.status is QualityStatus.FAILED for item in checks) else QualityStatus.PASSED
     frames = _load_delivery_frames(root, processing, highest) if frame_paths else ()
     metrics = calculate_temporal_metrics(frames) if frames else None
