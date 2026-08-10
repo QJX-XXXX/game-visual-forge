@@ -14,6 +14,7 @@ from game_visual_forge.contracts import (
     ProviderCommand,
 )
 from game_visual_forge.errors import ErrorCode, ForgeError
+from game_visual_forge.providers.stdio import run_utf8_json_process
 
 
 _FORBIDDEN_KEYS = {"token", "cookie", "authorization", "api_key", "access_key", "secret", "signed_url", "base64"}
@@ -48,18 +49,11 @@ def _run_provider_command(
 ) -> dict[str, Any]:
     _assert_safe(payload)
     try:
-        result = subprocess.run(
-            _argv(executable, command),
-            input=json.dumps(payload, ensure_ascii=False),
-            capture_output=True,
-            text=True,
-            encoding="utf-8",
-            timeout=timeout_seconds,
-            check=False,
-            shell=False,
-        )
+        result = run_utf8_json_process(_argv(executable, command), payload, timeout_seconds=timeout_seconds)
     except (OSError, subprocess.TimeoutExpired) as error:
         raise ForgeError(ErrorCode.PROVIDER_UNAVAILABLE, f"provider command failed: {command.value}", recoverable=True, context={"command": command.value}) from error
+    except UnicodeDecodeError as error:
+        raise ForgeError(ErrorCode.PROVIDER_UNAVAILABLE, f"provider command returned invalid UTF-8: {command.value}", recoverable=True, context={"command": command.value}) from error
     if result.returncode != 0 or _SENSITIVE_OUTPUT.search(result.stderr):
         raise ForgeError(ErrorCode.PROVIDER_UNAVAILABLE, f"provider command failed: {command.value}", recoverable=True, context={"command": command.value, "returncode": result.returncode})
     if _SENSITIVE_OUTPUT.search(result.stdout):

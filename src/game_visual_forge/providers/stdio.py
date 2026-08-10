@@ -12,7 +12,7 @@ def _encode(value: dict[str, Any]) -> bytes:
 
 
 def read_utf8_json(stream: BinaryIO | TextIO | None = None) -> dict[str, Any]:
-    source = stream if stream is not None else sys.stdin.buffer
+    source = stream if stream is not None else getattr(sys.stdin, "buffer", sys.stdin)
     raw = source.read()
     value = json.loads(raw.decode("utf-8") if isinstance(raw, bytes) else raw)
     if not isinstance(value, dict):
@@ -21,7 +21,7 @@ def read_utf8_json(stream: BinaryIO | TextIO | None = None) -> dict[str, Any]:
 
 
 def write_utf8_json(value: dict[str, Any], stream: BinaryIO | TextIO | None = None) -> None:
-    target = stream if stream is not None else sys.stdout.buffer
+    target = stream if stream is not None else getattr(sys.stdout, "buffer", sys.stdout)
     encoded = _encode(value)
     try:
         target.write(encoded)

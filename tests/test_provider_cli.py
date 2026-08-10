@@ -3,6 +3,7 @@ from __future__ import annotations
 import json
 import unittest
 from pathlib import Path
+from unittest.mock import patch
 
 from tests._bootstrap import ROOT  # noqa: F401
 from game_visual_forge.contracts import CostEstimate, ExternalProvider, PaidConfirmation, ProviderCommand
@@ -11,6 +12,7 @@ from game_visual_forge.providers import run_provider_command, submit_provider_co
 
 
 FAKE = ROOT / "tests" / "fixtures" / "fake_provider.py"
+UTF8_FAKE = ROOT / "tests" / "fixtures" / "fake_utf8_provider.py"
 
 
 class ProviderCliTests(unittest.TestCase):
@@ -51,6 +53,22 @@ class ProviderCliTests(unittest.TestCase):
                     run_provider_command(FAKE, ProviderCommand.PREFLIGHT, payload)
                 self.assertIn(expected, str(caught.exception))
                 self.assertNotIn("secret", json.dumps(caught.exception.to_dict()).lower())
+
+    def test_invalid_utf8_stdout_is_recoverable_provider_failure(self) -> None:
+        decode_error = UnicodeDecodeError("utf-8", b"\x81", 0, 1, "invalid start byte")
+        with patch("game_visual_forge.providers.cli.run_utf8_json_process", side_effect=decode_error):
+            with self.assertRaises(ForgeError) as caught:
+                run_provider_command(FAKE, ProviderCommand.PREFLIGHT, {"schema_version": 1})
+        self.assertEqual(caught.exception.code, ErrorCode.PROVIDER_UNAVAILABLE)
+        self.assertTrue(caught.exception.recoverable)
+
+    def test_non_utf8_stderr_does_not_hide_valid_stdout(self) -> None:
+        result = run_provider_command(
+            UTF8_FAKE,
+            ProviderCommand.PREFLIGHT,
+            {"schema_version": 1, "fixture_mode": "invalid-stderr"},
+        )
+        self.assertTrue(result["available"])
 
 
 if __name__ == "__main__":
