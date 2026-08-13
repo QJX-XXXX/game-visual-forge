@@ -19,6 +19,27 @@ canvas/anchor/output formats, engine delivery, and source policy. Ask once for
 all missing or contradictory fields; do not repeat answered questions. Route
 the source only after the user confirms the consolidated summary.
 
+## Complex action boundary
+
+Before source routing, warn the user when a request involves complex character motion,
+including a long or multi-phase action, rapid rotation or tumbling, large pose
+or scene-position changes, interaction between moving characters or objects,
+or unusually strict identity, equipment, anatomy, and temporal continuity
+requirements. Explain that image-grid generation can drift between
+cells and recommend `forge-video-to-sprite`, which samples temporally related
+frames from an existing or explicitly generated video. Ask the user to choose
+whether to continue with `forge-2d-sprite` or switch to
+`forge-video-to-sprite`; the Skill must not switch workflows automatically.
+
+Give the same choice after visual review rejects generated Sprite frames for
+identity drift, equipment discontinuity, anatomy changes, or incoherent
+motion. Do not treat a switch recommendation as permission to preflight or
+submit a video provider. If the user switches, start at the standard
+interaction in `forge-video-to-sprite` and obtain every confirmation required
+there. Keep short in-place actions such as idle, walk, run, compact attacks,
+and small casts on the normal Sprite path unless the user requires unusually
+strict temporal consistency.
+
 ## Source order
 
 1. Prefer an existing image. Select `existing-file` and run `sprite ingest`.

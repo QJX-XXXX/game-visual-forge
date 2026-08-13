@@ -32,6 +32,10 @@ SKILLS = {
             "sprite ingest",
             "sprite process",
             "sprite validate",
+            "complex character motion",
+            "`forge-video-to-sprite`",
+            "continue with `forge-2d-sprite` or switch",
+            "must not switch workflows automatically",
         ),
     },
     "forge-2d-map": {
