@@ -306,6 +306,47 @@ class AudioSourceRecord:
         )
 
 
+@dataclass(frozen=True)
+class AudioProcessedArtifact:
+    schema_version: int
+    candidate_id: str
+    wav_path: str
+    waveform_path: str
+    spectrum_path: str
+    request_fingerprint: str
+
+    def __post_init__(self) -> None:
+        if self.schema_version != 1:
+            raise ValueError("schema_version must be 1")
+        for field in ("wav_path", "waveform_path", "spectrum_path"):
+            object.__setattr__(self, field, normalize_repo_relative_path(getattr(self, field), field_name=field))
+        if not re.fullmatch(r"[0-9a-f]{64}", self.request_fingerprint):
+            raise ValueError("request_fingerprint must be a SHA-256 hex digest")
+
+
+@dataclass(frozen=True)
+class AudioProcessingResult:
+    schema_version: int
+    request_fingerprint: str
+    artifacts: tuple[AudioProcessedArtifact, ...]
+    staging_dir: str
+
+    def __post_init__(self) -> None:
+        if self.schema_version != 1:
+            raise ValueError("schema_version must be 1")
+        if not re.fullmatch(r"[0-9a-f]{64}", self.request_fingerprint):
+            raise ValueError("request_fingerprint must be a SHA-256 hex digest")
+        object.__setattr__(self, "staging_dir", normalize_repo_relative_path(self.staging_dir, field_name="staging_dir"))
+
+    def to_dict(self) -> dict[str, Any]:
+        return {
+            "schema_version": 1,
+            "request_fingerprint": self.request_fingerprint,
+            "artifacts": [item.__dict__ for item in self.artifacts],
+            "staging_dir": self.staging_dir,
+        }
+
+
 def canonical_audio_confirmation_summary(request: AudioRequest) -> str:
     return json.dumps(request.to_dict(), ensure_ascii=False, sort_keys=True, separators=(",", ":"))
 
