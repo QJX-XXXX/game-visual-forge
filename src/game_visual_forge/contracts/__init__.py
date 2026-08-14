@@ -121,6 +121,7 @@ from .audio_provider import (
     AudioGenerationResult,
     AudioProviderPreflight,
 )
+from .audio_runtime import StableAudioRuntimeConfig, StableAudioRuntimeResolution, stable_audio_child_environment
 from .audio_quality import AudioQualityReport
 from .audio_review import AudioManifest, AudioReview, AudioSourcePlacement, REQUIRED_AUDIO_CHECKS, UnityAudioManifest
 
@@ -269,6 +270,9 @@ __all__ = [
     "AudioGenerationAttempt",
     "AudioGenerationResult",
     "AudioProviderPreflight",
+    "StableAudioRuntimeConfig",
+    "StableAudioRuntimeResolution",
+    "stable_audio_child_environment",
     "AudioQualityReport",
     "AudioManifest",
     "AudioReview",
