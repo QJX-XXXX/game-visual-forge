@@ -2,6 +2,7 @@ from __future__ import annotations
 
 import array
 import hashlib
+import math
 import shutil
 import subprocess
 import sys
@@ -9,7 +10,7 @@ import wave
 from pathlib import Path
 from typing import Any
 
-from game_visual_forge.contracts.audio import AudioGenerationMode, AudioProcessedArtifact, AudioProcessingResult, AudioRequest, AudioSourceRecord
+from game_visual_forge.contracts.audio import AudioGenerationMode, AudioProcessedArtifact, AudioProcessingResult, AudioRequest, AudioSourceRecord, AudioUsageProfile
 from game_visual_forge.contracts.audio_provider import AudioGenerationResult
 from game_visual_forge.jobs.fingerprints import fingerprint_request
 from .audio_metrics import read_pcm16_metrics
@@ -52,6 +53,18 @@ def _write_pcm(path: Path, channels: int, rate: int, frames: list[tuple[int, ...
         handle.setsampwidth(2)
         handle.setframerate(rate)
         handle.writeframes(values.tobytes())
+
+
+def _normalize_pcm16_peak(path: Path, target_dbfs: float = -1.0) -> bool:
+    channels, rate, frames = _read_pcm(path)
+    peak = max((abs(value) for frame in frames for value in frame), default=0)
+    if peak == 0 or peak >= 32767:
+        return False
+    target = round(32767 * math.pow(10.0, target_dbfs / 20.0))
+    gain = target / peak
+    normalized = [tuple(round(value * gain) for value in frame) for frame in frames]
+    _write_pcm(path, channels, rate, normalized)
+    return True
 
 
 def _frame_at(frames: list[tuple[int, ...]], index: int, channels: int) -> tuple[int, ...]:
@@ -127,6 +140,8 @@ def process_audio_candidates(
         processed = staging / f"{candidate.candidate_id}.wav"
         channels = 1 if request.spatial_mode.value == "3d" else 2
         _run_ffmpeg(ffmpeg, ["-y", "-i", str(raw), "-ar", "44100", "-ac", str(channels), "-c:a", "pcm_s16le", str(processed)])
+        if request.mode is AudioGenerationMode.TEXT_TO_AUDIO and request.usage_profile is AudioUsageProfile.ONE_SHOT and not request.loop:
+            _normalize_pcm16_peak(processed)
         if source is not None and request.mode in {AudioGenerationMode.INPAINT, AudioGenerationMode.CONTINUE}:
             protected = staging / f"{candidate.candidate_id}-protected.wav"
             _splice_protected(root / source.path, processed, protected, request, source)
