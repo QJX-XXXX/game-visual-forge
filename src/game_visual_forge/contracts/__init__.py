@@ -121,6 +121,8 @@ from .audio_provider import (
     AudioGenerationResult,
     AudioProviderPreflight,
 )
+from .audio_quality import AudioQualityReport
+from .audio_review import AudioManifest, AudioReview, AudioSourcePlacement, REQUIRED_AUDIO_CHECKS, UnityAudioManifest
 
 __all__ = [
     "ArtifactRecord",
@@ -267,4 +269,10 @@ __all__ = [
     "AudioGenerationAttempt",
     "AudioGenerationResult",
     "AudioProviderPreflight",
+    "AudioQualityReport",
+    "AudioManifest",
+    "AudioReview",
+    "AudioSourcePlacement",
+    "REQUIRED_AUDIO_CHECKS",
+    "UnityAudioManifest",
 ]

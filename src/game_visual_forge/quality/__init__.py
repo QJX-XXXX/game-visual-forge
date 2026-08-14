@@ -18,3 +18,6 @@ __all__ = [
     "publish_video_outputs",
     "validate_reviewed_video_outputs",
 ]
+from .audio import assess_audio_outputs, build_audio_manifests, publish_audio_outputs, record_audio_review, validate_reviewed_audio_outputs
+
+__all__ = ["assess_audio_outputs", "build_audio_manifests", "publish_audio_outputs", "record_audio_review", "validate_reviewed_audio_outputs"]
