@@ -2,6 +2,7 @@ from .sprite import AgentImageCapabilities, NativeAttemptOutcome, build_prompt_p
 from .map import MapSourceCapabilities, route_map
 from .tilemap_architecture import TileMapArchitectureDecision, select_tilemap_architecture
 from .video import route_video
+from .audio import route_audio
 
 __all__ = [
     "AgentImageCapabilities",
@@ -13,4 +14,5 @@ __all__ = [
     "TileMapArchitectureDecision",
     "select_tilemap_architecture",
     "route_video",
+    "route_audio",
 ]

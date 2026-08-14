@@ -12,6 +12,7 @@ LEGAL_TRANSITIONS = {
         JobStatus.NEEDS_ATTENTION,
         JobStatus.CANCELLED,
         JobStatus.REJECTED,
+        JobStatus.NEEDS_USER_ACTION,
     },
     JobStatus.AWAITING_CONFIRMATION: {
         JobStatus.READY,
@@ -24,6 +25,7 @@ LEGAL_TRANSITIONS = {
         JobStatus.RUNNING,
         JobStatus.CANCELLED,
         JobStatus.REJECTED,
+        JobStatus.NEEDS_USER_ACTION,
     },
     JobStatus.SUBMITTING: {
         JobStatus.RUNNING,
@@ -37,6 +39,7 @@ LEGAL_TRANSITIONS = {
         JobStatus.FAILED,
         JobStatus.NEEDS_ATTENTION,
         JobStatus.REJECTED,
+        JobStatus.GENERATION_UNKNOWN,
     },
     JobStatus.DOWNLOADING: {
         JobStatus.VERIFYING,
@@ -53,6 +56,17 @@ LEGAL_TRANSITIONS = {
     JobStatus.NEEDS_ATTENTION: {
         JobStatus.READY,
         JobStatus.VERIFYING,
+        JobStatus.CANCELLED,
+        JobStatus.REJECTED,
+    },
+    JobStatus.NEEDS_USER_ACTION: {
+        JobStatus.READY,
+        JobStatus.CANCELLED,
+        JobStatus.REJECTED,
+    },
+    JobStatus.GENERATION_UNKNOWN: {
+        JobStatus.FAILED,
+        JobStatus.NEEDS_ATTENTION,
         JobStatus.CANCELLED,
         JobStatus.REJECTED,
     },

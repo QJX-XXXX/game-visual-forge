@@ -98,6 +98,19 @@ from .video_provider import (
 )
 from .video_review import VideoMotionReview
 from .video_quality import VideoQualityReport
+from .audio import (
+    AudioGenerationMode,
+    AudioUsageProfile,
+    AudioSpatialMode,
+    AudioIntakeStatus,
+    AudioQuestionGroup,
+    AudioRequest,
+    AudioIntakeAssessment,
+    AudioRouteDecision,
+    assess_audio_intake,
+    audio_confirmation_sha256,
+    canonical_audio_confirmation_summary,
+)
 
 __all__ = [
     "ArtifactRecord",
@@ -225,4 +238,15 @@ __all__ = [
     "VideoProviderBackend",
     "VideoMotionReview",
     "VideoQualityReport",
+    "AudioGenerationMode",
+    "AudioUsageProfile",
+    "AudioSpatialMode",
+    "AudioIntakeStatus",
+    "AudioQuestionGroup",
+    "AudioRequest",
+    "AudioIntakeAssessment",
+    "AudioRouteDecision",
+    "assess_audio_intake",
+    "audio_confirmation_sha256",
+    "canonical_audio_confirmation_summary",
 ]

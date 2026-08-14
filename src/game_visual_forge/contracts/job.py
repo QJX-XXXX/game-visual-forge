@@ -40,6 +40,8 @@ class JobStatus(StrEnum):
     NEEDS_ATTENTION = "needs_attention"
     CANCELLED = "cancelled"
     REJECTED = "rejected"
+    NEEDS_USER_ACTION = "needs_user_action"
+    GENERATION_UNKNOWN = "generation_unknown"
 
 
 @dataclass(frozen=True)
