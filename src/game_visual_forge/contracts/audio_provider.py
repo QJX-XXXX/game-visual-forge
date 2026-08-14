@@ -62,6 +62,10 @@ class AudioProviderPreflight:
     ffmpeg_available: bool
     ffprobe_available: bool
     reason: str | None
+    runtime_root: str | None = None
+    model_cache: str | None = None
+    cuda_available: bool | None = None
+    device_name: str | None = None
 
     def __post_init__(self) -> None:
         if self.schema_version != 1:
@@ -91,6 +95,10 @@ class AudioProviderPreflight:
             ffmpeg_available=bool(value["ffmpeg_available"]),
             ffprobe_available=bool(value["ffprobe_available"]),
             reason=value.get("reason"),
+            runtime_root=value.get("runtime_root"),
+            model_cache=value.get("model_cache"),
+            cuda_available=None if value.get("cuda_available") is None else bool(value["cuda_available"]),
+            device_name=value.get("device_name"),
         )
 
 

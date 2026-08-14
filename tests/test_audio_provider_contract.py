@@ -21,7 +21,7 @@ class AudioProviderContractTests(unittest.TestCase):
             "provider": "stable-audio-local",
             "available": True,
             "python_executable": sys.executable,
-            "package": "stable-audio-tools",
+            "package": "stable-audio-3",
             "package_version": "0.1.0",
             "model_id": "small-sfx",
             "model_repository": "stabilityai/stable-audio-3-small-sfx",
