@@ -46,10 +46,10 @@ New-Item -ItemType Directory -Force -Path $env:UV_INSTALL_DIR,$env:UV_CACHE_DIR,
 powershell -NoProfile -ExecutionPolicy Bypass -Command "irm https://astral.sh/uv/install.ps1 | iex"
 $Uv = Join-Path $env:UV_INSTALL_DIR "uv.exe"
 if (!(Test-Path $Uv)) { throw "uv.exe was not installed under $env:UV_INSTALL_DIR" }
-& $Uv python install 3.12
+& $Uv python install 3.10
 git clone https://github.com/Stability-AI/stable-audio-3.git $AudioRuntime
 Set-Location $AudioRuntime
-& $Uv venv --python 3.12 .venv
+& $Uv venv --python 3.10 .venv
 ```
 
 如果没有 `git`，请手动下载官方仓库压缩包并解压到 `$AudioRuntime`，确保该目录

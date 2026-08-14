@@ -50,10 +50,10 @@ by its absolute path:
 powershell -NoProfile -ExecutionPolicy Bypass -Command "irm https://astral.sh/uv/install.ps1 | iex"
 $Uv = Join-Path $env:UV_INSTALL_DIR "uv.exe"
 if (!(Test-Path $Uv)) { throw "uv.exe was not installed under $env:UV_INSTALL_DIR" }
-& $Uv python install 3.12
+& $Uv python install 3.10
 git clone https://github.com/Stability-AI/stable-audio-3.git $AudioRuntime
 Set-Location $AudioRuntime
-& $Uv venv --python 3.12 .venv
+& $Uv venv --python 3.10 .venv
 ```
 
 If `git` is unavailable, download the official repository archive manually

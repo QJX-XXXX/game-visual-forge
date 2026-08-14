@@ -612,7 +612,7 @@ New-Item -ItemType Directory -Force -Path $AudioRoot,$AudioTemp | Out-Null
 
 Set `UV_INSTALL_DIR`, `UV_CACHE_DIR`, `UV_PYTHON_INSTALL_DIR`, `UV_PYTHON_BIN_DIR`, `HF_HOME`, `HUGGINGFACE_HUB_CACHE`, `TORCH_HOME`, `PIP_CACHE_DIR`, `TEMP`, and `TMP` only in that PowerShell process. Set `UV_NO_MODIFY_PATH=1`.
 
-Document the official standalone uv install, official repo clone, `uv python install 3.12`, and `uv sync`. For Windows NVIDIA CUDA 12.6, document the official pinned wheels before sync:
+Document the official standalone uv install, official repo clone, `uv python install 3.10`, and `uv sync` because the official checkout currently selects Python 3.10. For Windows NVIDIA CUDA 12.6, document the official pinned wheels before sync:
 
 ```powershell
 & $Uv pip install --python "$AudioRuntime\.venv\Scripts\python.exe" `
