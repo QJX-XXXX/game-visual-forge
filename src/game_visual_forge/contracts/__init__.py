@@ -111,6 +111,13 @@ from .audio import (
     audio_confirmation_sha256,
     canonical_audio_confirmation_summary,
 )
+from .audio_provider import (
+    AudioAttemptStatus,
+    AudioCandidateRecord,
+    AudioGenerationAttempt,
+    AudioGenerationResult,
+    AudioProviderPreflight,
+)
 
 __all__ = [
     "ArtifactRecord",
@@ -249,4 +256,9 @@ __all__ = [
     "assess_audio_intake",
     "audio_confirmation_sha256",
     "canonical_audio_confirmation_summary",
+    "AudioAttemptStatus",
+    "AudioCandidateRecord",
+    "AudioGenerationAttempt",
+    "AudioGenerationResult",
+    "AudioProviderPreflight",
 ]

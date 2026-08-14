@@ -27,6 +27,7 @@ class ProviderCommand(StrEnum):
     SUBMIT = "submit"
     QUERY = "query"
     DOWNLOAD = "download"
+    GENERATE = "generate"
 
 
 @dataclass(frozen=True)

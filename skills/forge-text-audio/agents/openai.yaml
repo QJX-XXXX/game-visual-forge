@@ -1,0 +1,4 @@
+interface:
+  display_name: "Forge Text Audio"
+  short_description: "Generate and edit reviewed game sound effects"
+  default_prompt: "Use $forge-text-audio to generate or edit an explicitly requested game sound effect, validate PCM WAV output, and prepare or perform Unity AudioClip delivery."
