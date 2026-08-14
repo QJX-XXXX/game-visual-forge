@@ -9,23 +9,17 @@ from tests._bootstrap import ROOT
 class RepositoryContractTests(unittest.TestCase):
     def test_readmes_have_reciprocal_language_links(self) -> None:
         english = (ROOT / "README.md").read_text(encoding="utf-8")
-        chinese_path = ROOT / "README.zh-CN.md"
-
-        self.assertTrue(chinese_path.is_file())
-        chinese = chinese_path.read_text(encoding="utf-8")
+        chinese = (ROOT / "README.zh-CN.md").read_text(encoding="utf-8")
         self.assertIn("[简体中文](README.zh-CN.md)", english)
         self.assertIn("[English](README.md)", chinese)
         self.assertNotIn("\n## 中文\n", english)
         self.assertNotIn("\n## English\n", chinese)
 
     def test_readme_background_comparison_asset_exists(self) -> None:
-        relative_path = (
-            "assets/readme/rembg-production-comparison-on-gray.jpg"
-        )
+        relative_path = "assets/readme/rembg-production-comparison-on-gray.jpg"
         self.assertTrue((ROOT / relative_path).is_file())
         for readme in ("README.md", "README.zh-CN.md"):
-            content = (ROOT / readme).read_text(encoding="utf-8")
-            self.assertIn(f"]({relative_path})", content)
+            self.assertIn(f"]({relative_path})", (ROOT / readme).read_text(encoding="utf-8"))
 
     def test_repository_is_skills_only_and_not_a_plugin(self) -> None:
         self.assertFalse((ROOT / ".codex-plugin").exists())
@@ -33,40 +27,19 @@ class RepositoryContractTests(unittest.TestCase):
         ignore_rules = (ROOT / ".gitignore").read_text(encoding="utf-8").splitlines()
         self.assertIn("docs/", ignore_rules)
         self.assertIn(".superpowers/", ignore_rules)
-
         for internal_path in (".superpowers", "docs/superpowers"):
-            result = subprocess.run(
-                ["git", "ls-files", internal_path],
-                cwd=ROOT,
-                capture_output=True,
-                text=True,
-                encoding="utf-8",
-                check=False,
-            )
+            result = subprocess.run(["git", "ls-files", internal_path], cwd=ROOT, capture_output=True, text=True, encoding="utf-8", check=False)
             self.assertEqual(result.returncode, 0, result.stderr)
             self.assertEqual(result.stdout.strip(), "", internal_path)
 
     def test_readmes_expose_public_skill_and_install_entrypoints(self) -> None:
         for readme_name in ("README.md", "README.zh-CN.md"):
             text = (ROOT / readme_name).read_text(encoding="utf-8")
-            for required in (
-                "forge-2d-map",
-                "forge-2d-sprite",
-                "forge-video-to-sprite",
-                "install/codex/README.md",
-                "install/claude/README.md",
-            ):
+            for required in ("forge-2d-map", "forge-2d-sprite", "forge-video-to-sprite", "forge-text-audio", "install/codex/README.md", "install/claude/README.md"):
                 self.assertIn(required, text, f"{readme_name} missing public entrypoint: {required}")
 
     def test_readmes_stay_concise_and_do_not_duplicate_workflow(self) -> None:
-        forbidden_fragments = (
-            "map plan -> map route -> map ingest -> map process -> map validate",
-            "### M0",
-            "### M1",
-            "### M2",
-            "`map-quality-report.json`",
-            "`Reports/unity-import-report.json`",
-        )
+        forbidden_fragments = ("map plan -> map route -> map ingest -> map process -> map validate", "### M0", "### M1", "### M2", "`map-quality-report.json`", "`Reports/unity-import-report.json`")
         for readme_name in ("README.md", "README.zh-CN.md"):
             text = (ROOT / readme_name).read_text(encoding="utf-8")
             self.assertLessEqual(len(text.splitlines()), 180, readme_name)
@@ -74,22 +47,20 @@ class RepositoryContractTests(unittest.TestCase):
                 self.assertNotIn(forbidden, text, f"{readme_name} duplicates internal workflow: {forbidden}")
 
     def test_readmes_explain_hd_cleanup_tools_and_installation(self) -> None:
-        required = (
-            "birefnet-general",
-            'python -m pip install -e ".[image]"',
-            'python -m pip install -e ".[background]"',
-            'python -m pip install "rembg[cpu]"',
-            'python -m pip install "rembg[gpu]"',
-            'python -m pip install -e ".[matting]"',
-            "U2NET_HOME",
-            "PyMatting",
-            "CUDA",
-            "CPU",
-        )
+        required = ("birefnet-general", 'python -m pip install -e ".[image]"', 'python -m pip install -e ".[background]"', 'python -m pip install "rembg[cpu]"', 'python -m pip install "rembg[gpu]"', 'python -m pip install -e ".[matting]"', "U2NET_HOME", "PyMatting", "CUDA", "CPU")
         for readme_name in ("README.md", "README.zh-CN.md"):
             text = (ROOT / readme_name).read_text(encoding="utf-8")
             for fragment in required:
                 self.assertIn(fragment, text, f"{readme_name} missing HD cleanup guidance: {fragment}")
+
+    def test_audio_processing_docs_and_dependencies_are_explicit(self) -> None:
+        for readme_name in ("README.md", "README.zh-CN.md"):
+            text = (ROOT / readme_name).read_text(encoding="utf-8")
+            for fragment in ("forge-text-audio", "Stable Audio 3", "small-sfx", "FFmpeg", "FFprobe", "WAV", "AudioClip", "stable-audio-tools", "license acceptance"):
+                self.assertIn(fragment, text, f"{readme_name} missing audio setup guidance: {fragment}")
+        base = (ROOT / "pyproject.toml").read_text(encoding="utf-8").split("[project.optional-dependencies]", 1)[0].lower()
+        for forbidden in ("stable-audio", "torch", "torchaudio", "ffmpeg", "huggingface"):
+            self.assertNotIn(forbidden, base)
 
     def test_install_guides_are_manual_and_repo_local(self) -> None:
         for agent in ("codex", "claude"):
@@ -97,10 +68,7 @@ class RepositoryContractTests(unittest.TestCase):
             self.assertIn("copy", guide.lower())
             self.assertIn("skills", guide.lower())
             self.assertIn("does not install dependencies", guide.lower())
-            self.assertTrue(
-                "src/" in guide or "full repository" in guide.lower(),
-                f"{agent} guide must preserve src/ or require a full repository copy",
-            )
+            self.assertTrue("src/" in guide or "full repository" in guide.lower())
             self.assertNotIn("copy each directory under `skills/`", guide.lower())
             self.assertNotIn("curl |", guide.lower())
             self.assertNotIn("invoke-webrequest", guide.lower())
@@ -110,15 +78,12 @@ class RepositoryContractTests(unittest.TestCase):
             text = (ROOT / readme_name).read_text(encoding="utf-8")
             for fragment in ("FFmpeg", "FFprobe", "mmx", "dreamina", "MINIMAX_API_KEY", "JIMENG_ACCESS_KEY"):
                 self.assertIn(fragment, text, f"{readme_name} missing video setup guidance: {fragment}")
-        pyproject = (ROOT / "pyproject.toml").read_text(encoding="utf-8")
-        base = pyproject.split("[project.optional-dependencies]", 1)[0]
-        self.assertNotIn("ffmpeg", base.lower())
-        self.assertNotIn("minimax", base.lower())
-        self.assertNotIn("jimeng", base.lower())
+        base = (ROOT / "pyproject.toml").read_text(encoding="utf-8").split("[project.optional-dependencies]", 1)[0].lower()
+        self.assertNotIn("minimax", base)
+        self.assertNotIn("jimeng", base)
 
     def test_package_declares_m0_version(self) -> None:
         from game_visual_forge import __version__
-
         self.assertEqual(__version__, "0.1.0")
 
 
