@@ -4,7 +4,7 @@ import json
 import subprocess
 import sys
 from dataclasses import dataclass
-from typing import Any, BinaryIO, Sequence, TextIO
+from typing import Any, BinaryIO, Mapping, Sequence, TextIO
 
 
 def _encode(value: dict[str, Any]) -> bytes:
@@ -42,6 +42,7 @@ def run_utf8_json_process(
     payload: dict[str, Any],
     *,
     timeout_seconds: int,
+    env: Mapping[str, str] | None = None,
 ) -> Utf8JsonProcessResult:
     completed = subprocess.run(
         list(argv),
@@ -51,6 +52,7 @@ def run_utf8_json_process(
         timeout=timeout_seconds,
         shell=False,
         check=False,
+        env=None if env is None else dict(env),
     )
     return Utf8JsonProcessResult(
         completed.returncode,

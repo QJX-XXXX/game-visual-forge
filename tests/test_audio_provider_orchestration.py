@@ -1,6 +1,8 @@
 from __future__ import annotations
 
 import json
+import os
+import sys
 import tempfile
 import unittest
 from pathlib import Path
@@ -26,6 +28,20 @@ class AudioProviderOrchestrationTests(unittest.TestCase):
             self.assertTrue(preflight.model_local)
             self.assertEqual(run_audio_provider_models(FAKE, payload)["models"], ["small-sfx"])
             self.assertEqual(log.read_text(encoding="utf-8").splitlines(), ["preflight", "models"])
+
+    def test_explicit_interpreter_and_child_environment_do_not_mutate_parent(self) -> None:
+        with tempfile.TemporaryDirectory() as directory:
+            root = Path(directory)
+            log = root / "env.json"
+            payload = {"env_log_path": str(log)}
+            parent_marker = os.environ.get("GVF_TEST_CHILD")
+            child_env = os.environ.copy()
+            child_env["GVF_TEST_CHILD"] = "中文值"
+            run_audio_provider_models(FAKE, payload, python_executable=Path(sys.executable), environment=child_env)
+            record = json.loads(log.read_text(encoding="utf-8"))
+            self.assertEqual(record["python"], str(Path(sys.executable)))
+            self.assertEqual(record["environment"]["GVF_TEST_CHILD"], "中文值")
+            self.assertEqual(os.environ.get("GVF_TEST_CHILD"), parent_marker)
 
     def test_three_text_candidates_have_distinct_seeds_and_round_trip_unicode(self) -> None:
         request = AudioRequest.from_dict(valid_audio_request(prompt="中文 sword impact"))

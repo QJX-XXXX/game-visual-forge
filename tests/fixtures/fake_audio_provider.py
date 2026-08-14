@@ -2,6 +2,7 @@ from __future__ import annotations
 
 import hashlib
 import json
+import os
 import sys
 import time
 import wave
@@ -26,6 +27,11 @@ def main() -> int:
     if log_path:
         with Path(log_path).open("a", encoding="utf-8") as handle:
             handle.write(command + "\n")
+    if payload.get("env_log_path"):
+        Path(payload["env_log_path"]).write_text(
+            json.dumps({"python": sys.executable, "environment": {"GVF_TEST_CHILD": os.environ.get("GVF_TEST_CHILD")}}, ensure_ascii=False),
+            encoding="utf-8",
+        )
     if payload.get("sleep_seconds"):
         time.sleep(float(payload["sleep_seconds"]))
     if payload.get("invalid_utf8"):
@@ -43,7 +49,7 @@ def main() -> int:
             "provider": "stable-audio-local",
             "available": True,
             "python_executable": sys.executable,
-            "package": "stable-audio-tools",
+            "package": "stable-audio-3",
             "package_version": "fake",
             "model_id": "small-sfx",
             "model_repository": "stabilityai/stable-audio-3-small-sfx",

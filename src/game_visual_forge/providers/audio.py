@@ -5,7 +5,7 @@ import json
 import subprocess
 import sys
 from pathlib import Path
-from typing import Any
+from typing import Any, Mapping
 
 from game_visual_forge.contracts.audio import AudioRequest
 from game_visual_forge.contracts.audio_provider import (
@@ -22,15 +22,28 @@ from game_visual_forge.jobs.fingerprints import fingerprint_request
 from game_visual_forge.providers.stdio import run_utf8_json_process
 
 
-def _argv(executable: Path, command: ProviderCommand) -> list[str]:
+def _argv(executable: Path, command: ProviderCommand, python_executable: Path | None) -> list[str]:
     if executable.suffix.lower() == ".py":
-        return [sys.executable, str(executable), command.value]
+        return [str(python_executable or Path(sys.executable)), str(executable), command.value]
     return [str(executable), command.value]
 
 
-def _run(executable: Path, command: ProviderCommand, payload: dict[str, Any], *, timeout_seconds: int = 120) -> dict[str, Any]:
+def _run(
+    executable: Path,
+    command: ProviderCommand,
+    payload: dict[str, Any],
+    *,
+    timeout_seconds: int = 120,
+    python_executable: Path | None = None,
+    environment: Mapping[str, str] | None = None,
+) -> dict[str, Any]:
     try:
-        result = run_utf8_json_process(_argv(executable, command), payload, timeout_seconds=timeout_seconds)
+        result = run_utf8_json_process(
+            _argv(executable, command, python_executable),
+            payload,
+            timeout_seconds=timeout_seconds,
+            env=environment,
+        )
     except subprocess.TimeoutExpired as error:
         raise ForgeError(ErrorCode.PROVIDER_UNAVAILABLE, "audio provider command timed out", recoverable=True, context={"command": command.value, "outcome": "generation_unknown"}) from error
     except UnicodeDecodeError as error:
@@ -48,12 +61,26 @@ def _run(executable: Path, command: ProviderCommand, payload: dict[str, Any], *,
     return value
 
 
-def run_audio_provider_models(executable: Path, payload: dict[str, Any]) -> dict[str, Any]:
-    return _run(executable, ProviderCommand.MODELS, payload)
+def run_audio_provider_models(
+    executable: Path,
+    payload: dict[str, Any],
+    *,
+    python_executable: Path | None = None,
+    environment: Mapping[str, str] | None = None,
+) -> dict[str, Any]:
+    return _run(executable, ProviderCommand.MODELS, payload, python_executable=python_executable, environment=environment)
 
 
-def run_audio_provider_preflight(executable: Path, payload: dict[str, Any]) -> AudioProviderPreflight:
-    return AudioProviderPreflight.from_dict(_run(executable, ProviderCommand.PREFLIGHT, payload))
+def run_audio_provider_preflight(
+    executable: Path,
+    payload: dict[str, Any],
+    *,
+    python_executable: Path | None = None,
+    environment: Mapping[str, str] | None = None,
+) -> AudioProviderPreflight:
+    return AudioProviderPreflight.from_dict(
+        _run(executable, ProviderCommand.PREFLIGHT, payload, python_executable=python_executable, environment=environment)
+    )
 
 
 def _persist_attempt(attempt_path: Path, attempt: AudioGenerationAttempt) -> None:
@@ -68,6 +95,9 @@ def generate_audio_candidates(
     output_dir: Path,
     source: Any | None,
     now: str,
+    *,
+    python_executable: Path | None = None,
+    environment: Mapping[str, str] | None = None,
 ) -> AudioGenerationResult:
     fingerprint = fingerprint_request(request.to_dict())
     output_dir.mkdir(parents=True, exist_ok=True)
@@ -89,6 +119,8 @@ def generate_audio_candidates(
             "source_path": source_path,
             "edit_start_seconds": request.edit_start_seconds,
             "edit_end_seconds": request.edit_end_seconds,
+            "source_duration_seconds": getattr(source, "duration_seconds", None),
+            "join_guard_ms": request.join_guard_ms,
         }
         attempt = AudioGenerationAttempt(1, candidate_id, fingerprint, "small-sfx", request.mode, seed, parameters, AudioAttemptStatus.PREPARED, now, now)
         _persist_attempt(attempt_file, attempt)
@@ -108,9 +140,17 @@ def generate_audio_candidates(
             "redraw_strength": request.redraw_strength,
             "edit_start_seconds": request.edit_start_seconds,
             "edit_end_seconds": request.edit_end_seconds,
+            "source_duration_seconds": getattr(source, "duration_seconds", None),
+            "join_guard_ms": request.join_guard_ms,
         }
         try:
-            response = _run(executable, ProviderCommand.GENERATE, payload)
+            response = _run(
+                executable,
+                ProviderCommand.GENERATE,
+                payload,
+                python_executable=python_executable,
+                environment=environment,
+            )
             if not output_path.is_file() or output_path.stat().st_size <= 44:
                 raise ForgeError(ErrorCode.PROVIDER_UNAVAILABLE, "audio provider produced no usable output", recoverable=True, context={"outcome": "generation_unknown"})
             digest = hashlib.sha256(output_path.read_bytes()).hexdigest()
