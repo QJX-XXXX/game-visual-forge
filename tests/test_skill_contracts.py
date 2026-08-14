@@ -70,6 +70,26 @@ SKILLS = {
             "submission_unknown",
         ),
     },
+    "forge-text-audio": {
+        "description": 'description: "Generate, redraw, inpaint, continue, validate, and deliver explicitly requested game sound effects and ambience with a locally installed Stable Audio 3 Small-SFX model and Unity AudioClip integration. Use only when the user explicitly asks for non-speech game audio; do not trigger for visual-only work, dialogue, voice-over, songs, or complete musical scores."',
+        "required_body_fragments": (
+            "explicitly requests a game sound effect",
+            "small-sfx",
+            "text-to-audio",
+            "redraw",
+            "inpaint",
+            "continue",
+            "three candidates",
+            "final listening approval",
+            "44,100 Hz",
+            "16-bit signed PCM WAV",
+            "Never install",
+            "Never retry",
+            "Unity MCP",
+            "AudioClip",
+            "AudioSource",
+        ),
+    },
 }
 
 
@@ -88,7 +108,7 @@ class SkillContractTests(unittest.TestCase):
             for path in sorted(skills_root.iterdir())
             if path.is_dir() and (path / "SKILL.md").is_file()
         )
-        self.assertEqual(skill_names, ("forge-2d-map", "forge-2d-sprite", "forge-video-to-sprite"))
+        self.assertEqual(skill_names, ("forge-2d-map", "forge-2d-sprite", "forge-text-audio", "forge-video-to-sprite"))
         for skill_name in skill_names:
             with self.subTest(skill=skill_name):
                 self.assert_skill_tree_is_english(skill_name)
