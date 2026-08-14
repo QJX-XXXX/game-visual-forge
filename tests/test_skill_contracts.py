@@ -83,6 +83,8 @@ SKILLS = {
             "final listening approval",
             "44,100 Hz",
             "16-bit signed PCM WAV",
+            "-1.0 dBFS",
+            "one-shots",
             "Never install",
             "Never retry",
             "Unity MCP",
