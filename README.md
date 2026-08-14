@@ -17,35 +17,19 @@ video-to-sprite animation, and reviewed sound effects.
 
 ## What it provides
 
-- Natural-language intake with explicit choices for style, layout, runtime, and
-  delivery format.
-- Built-in image generation when a new visual asset is needed, plus support for
-  user-provided source media.
-- Deterministic local processing, validation reports, and reproducible output
-  manifests.
-- Playable map handoff with walkability, collision, objects, entrances, and
-  Unity Tilemap support.
-- Native map atlases are normalized to the declared grid, tile size, margins,
-  and spacing before validation. This standardizes atlas geometry only; it does
-  not repair artwork, seams, or map topology.
+- Natural-language intake with explicit choices for style, layout, runtime, and delivery format.
+- Built-in image generation when a new visual asset is needed, plus support for user-provided source media.
+- Deterministic local processing, validation reports, and reproducible output manifests.
+- Playable map handoff with walkability, collision, objects, entrances, and Unity Tilemap support.
+- Native map atlases are normalized to the declared grid, tile size, margins, and spacing before validation. This standardizes atlas geometry only; it does not repair artwork, seams, or map topology.
 - Provider, cost, and submission confirmation gates for paid or external work.
-- `forge-video-to-sprite` processes existing video locally with FFmpeg/FFprobe,
-  timestamp sampling, rembg/Chroma cleanup, stable alignment, strips, sheets,
-  GIF previews, and motion-quality evidence.
-- Generated video routes support explicit MiniMax Hailuo or Jimeng selection with
-  either their API or official CLI compatibility backend; tools and credentials
-  are configured manually and never switched automatically.
-- `forge-text-audio` uses the official local Stable Audio 3 `small-sfx` model
-  through `stable-audio-tools`. It supports text-to-audio, redraw, inpaint, and
-  continue modes, with WAV-only delivery and a final listening review.
+- `forge-video-to-sprite` processes existing video locally with FFmpeg/FFprobe, timestamp sampling, rembg/Chroma cleanup, stable alignment, strips, sheets, GIF previews, and motion-quality evidence.
+- Generated video routes support explicit MiniMax Hailuo or Jimeng selection with either their API or official CLI compatibility backend; tools and credentials are configured manually and never switched automatically.
+- `forge-text-audio` uses the official local Stable Audio 3 `small-sfx` model through the isolated `stable-audio-3` runtime. It supports text-to-audio, redraw, inpaint, and continue modes, with WAV-only delivery and a final listening review.
 
 ## Showcase
 
-### Playable map handoff
-
 ![Adaptive river crossing map in Unity](assets/readme/adaptive-river-crossing-map-unity-game-view.png)
-
-### HD sprite cleanup
 
 ![HD background removal comparison](assets/readme/rembg-production-comparison-on-gray.jpg)
 
@@ -72,9 +56,16 @@ GPU requires a verified CUDA environment. PyMatting is optional and slower.
 
 - [Codex installation](install/codex/README.md)
 - [Claude installation](install/claude/README.md)
+- [Stable Audio 3 setup](install/stable-audio-3/README.md)
 
 The install guides are manual and repository-local. They do not install
 providers, FFmpeg, credentials, model weights, or dependencies automatically.
+
+To delegate the optional audio runtime setup to an Agent, copy this request:
+
+> Install and configure the official stable-audio-3 runtime for forge-text-audio: ask me to choose the installation directory, keep the isolated Python environment, model weights, and all caches under that directory, require me to accept all licenses personally, never use a hosted API, run the repository's provider configure command without changing user environment variables or PATH, and finish by running and reporting the local offline preflight.
+
+Detailed instructions are in [Stable Audio 3 setup](install/stable-audio-3/README.md). The ignored `game-visual-forge.local.json` stores only local paths; `provider configure` creates it. License acceptance remains a user action.
 
 ## Example requests
 
@@ -102,12 +93,6 @@ For local video processing, install FFmpeg and FFprobe yourself. MiniMax API
 uses `MINIMAX_API_KEY`; Jimeng API uses `JIMENG_ACCESS_KEY` and
 `JIMENG_SECRET_KEY`. The official `mmx` and `dreamina` CLIs are optional.
 
-For `forge-text-audio`, install the official `stable-audio-tools` package,
-accept the Stable Audio 3 model license (license acceptance), cache
-`stabilityai/stable-audio-3-small-sfx` locally, and install FFmpeg/FFprobe.
-The repository never downloads model weights or calls a hosted audio API.
-Published audio is WAV only.
-
 ## Unity integration
 
 The Tilemap package lives at
@@ -116,8 +101,7 @@ and imports validated Tilemap bundles into textures, Tiles, Palettes, and
 Tilemap Prefabs. The independent audio package lives at
 [`integrations/unity/com.game-visual-forge.audio`](integrations/unity/com.game-visual-forge.audio)
 and imports reviewed WAV bundles as configured AudioClip assets without changing
-scenes. Scene placement is performed through Unity MCP only after an explicit
-request.
+scenes. Scene placement is performed through Unity MCP only after an explicit request.
 
 ## Repository layout
 
@@ -131,8 +115,7 @@ install/      Manual setup guides
 
 ## Development check
 
-Run the test suite from the repository root (the directory that contains
-`tests/`):
+Run the test suite from the repository root (the directory that contains `tests/`):
 
 ```powershell
 Set-Location "game-visual-forge项目路径"

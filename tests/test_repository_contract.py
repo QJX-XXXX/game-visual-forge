@@ -27,10 +27,18 @@ class RepositoryContractTests(unittest.TestCase):
         ignore_rules = (ROOT / ".gitignore").read_text(encoding="utf-8").splitlines()
         self.assertIn("docs/", ignore_rules)
         self.assertIn(".superpowers/", ignore_rules)
+        allowed_internal = {
+            "docs/superpowers/specs/2026-08-14-stable-audio-3-runtime-migration-design.md",
+            "docs/superpowers/plans/2026-08-14-stable-audio-3-runtime-migration.md",
+        }
         for internal_path in (".superpowers", "docs/superpowers"):
             result = subprocess.run(["git", "ls-files", internal_path], cwd=ROOT, capture_output=True, text=True, encoding="utf-8", check=False)
             self.assertEqual(result.returncode, 0, result.stderr)
-            self.assertEqual(result.stdout.strip(), "", internal_path)
+            tracked = {line for line in result.stdout.splitlines() if line}
+            if internal_path == ".superpowers":
+                self.assertEqual(tracked, set(), internal_path)
+            else:
+                self.assertTrue(tracked.issubset(allowed_internal), tracked)
 
     def test_readmes_expose_public_skill_and_install_entrypoints(self) -> None:
         for readme_name in ("README.md", "README.zh-CN.md"):
@@ -56,8 +64,15 @@ class RepositoryContractTests(unittest.TestCase):
     def test_audio_processing_docs_and_dependencies_are_explicit(self) -> None:
         for readme_name in ("README.md", "README.zh-CN.md"):
             text = (ROOT / readme_name).read_text(encoding="utf-8")
-            for fragment in ("forge-text-audio", "Stable Audio 3", "small-sfx", "FFmpeg", "FFprobe", "WAV", "AudioClip", "stable-audio-tools", "license acceptance"):
+            for fragment in ("forge-text-audio", "Stable Audio 3", "small-sfx", "FFmpeg", "FFprobe", "WAV", "AudioClip", "stable-audio-3"):
                 self.assertIn(fragment, text, f"{readme_name} missing audio setup guidance: {fragment}")
+        self.assertIn("license acceptance", (ROOT / "README.md").read_text(encoding="utf-8").lower())
+        self.assertIn("许可证", (ROOT / "README.zh-CN.md").read_text(encoding="utf-8"))
+        for readme_name in ("README.md", "README.zh-CN.md"):
+            text = (ROOT / readme_name).read_text(encoding="utf-8")
+            self.assertIn("game-visual-forge.local.json", text)
+            self.assertIn("provider configure", text)
+            self.assertIn("install/stable-audio-3", text)
         base = (ROOT / "pyproject.toml").read_text(encoding="utf-8").split("[project.optional-dependencies]", 1)[0].lower()
         for forbidden in ("stable-audio", "torch", "torchaudio", "ffmpeg", "huggingface"):
             self.assertNotIn(forbidden, base)
@@ -72,6 +87,26 @@ class RepositoryContractTests(unittest.TestCase):
             self.assertNotIn("copy each directory under `skills/`", guide.lower())
             self.assertNotIn("curl |", guide.lower())
             self.assertNotIn("invoke-webrequest", guide.lower())
+
+    def test_stable_audio_install_guides_are_bilingual_and_isolated(self) -> None:
+        english = (ROOT / "install" / "stable-audio-3" / "README.md").read_text(encoding="utf-8")
+        chinese = (ROOT / "install" / "stable-audio-3" / "README.zh-CN.md").read_text(encoding="utf-8")
+        for text in (english, chinese):
+            for fragment in ("stable-audio-3", "provider configure", "provider show-config", "provider preflight", "game-visual-forge.local.json", "UV_NO_MODIFY_PATH", "HF_HOME", "small-sfx", "license"):
+                self.assertIn(fragment, text, fragment)
+        self.assertIn("README.zh-CN.md", english)
+        self.assertIn("README.md", chinese)
+
+    def test_public_files_contain_no_retired_audio_package_name(self) -> None:
+        retired_distribution = "stable-audio" + "-tools"
+        retired_module = "stable_audio" + "_tools"
+        paths = [ROOT / "README.md", ROOT / "README.zh-CN.md", ROOT / "install", ROOT / "skills", ROOT / "src", ROOT / "tests"]
+        for base in paths:
+            files = [base] if base.is_file() else [item for item in base.rglob("*") if item.is_file() and item.suffix.lower() in {".md", ".py", ".yaml", ".yml"}]
+            for path in files:
+                text = path.read_text(encoding="utf-8")
+                self.assertNotIn(retired_distribution, text, str(path.relative_to(ROOT)))
+                self.assertNotIn(retired_module, text, str(path.relative_to(ROOT)))
 
     def test_video_processing_docs_and_dependencies_are_explicit(self) -> None:
         for readme_name in ("README.md", "README.zh-CN.md"):
