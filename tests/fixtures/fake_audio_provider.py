@@ -60,7 +60,8 @@ def main() -> int:
             handle.setnchannels(2)
             handle.setsampwidth(2)
             handle.setframerate(44100)
-            handle.writeframes(b"\x00\x00\x00\x00" * 4410)
+            frames = max(1, int(round(float(payload.get("duration_seconds", 0.1)) * 44100)))
+            handle.writeframes(b"\x00\x00\x00\x00" * frames)
         digest = hashlib.sha256(target.read_bytes()).hexdigest()
         write_result({"schema_version": 1, "status": "completed", "path": str(target), "sha256": digest, "seed": payload["seed"]})
         return 0

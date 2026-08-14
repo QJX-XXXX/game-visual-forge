@@ -192,6 +192,13 @@ class AudioCandidateRecord:
         object.__setattr__(self, "raw_path", normalize_repo_relative_path(self.raw_path, field_name="raw_path"))
         _digest(self.raw_sha256, "raw_sha256")
 
+    def to_dict(self) -> dict[str, Any]:
+        return self.__dict__.copy()
+
+    @classmethod
+    def from_dict(cls, value: dict[str, Any]) -> "AudioCandidateRecord":
+        return cls(1, str(value["candidate_id"]), str(value["attempt_id"]), int(value["seed"]), str(value["raw_path"]), str(value["raw_sha256"]))
+
 
 @dataclass(frozen=True)
 class AudioGenerationResult:
@@ -214,3 +221,7 @@ class AudioGenerationResult:
             "candidates": [item.__dict__ for item in self.candidates],
             "attempt_paths": list(self.attempt_paths),
         }
+
+    @classmethod
+    def from_dict(cls, value: dict[str, Any]) -> "AudioGenerationResult":
+        return cls(1, str(value["request_fingerprint"]), AudioGenerationMode(value["mode"]), tuple(AudioCandidateRecord.from_dict(item) for item in value.get("candidates", [])), tuple(str(item) for item in value.get("attempt_paths", [])))

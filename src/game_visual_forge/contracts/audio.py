@@ -323,6 +323,13 @@ class AudioProcessedArtifact:
         if not re.fullmatch(r"[0-9a-f]{64}", self.request_fingerprint):
             raise ValueError("request_fingerprint must be a SHA-256 hex digest")
 
+    def to_dict(self) -> dict[str, Any]:
+        return self.__dict__.copy()
+
+    @classmethod
+    def from_dict(cls, value: dict[str, Any]) -> "AudioProcessedArtifact":
+        return cls(1, str(value["candidate_id"]), str(value["wav_path"]), str(value["waveform_path"]), str(value["spectrum_path"]), str(value["request_fingerprint"]))
+
 
 @dataclass(frozen=True)
 class AudioProcessingResult:
@@ -345,6 +352,10 @@ class AudioProcessingResult:
             "artifacts": [item.__dict__ for item in self.artifacts],
             "staging_dir": self.staging_dir,
         }
+
+    @classmethod
+    def from_dict(cls, value: dict[str, Any]) -> "AudioProcessingResult":
+        return cls(1, str(value["request_fingerprint"]), tuple(AudioProcessedArtifact.from_dict(item) for item in value.get("artifacts", [])), str(value["staging_dir"]))
 
 
 def canonical_audio_confirmation_summary(request: AudioRequest) -> str:

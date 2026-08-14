@@ -117,23 +117,28 @@ def build_audio_manifests(repo_root: Path, request: AudioRequest, generation: Au
     if artifact is None:
         raise ValueError("selected candidate is missing")
     root = repo_root.resolve()
-    files = {"wav": artifact.wav_path, "waveform": artifact.waveform_path, "spectrum": artifact.spectrum_path}
-    hashes = {key: _sha256(root / path) for key, path in files.items()}
+    source_files = {"wav": artifact.wav_path, "waveform": artifact.waveform_path, "spectrum": artifact.spectrum_path}
+    files = {"wav": f"{request.asset_id}.wav", "waveform": f"{request.asset_id}-waveform.png", "spectrum": f"{request.asset_id}-spectrum.png"}
+    hashes = {key: _sha256(root / path) for key, path in source_files.items()}
     manifest = AudioManifest(1, request.asset_id, processing.request_fingerprint, artifact.candidate_id, files, hashes)
     profile = dict(UNITY_PROFILES[request.usage_profile.value])
     if profile["force_to_mono"] is None:
         profile["force_to_mono"] = request.spatial_mode.value == "3d"
-    unity = UnityAudioManifest(1, request.asset_id, artifact.wav_path, request.usage_profile.value, profile, hashes["wav"])
+    unity = UnityAudioManifest(1, request.asset_id, files["wav"], request.usage_profile.value, profile, hashes["wav"])
     placement = None
     if request.unity_scene_placement_requested:
-        placement = AudioSourcePlacement(1, request.asset_id, request.audio_source_name or request.asset_id, artifact.wav_path, request.volume, request.play_on_awake, request.loop, request.spatial_mode.value, request.min_distance, request.max_distance)
+        placement = AudioSourcePlacement(1, request.asset_id, request.audio_source_name or request.asset_id, files["wav"], request.volume, request.play_on_awake, request.loop, request.spatial_mode.value, request.min_distance, request.max_distance)
     return manifest, unity, placement
 
 
 def publish_audio_outputs(staging_dir: Path, final_dir: Path, selected_paths: Sequence[Path], manifests: Sequence[Any]) -> bool:
     final_dir.mkdir(parents=True, exist_ok=True)
+    audio_manifest = next((item for item in manifests if isinstance(item, AudioManifest)), None)
     for path in selected_paths:
-        shutil.copy2(path, final_dir / path.name)
+        target_name = path.name
+        if audio_manifest is not None and path.suffix.lower() == ".wav":
+            target_name = audio_manifest.files["wav"]
+        shutil.copy2(path, final_dir / target_name)
     for manifest in manifests:
         if manifest is None:
             continue

@@ -49,6 +49,17 @@ from game_visual_forge.cli.video import (
     run_video_route,
     run_video_validate,
 )
+from game_visual_forge.cli.audio import (
+    run_audio_generate,
+    run_audio_ingest,
+    run_audio_plan,
+    run_audio_process,
+    run_audio_provider_models_command,
+    run_audio_provider_preflight_command,
+    run_audio_record_review,
+    run_audio_route,
+    run_audio_validate,
+)
 from game_visual_forge.contracts import AssetBrief, JobState, JobStatus, load_json
 from game_visual_forge.contracts import MapSourceType
 from game_visual_forge.contracts.serialization import dump_json
@@ -325,6 +336,74 @@ def build_parser() -> argparse.ArgumentParser:
     download.add_argument("--executable", type=Path, required=True)
     download.add_argument("--output-dir", type=Path, required=True)
     download.add_argument("--now", required=True)
+
+    audio = commands.add_parser("audio")
+    audio_commands = audio.add_subparsers(dest="audio_command", required=True)
+    sfx = audio_commands.add_parser("sfx")
+    sfx_commands = sfx.add_subparsers(dest="audio_sfx_command", required=True)
+    audio_plan = sfx_commands.add_parser("plan")
+    audio_plan.add_argument("--request", type=Path, required=True)
+    audio_plan.add_argument("--out-dir", type=Path, required=True)
+    audio_plan.add_argument("--now", required=True)
+    audio_route = sfx_commands.add_parser("route")
+    audio_route.add_argument("--request", type=Path, required=True)
+    audio_route.add_argument("--preflight", type=Path)
+    audio_route.add_argument("--out", type=Path, required=True)
+    audio_route.add_argument("--state", type=Path, required=True)
+    audio_route.add_argument("--now", required=True)
+    audio_ingest = sfx_commands.add_parser("ingest")
+    audio_ingest.add_argument("--request", type=Path, required=True)
+    audio_ingest.add_argument("--source", type=Path, required=True)
+    audio_ingest.add_argument("--repo-root", type=Path, required=True)
+    audio_ingest.add_argument("--out", type=Path, required=True)
+    audio_ingest.add_argument("--state", type=Path, required=True)
+    audio_ingest.add_argument("--now", required=True)
+    audio_ingest.add_argument("--ffprobe", type=Path)
+    audio_generate = sfx_commands.add_parser("generate")
+    audio_generate.add_argument("--request", type=Path, required=True)
+    audio_generate.add_argument("--decision", type=Path)
+    audio_generate.add_argument("--source", type=Path)
+    audio_generate.add_argument("--executable", type=Path, required=True)
+    audio_generate.add_argument("--repo-root", type=Path, required=True)
+    audio_generate.add_argument("--out-dir", type=Path, required=True)
+    audio_generate.add_argument("--state", type=Path, required=True)
+    audio_generate.add_argument("--now", required=True)
+    audio_process = sfx_commands.add_parser("process")
+    audio_process.add_argument("--request", type=Path, required=True)
+    audio_process.add_argument("--generation", type=Path, required=True)
+    audio_process.add_argument("--source", type=Path)
+    audio_process.add_argument("--repo-root", type=Path, required=True)
+    audio_process.add_argument("--out-dir", type=Path, required=True)
+    audio_process.add_argument("--state", type=Path, required=True)
+    audio_process.add_argument("--now", required=True)
+    audio_process.add_argument("--ffmpeg", type=Path)
+    audio_process.add_argument("--ffprobe", type=Path)
+    audio_review = sfx_commands.add_parser("record-review")
+    audio_review.add_argument("--request", type=Path, required=True)
+    audio_review.add_argument("--generation", type=Path, required=True)
+    audio_review.add_argument("--processing", type=Path, required=True)
+    audio_review.add_argument("--quality-report", type=Path, required=True)
+    audio_review.add_argument("--checks", type=Path, required=True)
+    audio_review.add_argument("--selected-candidate", required=True)
+    audio_review.add_argument("--repo-root", type=Path, required=True)
+    audio_review.add_argument("--out", type=Path, required=True)
+    audio_review.add_argument("--now", required=True)
+    audio_validate = sfx_commands.add_parser("validate")
+    audio_validate.add_argument("--request", type=Path, required=True)
+    audio_validate.add_argument("--generation", type=Path, required=True)
+    audio_validate.add_argument("--processing", type=Path, required=True)
+    audio_validate.add_argument("--review", type=Path, required=True)
+    audio_validate.add_argument("--quality-report", type=Path, required=True)
+    audio_validate.add_argument("--repo-root", type=Path, required=True)
+    audio_validate.add_argument("--final-dir", type=Path, required=True)
+    audio_validate.add_argument("--now", required=True)
+    audio_provider = sfx_commands.add_parser("provider")
+    audio_provider_commands = audio_provider.add_subparsers(dest="audio_provider_command", required=True)
+    for command in ("models", "preflight"):
+        item = audio_provider_commands.add_parser(command)
+        item.add_argument("--executable", type=Path, required=True)
+        item.add_argument("--payload", type=Path, required=True)
+        item.add_argument("--out", type=Path, required=True)
     return parser
 
 
@@ -430,6 +509,24 @@ def main(argv: list[str] | None = None) -> int:
             payload = run_video_provider_query(args.attempt, args.executable, args.now)
         elif args.command == "video" and args.video_command == "provider" and args.video_provider_command == "download":
             payload = run_video_provider_download(args.attempt, args.executable, args.output_dir, args.now)
+        elif args.command == "audio" and args.audio_command == "sfx" and args.audio_sfx_command == "plan":
+            payload = run_audio_plan(args.request, args.out_dir, args.now)
+        elif args.command == "audio" and args.audio_command == "sfx" and args.audio_sfx_command == "route":
+            payload = run_audio_route(args.request, args.preflight, args.out, args.state, args.now)
+        elif args.command == "audio" and args.audio_command == "sfx" and args.audio_sfx_command == "ingest":
+            payload = run_audio_ingest(args.request, args.source, args.repo_root, args.out, args.state, args.now, args.ffprobe)
+        elif args.command == "audio" and args.audio_command == "sfx" and args.audio_sfx_command == "generate":
+            payload = run_audio_generate(args.request, args.decision, args.source, args.executable, args.repo_root, args.out_dir, args.state, args.now)
+        elif args.command == "audio" and args.audio_command == "sfx" and args.audio_sfx_command == "process":
+            payload = run_audio_process(args.request, args.generation, args.source, args.repo_root, args.out_dir, args.state, args.now, args.ffmpeg, args.ffprobe)
+        elif args.command == "audio" and args.audio_command == "sfx" and args.audio_sfx_command == "record-review":
+            payload = run_audio_record_review(args.request, args.generation, args.processing, args.quality_report, args.checks, args.selected_candidate, args.repo_root, args.out, args.now)
+        elif args.command == "audio" and args.audio_command == "sfx" and args.audio_sfx_command == "validate":
+            payload = run_audio_validate(args.request, args.generation, args.processing, args.review, args.quality_report, args.repo_root, args.final_dir, args.now)
+        elif args.command == "audio" and args.audio_command == "sfx" and args.audio_sfx_command == "provider" and args.audio_provider_command == "models":
+            payload = run_audio_provider_models_command(args.executable, args.payload, args.out)
+        elif args.command == "audio" and args.audio_command == "sfx" and args.audio_sfx_command == "provider" and args.audio_provider_command == "preflight":
+            payload = run_audio_provider_preflight_command(args.executable, args.payload, args.out)
         else:
             raise ValueError("unsupported command")
         print(json.dumps(payload, ensure_ascii=False, indent=2, sort_keys=True))
