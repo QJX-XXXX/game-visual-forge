@@ -50,10 +50,10 @@ python -c "from rembg import new_session; new_session('birefnet-general')"
 可使用 `U2NET_HOME` 指定共享模型目录。CPU 是兼容性默认选项；GPU 需要已验证
 的 CUDA 环境。PyMatting 是可选项，速度更慢。
 
-### Stable Audio 3 GPU 验证示例
+### Stable Audio 3 示例
 
-`forge-text-audio` 已使用官方 `stabilityai/stable-audio-3-small-sfx` 模型完成
-以下本地离线示例。
+以下音效由 `forge-text-audio` 使用官方
+`stabilityai/stable-audio-3-small-sfx` 模型生成。
 
 #### 木质 UI 点击
 
@@ -69,7 +69,7 @@ Dry wooden UI click, short transient, no music, no voice
 
 ![Stable Audio 3 木质 UI 点击音效频谱](assets/readme/stable-audio-3-small-sfx-wooden-ui-click-spectrum.png)
 
-#### 铁匠打铁重绘
+#### 生成打铁音效
 
 提示词：
 
@@ -80,18 +80,6 @@ TrackType: SFX, a clean professional studio Foley recording of one natural strik
 - [试听打铁候选 1](assets/readme/stable-audio-3-small-sfx-blacksmith-hammer-01.wav)
 - [试听打铁候选 2](assets/readme/stable-audio-3-small-sfx-blacksmith-hammer-02.wav)
 - [试听打铁候选 3](assets/readme/stable-audio-3-small-sfx-blacksmith-hammer-03.wav)
-
-redraw、inpaint 和 continue 编辑路线固定使用 FP32＋RK4。流程会在量化前检查
-原始解码音频，不提升音量，并在发现削波、非有限采样或持续密集噪声证据时拒绝
-候选。数值检查无法排除所有模型音质瑕疵，因此最终仍必须试听审核。
-
-| 验证项 | 成功结果 |
-| --- | --- |
-| 运行时 | 隔离的 `stable-audio-3` 0.1.0、本地模型缓存、不调用托管 API |
-| GPU | NVIDIA GeForce RTX 4070 Ti，CUDA 可用 |
-| 木质示例 | 1.000 秒、44,100 Hz、双声道、16-bit PCM WAV |
-| 打铁示例 | 3 个 1.200 秒、44,100 Hz、单声道、16-bit PCM WAV 候选 |
-| 质量门槛 | FFmpeg/FFprobe、削波、有限采样、瞬态/尾部和最终试听审核 |
 
 ## 安装
 
