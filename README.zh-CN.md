@@ -81,6 +81,8 @@ TrackType: SFX, a clean professional studio Foley recording of one natural strik
 - [试听打铁候选 2](assets/readme/stable-audio-3-small-sfx-blacksmith-hammer-02.wav)
 - [试听打铁候选 3](assets/readme/stable-audio-3-small-sfx-blacksmith-hammer-03.wav)
 
+实现与验证：使用 Stable Audio 3 Small-SFX 在本地生成，经无增益 WAV 处理，并通过格式、削波和持续噪声检查。
+
 ## 安装
 
 - [Codex 安装指南](install/codex/README.md)

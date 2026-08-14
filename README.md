@@ -83,6 +83,8 @@ TrackType: SFX, a clean professional studio Foley recording of one natural strik
 - [Listen to blacksmith hammer candidate 2](assets/readme/stable-audio-3-small-sfx-blacksmith-hammer-02.wav)
 - [Listen to blacksmith hammer candidate 3](assets/readme/stable-audio-3-small-sfx-blacksmith-hammer-03.wav)
 
+Implementation and validation: generated locally with Stable Audio 3 Small-SFX, exported through no-boost WAV processing, and passed format, clipping, and sustained-noise checks.
+
 ## Install
 
 - [Codex installation](install/codex/README.md)
