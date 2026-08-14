@@ -1,0 +1,8 @@
+{
+  "name": "GameVisualForge.Audio.Editor",
+  "rootNamespace": "GameVisualForge.Unity",
+  "includePlatforms": [
+    "Editor"
+  ],
+  "autoReferenced": true
+}
