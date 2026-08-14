@@ -30,6 +30,8 @@ class RepositoryContractTests(unittest.TestCase):
         allowed_internal = {
             "docs/superpowers/specs/2026-08-14-stable-audio-3-runtime-migration-design.md",
             "docs/superpowers/plans/2026-08-14-stable-audio-3-runtime-migration.md",
+            "docs/superpowers/specs/2026-08-14-audio-one-shot-peak-normalization-design.md",
+            "docs/superpowers/plans/2026-08-14-audio-one-shot-peak-normalization.md",
         }
         for internal_path in (".superpowers", "docs/superpowers"):
             result = subprocess.run(["git", "ls-files", internal_path], cwd=ROOT, capture_output=True, text=True, encoding="utf-8", check=False)
