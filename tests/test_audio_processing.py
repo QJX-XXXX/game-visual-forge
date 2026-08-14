@@ -12,7 +12,7 @@ from tests.test_audio_ingest import write_pcm_wav
 from game_visual_forge.contracts.audio import AudioRequest
 from game_visual_forge.contracts.audio_provider import AudioCandidateRecord, AudioGenerationResult
 from game_visual_forge.jobs.fingerprints import fingerprint_request
-from game_visual_forge.processing.audio import _normalize_pcm16_peak, process_audio_candidates
+from game_visual_forge.processing.audio import _normalization_conversion_filter, _normalize_pcm16_peak, process_audio_candidates
 from game_visual_forge.processing.audio_metrics import read_pcm16_metrics
 
 
@@ -31,6 +31,13 @@ def write_pcm_samples(path: Path, values: list[int], channels: int = 1, rate: in
 
 
 class AudioProcessingTests(unittest.TestCase):
+    def test_generated_one_shots_reserve_headroom_before_pcm16_quantization(self) -> None:
+        one_shot = AudioRequest.from_dict(valid_audio_request(usage_profile="one-shot", loop=False))
+        ui = AudioRequest.from_dict(valid_audio_request(usage_profile="ui", loop=False))
+
+        self.assertEqual(_normalization_conversion_filter(one_shot), "volume=-1dB")
+        self.assertIsNone(_normalization_conversion_filter(ui))
+
     def test_peak_normalization_reaches_minus_one_dbfs_without_changing_shape(self) -> None:
         with tempfile.TemporaryDirectory() as directory:
             path = Path(directory) / "quiet.wav"

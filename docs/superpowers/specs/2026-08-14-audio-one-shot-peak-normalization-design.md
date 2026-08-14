@@ -32,8 +32,10 @@ The helper returns without changing the file when the peak is zero or when the
 input already contains a clipped sample. Skipping clipped input preserves the
 existing hard-failure evidence instead of hiding it by attenuation.
 
-`process_audio_candidates()` calls the helper after FFmpeg format conversion
-and before duration validation and preview generation. Protected splicing is
+For eligible output, `process_audio_candidates()` first applies `volume=-1dB`
+during FFmpeg format conversion. This reserves headroom before full-scale
+floating-point model output is quantized to PCM16. It then calls the helper
+before duration validation and preview generation. Protected splicing remains
 unaffected because normalization is not enabled for inpaint or continue.
 
 ## Quality and Failure Behavior

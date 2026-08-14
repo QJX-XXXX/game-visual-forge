@@ -4,7 +4,7 @@ Raw provider output and user source files are immutable. Every processed candida
 
 The published format is Microsoft WAV, 44,100 Hz, 16-bit signed PCM, mono or stereo according to the confirmed usage and Unity profile. The workflow does not upsample to 48 kHz and does not publish MP3 previews.
 
-For non-looping text-to-audio requests with the one-shot usage profile, normalize the converted staging WAV to a -1.0 dBFS sample peak before preview generation. Skip silent or already clipped input so silence remains reviewable and clipping remains a hard-failure signal. Do not apply peak normalization to raw files, redraw, inpaint, continue, UI, scene, or looping-ambience output.
+For non-looping text-to-audio requests with the one-shot usage profile, reserve -1.0 dB of headroom before PCM16 quantization and then normalize the converted staging WAV to a -1.0 dBFS sample peak before preview generation. Skip silent or already clipped staging input so silence remains reviewable and clipping remains a hard-failure signal. Do not apply peak normalization to raw files, redraw, inpaint, continue, UI, scene, or looping-ambience output.
 
 For one-shots, remove only bounded leading silence and pad or trim the tail to the confirmed duration. For inpainting, convert both source and generated audio to the common PCM format, preserve source samples outside the edit region plus 20 ms guards, and crossfade only inside the guards. For continuation, preserve the converted source prefix before the final 20 ms guard, crossfade into the generated continuation, and enforce the exact target duration. For loops, analyze a 50 ms boundary and apply a 20 ms wrap crossfade without changing sample count.
 

@@ -67,6 +67,12 @@ def _normalize_pcm16_peak(path: Path, target_dbfs: float = -1.0) -> bool:
     return True
 
 
+def _normalization_conversion_filter(request: AudioRequest) -> str | None:
+    if request.mode is AudioGenerationMode.TEXT_TO_AUDIO and request.usage_profile is AudioUsageProfile.ONE_SHOT and not request.loop:
+        return "volume=-1dB"
+    return None
+
+
 def _frame_at(frames: list[tuple[int, ...]], index: int, channels: int) -> tuple[int, ...]:
     if not frames:
         return (0,) * channels
@@ -139,8 +145,13 @@ def process_audio_candidates(
         raw = output_root / candidate.raw_path
         processed = staging / f"{candidate.candidate_id}.wav"
         channels = 1 if request.spatial_mode.value == "3d" else 2
-        _run_ffmpeg(ffmpeg, ["-y", "-i", str(raw), "-ar", "44100", "-ac", str(channels), "-c:a", "pcm_s16le", str(processed)])
-        if request.mode is AudioGenerationMode.TEXT_TO_AUDIO and request.usage_profile is AudioUsageProfile.ONE_SHOT and not request.loop:
+        conversion = ["-y", "-i", str(raw), "-ar", "44100", "-ac", str(channels)]
+        normalization_filter = _normalization_conversion_filter(request)
+        if normalization_filter is not None:
+            conversion.extend(["-af", normalization_filter])
+        conversion.extend(["-c:a", "pcm_s16le", str(processed)])
+        _run_ffmpeg(ffmpeg, conversion)
+        if normalization_filter is not None:
             _normalize_pcm16_peak(processed)
         if source is not None and request.mode in {AudioGenerationMode.INPAINT, AudioGenerationMode.CONTINUE}:
             protected = staging / f"{candidate.candidate_id}-protected.wav"
