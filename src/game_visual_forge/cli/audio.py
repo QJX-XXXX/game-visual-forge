@@ -18,6 +18,7 @@ from game_visual_forge.contracts import (
 from game_visual_forge.contracts.serialization import dump_json
 from game_visual_forge.jobs import fingerprint_request, load_job, save_job, transition_job
 from game_visual_forge.providers.audio import generate_audio_candidates, run_audio_provider_models, run_audio_provider_preflight
+from game_visual_forge.providers.audio_runtime import configure_stable_audio_runtime, repository_root, resolve_stable_audio_runtime, show_stable_audio_runtime, stable_audio_child_environment
 from game_visual_forge.processing.audio import process_audio_candidates
 from game_visual_forge.processing.audio_probe import discover_audio_toolchain, ingest_audio
 from game_visual_forge.quality.audio import assess_audio_outputs, build_audio_manifests, publish_audio_outputs, record_audio_review, validate_reviewed_audio_outputs
@@ -65,7 +66,7 @@ def run_audio_ingest(request_path: Path, source_path: Path, repo_root: Path, out
     return {"schema_version": 1, "status": state.status.value, "source_record_path": str(out_path)}
 
 
-def run_audio_generate(request_path: Path, decision_path: Path | None, source_path: Path | None, executable: Path, repo_root: Path, out_dir: Path, state_path: Path, now: str) -> dict[str, Any]:
+def run_audio_generate(request_path: Path, decision_path: Path | None, source_path: Path | None, executable: Path | None, repo_root: Path, out_dir: Path, state_path: Path, now: str) -> dict[str, Any]:
     request, _ = _request(request_path)
     source = AudioSourceRecord.from_dict(load_json(source_path)) if source_path else None
     output_dir = repo_root / request.output_dir
@@ -73,9 +74,27 @@ def run_audio_generate(request_path: Path, decision_path: Path | None, source_pa
     if current.status is JobStatus.READY:
         current = transition_job(current, JobStatus.RUNNING, now=now)
         save_job(state_path, current)
-    result = generate_audio_candidates(request, out_dir / "attempts", executable, output_dir, source, now)
+    runtime = None
+    if executable is None:
+        runtime = resolve_stable_audio_runtime(repo_root)
+        executable = repo_root / "skills" / "forge-text-audio" / "scripts" / "providers" / "stable_audio.py"
+        environment = stable_audio_child_environment(runtime.root, offline=False)
+    else:
+        environment = None
+    result = generate_audio_candidates(
+        request,
+        out_dir / "attempts",
+        executable,
+        output_dir,
+        source,
+        now,
+        python_executable=None if runtime is None else runtime.python_executable,
+        environment=environment,
+    )
     result_path = out_dir / "generation-result.json"
-    dump_json(result_path, result.to_dict())
+    result_payload = result.to_dict()
+    result_payload["runtime"] = {"source": "explicit-executable"} if runtime is None else runtime.to_dict()
+    dump_json(result_path, result_payload)
     current = load_job(state_path)
     state = current if current.status is JobStatus.VERIFYING else transition_job(current, JobStatus.VERIFYING, now=now)
     save_job(state_path, state)
@@ -123,13 +142,48 @@ def run_audio_validate(request_path: Path, generation_path: Path, processing_pat
     return {"schema_version": 1, "status": "completed" if published else "needs_attention", "quality_status": validated.status, "final_dir": str(final_dir)}
 
 
-def run_audio_provider_models_command(executable: Path, payload_path: Path, out_path: Path) -> dict[str, Any]:
-    result = run_audio_provider_models(executable, load_json(payload_path))
+def _provider_defaults(executable: Path | None, payload: dict[str, Any]) -> tuple[Path, Path | None, dict[str, str] | None, dict[str, Any]]:
+    if executable is not None:
+        return executable, None, None, payload
+    runtime = resolve_stable_audio_runtime(repository_root())
+    adapter = repository_root() / "skills" / "forge-text-audio" / "scripts" / "providers" / "stable_audio.py"
+    enriched = dict(payload)
+    enriched.setdefault("runtime_root", str(runtime.root))
+    enriched.setdefault("model_cache", str(runtime.model_cache))
+    return adapter, runtime.python_executable, stable_audio_child_environment(runtime.root, offline=True), enriched
+
+
+def run_audio_provider_configure(root: Path, python_executable: Path | None, replace: bool, *, repo_root: Path | None = None) -> dict[str, Any]:
+    selected_repo = repository_root() if repo_root is None else Path(repo_root)
+    resolution = configure_stable_audio_runtime(selected_repo, root, python_executable, replace=replace)
+    return {
+        "schema_version": 1,
+        "status": "configured",
+        **resolution.to_dict(),
+        "next_command": "python skills/forge-text-audio/scripts/run.py audio sfx provider preflight",
+    }
+
+
+def run_audio_provider_show_config(*, repo_root: Path | None = None) -> dict[str, Any]:
+    selected_repo = repository_root() if repo_root is None else Path(repo_root)
+    return show_stable_audio_runtime(selected_repo).to_dict()
+
+
+def run_audio_provider_models_command(executable: Path | None, payload_path: Path | None, out_path: Path | None) -> dict[str, Any]:
+    payload = {} if payload_path is None else load_json(payload_path)
+    selected, python_executable, environment, payload = _provider_defaults(executable, payload)
+    result = run_audio_provider_models(selected, payload, python_executable=python_executable, environment=environment)
+    if out_path is None:
+        return result
     dump_json(out_path, result)
     return {"schema_version": 1, "models_path": str(out_path)}
 
 
-def run_audio_provider_preflight_command(executable: Path, payload_path: Path, out_path: Path) -> dict[str, Any]:
-    result = run_audio_provider_preflight(executable, load_json(payload_path))
+def run_audio_provider_preflight_command(executable: Path | None, payload_path: Path | None, out_path: Path | None) -> dict[str, Any]:
+    payload = {} if payload_path is None else load_json(payload_path)
+    selected, python_executable, environment, payload = _provider_defaults(executable, payload)
+    result = run_audio_provider_preflight(selected, payload, python_executable=python_executable, environment=environment)
+    if out_path is None:
+        return result.to_dict()
     dump_json(out_path, result.to_dict())
     return {"schema_version": 1, "preflight_path": str(out_path), "available": result.available}

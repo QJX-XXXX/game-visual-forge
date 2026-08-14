@@ -54,8 +54,10 @@ from game_visual_forge.cli.audio import (
     run_audio_ingest,
     run_audio_plan,
     run_audio_process,
+    run_audio_provider_configure,
     run_audio_provider_models_command,
     run_audio_provider_preflight_command,
+    run_audio_provider_show_config,
     run_audio_record_review,
     run_audio_route,
     run_audio_validate,
@@ -363,7 +365,7 @@ def build_parser() -> argparse.ArgumentParser:
     audio_generate.add_argument("--request", type=Path, required=True)
     audio_generate.add_argument("--decision", type=Path)
     audio_generate.add_argument("--source", type=Path)
-    audio_generate.add_argument("--executable", type=Path, required=True)
+    audio_generate.add_argument("--executable", type=Path)
     audio_generate.add_argument("--repo-root", type=Path, required=True)
     audio_generate.add_argument("--out-dir", type=Path, required=True)
     audio_generate.add_argument("--state", type=Path, required=True)
@@ -399,11 +401,16 @@ def build_parser() -> argparse.ArgumentParser:
     audio_validate.add_argument("--now", required=True)
     audio_provider = sfx_commands.add_parser("provider")
     audio_provider_commands = audio_provider.add_subparsers(dest="audio_provider_command", required=True)
+    configure = audio_provider_commands.add_parser("configure")
+    configure.add_argument("--root", type=Path, required=True)
+    configure.add_argument("--python-executable", type=Path)
+    configure.add_argument("--replace", action="store_true")
+    audio_provider_commands.add_parser("show-config")
     for command in ("models", "preflight"):
         item = audio_provider_commands.add_parser(command)
-        item.add_argument("--executable", type=Path, required=True)
-        item.add_argument("--payload", type=Path, required=True)
-        item.add_argument("--out", type=Path, required=True)
+        item.add_argument("--executable", type=Path)
+        item.add_argument("--payload", type=Path)
+        item.add_argument("--out", type=Path)
     return parser
 
 
@@ -527,6 +534,10 @@ def main(argv: list[str] | None = None) -> int:
             payload = run_audio_provider_models_command(args.executable, args.payload, args.out)
         elif args.command == "audio" and args.audio_command == "sfx" and args.audio_sfx_command == "provider" and args.audio_provider_command == "preflight":
             payload = run_audio_provider_preflight_command(args.executable, args.payload, args.out)
+        elif args.command == "audio" and args.audio_command == "sfx" and args.audio_sfx_command == "provider" and args.audio_provider_command == "configure":
+            payload = run_audio_provider_configure(args.root, args.python_executable, args.replace)
+        elif args.command == "audio" and args.audio_command == "sfx" and args.audio_sfx_command == "provider" and args.audio_provider_command == "show-config":
+            payload = run_audio_provider_show_config()
         else:
             raise ValueError("unsupported command")
         print(json.dumps(payload, ensure_ascii=False, indent=2, sort_keys=True))
