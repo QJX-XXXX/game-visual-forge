@@ -3,6 +3,7 @@ from __future__ import annotations
 import contextlib
 import importlib.metadata
 import json
+import math
 import os
 import shutil
 import sys
@@ -110,15 +111,16 @@ def _preflight(payload: dict[str, Any]) -> dict[str, Any]:
 
 
 def _load_audio(path: str, torchaudio: Any) -> tuple[int, Any]:
-    sample_rate, audio = torchaudio.load(path)
+    audio, sample_rate = torchaudio.load(path)
     return int(sample_rate), audio
 
 
 def _generate(payload: dict[str, Any]) -> dict[str, Any]:
     _set_offline_environment()
-    StableAudioModel, _, torchaudio = _load_backend()
+    StableAudioModel, torch, torchaudio = _load_backend()
     mode = str(payload["mode"])
-    model = StableAudioModel.from_pretrained(MODEL_ID)
+    editing_mode = mode in {"redraw", "inpaint", "continue"}
+    model = StableAudioModel.from_pretrained(MODEL_ID, model_half=not editing_mode)
     duration = float(payload["duration_seconds"])
     seed = int(payload["seed"])
     kwargs: dict[str, Any] = {
@@ -129,7 +131,12 @@ def _generate(payload: dict[str, Any]) -> dict[str, Any]:
         "batch_size": 1,
         "sample_size": int(model.model_config["sample_size"]),
         "seed": seed,
+        "return_latents": True,
     }
+    if editing_mode:
+        # The distilled ping-pong sampler can overflow on init/inpaint latents in
+        # half precision. RK4 with FP32 preserves the source latent scale.
+        kwargs["sampler_type"] = "rk4"
     if mode == "redraw":
         kwargs["init_audio"] = _load_audio(str(payload["source_path"]), torchaudio)
         kwargs["init_noise_level"] = float(payload["redraw_strength"])
@@ -143,7 +150,21 @@ def _generate(payload: dict[str, Any]) -> dict[str, Any]:
             join_guard = float(payload.get("join_guard_ms", 20)) / 1000.0
             kwargs["inpaint_mask_start_seconds"] = max(0.0, source_duration - join_guard)
             kwargs["inpaint_mask_end_seconds"] = duration
-    audio = model.generate(**kwargs)
+    latents = model.generate(**kwargs)
+    pretransform = model.model.pretransform
+    pretransform_dtype = next(pretransform.parameters()).dtype
+    latents = latents.to(pretransform_dtype)
+    audio = pretransform.decode(latents).to(torch.float32)
+    audio = audio[..., : int(duration * model.model.sample_rate)]
+    absolute = audio.abs()
+    decoded_peak = float(absolute.max().item())
+    if not math.isfinite(decoded_peak):
+        raise ValueError("Stable Audio decoded non-finite samples")
+    overrange_sample_count = int((absolute > 1.0).sum().item())
+    sample_count = int(audio.numel())
+    target_peak = math.pow(10.0, -1.0 / 20.0)
+    peak_protection_gain = 1.0 if decoded_peak == 0.0 or decoded_peak <= target_peak else target_peak / decoded_peak
+    audio = audio * peak_protection_gain
     if getattr(audio, "ndim", 0) == 3:
         audio = audio[0]
     output = Path(str(payload["output_path"]))
@@ -155,6 +176,16 @@ def _generate(payload: dict[str, Any]) -> dict[str, Any]:
         "path": str(output),
         "seed": seed,
         "sample_rate": int(model.model.sample_rate),
+        "audio_metrics": {
+            "decoded_peak": decoded_peak,
+            "overrange_sample_count": overrange_sample_count,
+            "overrange_sample_ratio": overrange_sample_count / max(1, sample_count),
+            "sample_count": sample_count,
+            "peak_protection_gain": peak_protection_gain,
+            "peak_protection_db": 20.0 * math.log10(peak_protection_gain),
+            "model_precision": "fp32" if editing_mode else "fp16",
+            "sampler_type": "rk4" if editing_mode else "default",
+        },
     }
 
 

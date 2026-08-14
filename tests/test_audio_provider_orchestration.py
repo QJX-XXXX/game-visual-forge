@@ -65,8 +65,15 @@ class AudioProviderOrchestrationTests(unittest.TestCase):
             )
             result = generate_audio_candidates(request, root / "attempts", wrapper, root / "output", None, NOW)
             self.assertEqual(result.candidates, ())
-            statuses = [json.loads(Path(path).read_text(encoding="utf-8"))["status"] for path in result.attempt_paths]
+            attempts = [json.loads(Path(path).read_text(encoding="utf-8")) for path in result.attempt_paths]
+            statuses = [attempt["status"] for attempt in attempts]
             self.assertEqual(statuses, ["failed", "failed", "failed"])
+            for attempt in attempts:
+                failure = attempt["parameters"]["failure"]
+                self.assertEqual(failure["code"], "provider_unavailable")
+                self.assertEqual(failure["message"], "audio provider command failed")
+                self.assertEqual(failure["context"]["returncode"], 9)
+                self.assertEqual(failure["context"]["stderr"], "failed")
 
     def test_invalid_utf8_is_generation_unknown_and_not_retried(self) -> None:
         request = AudioRequest.from_dict(valid_audio_request())

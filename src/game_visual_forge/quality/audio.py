@@ -54,6 +54,9 @@ def assess_audio_outputs(repo_root: Path, request: AudioRequest, source: AudioSo
             failures.append(f"{artifact.candidate_id}:wrong-duration")
         if metrics.clipped_sample_count:
             failures.append(f"{artifact.candidate_id}:clipping")
+        one_shot = request.usage_profile.value == "one-shot" and not request.loop
+        if one_shot and metrics.peak_sample and metrics.crest_db < 3.0 and metrics.transient_to_tail_db < 3.0:
+            failures.append(f"{artifact.candidate_id}:dense-noise")
         artifact_reports[artifact.candidate_id] = {
             "wav_sha256": _sha256(wav),
             "waveform_sha256": _sha256(waveform) if waveform.is_file() else None,
@@ -63,6 +66,9 @@ def assess_audio_outputs(repo_root: Path, request: AudioRequest, source: AudioSo
             "channels": metrics.channels,
             "duration_seconds": metrics.duration_seconds,
             "peak_dbfs": metrics.peak_dbfs,
+            "rms_dbfs": metrics.rms_dbfs,
+            "crest_db": metrics.crest_db,
+            "transient_to_tail_db": metrics.transient_to_tail_db,
             "clipped_sample_count": metrics.clipped_sample_count,
             "dc_offset_abs": metrics.dc_offset_abs,
             "silent_sample_ratio": metrics.silent_sample_ratio,

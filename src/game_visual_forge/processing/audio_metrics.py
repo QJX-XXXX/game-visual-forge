@@ -17,6 +17,9 @@ class PcmMetrics:
     duration_seconds: float
     peak_sample: int
     peak_dbfs: float
+    rms_dbfs: float
+    crest_db: float
+    transient_to_tail_db: float
     clipped_sample_count: int
     dc_offset_abs: float
     silent_sample_ratio: float
@@ -54,7 +57,17 @@ def read_pcm16_metrics(path: Path) -> PcmMetrics:
         values = samples[start : start + block]
         signature.append(math.sqrt(sum(float(value) * float(value) for value in values) / max(1, len(values))) / 32768.0)
     peak_dbfs = -math.inf if peak == 0 else 20.0 * math.log10(peak / 32767.0)
-    return PcmMetrics(sample_rate, 16, channels, frame_count, frame_count / sample_rate, peak, peak_dbfs, clipped, abs(mean) / 32768.0, silent / max(1, len(samples)), tuple(signature))
+    rms = math.sqrt(sum(float(value) * float(value) for value in samples) / max(1, len(samples))) / 32768.0
+    rms_dbfs = -math.inf if rms == 0 else 20.0 * math.log10(rms)
+    crest_db = math.inf if rms == 0 else peak_dbfs - rms_dbfs
+    tail_blocks = signature[-max(1, len(signature) // 4) :]
+    tail_rms = math.sqrt(sum(value * value for value in tail_blocks) / max(1, len(tail_blocks)))
+    transient_rms = max(signature, default=0.0)
+    if tail_rms == 0:
+        transient_to_tail_db = math.inf if transient_rms > 0 else 0.0
+    else:
+        transient_to_tail_db = 20.0 * math.log10(max(transient_rms, 1e-20) / tail_rms)
+    return PcmMetrics(sample_rate, 16, channels, frame_count, frame_count / sample_rate, peak, peak_dbfs, rms_dbfs, crest_db, transient_to_tail_db, clipped, abs(mean) / 32768.0, silent / max(1, len(samples)), tuple(signature))
 
 
 def compare_protected_samples(expected: Path, actual: Path, protected_ranges: Sequence[tuple[int, int]]) -> bool:

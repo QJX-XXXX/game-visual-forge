@@ -12,7 +12,7 @@ from tests.test_audio_ingest import write_pcm_wav
 from game_visual_forge.contracts.audio import AudioRequest
 from game_visual_forge.contracts.audio_provider import AudioCandidateRecord, AudioGenerationResult
 from game_visual_forge.jobs.fingerprints import fingerprint_request
-from game_visual_forge.processing.audio import _normalization_conversion_filter, _normalize_pcm16_peak, process_audio_candidates
+from game_visual_forge.processing.audio import _limit_pcm16_peak, process_audio_candidates
 from game_visual_forge.processing.audio_metrics import read_pcm16_metrics
 
 
@@ -31,20 +31,13 @@ def write_pcm_samples(path: Path, values: list[int], channels: int = 1, rate: in
 
 
 class AudioProcessingTests(unittest.TestCase):
-    def test_generated_one_shots_reserve_headroom_before_pcm16_quantization(self) -> None:
-        one_shot = AudioRequest.from_dict(valid_audio_request(usage_profile="one-shot", loop=False))
-        ui = AudioRequest.from_dict(valid_audio_request(usage_profile="ui", loop=False))
-
-        self.assertEqual(_normalization_conversion_filter(one_shot), "volume=-1dB")
-        self.assertIsNone(_normalization_conversion_filter(ui))
-
-    def test_peak_normalization_reaches_minus_one_dbfs_without_changing_shape(self) -> None:
+    def test_peak_ceiling_attenuates_hot_audio_without_changing_shape(self) -> None:
         with tempfile.TemporaryDirectory() as directory:
-            path = Path(directory) / "quiet.wav"
-            write_pcm_samples(path, [1000, -1000] * 200, channels=2)
+            path = Path(directory) / "hot.wav"
+            write_pcm_samples(path, [30000, -30000] * 200, channels=2)
             before = read_pcm16_metrics(path)
 
-            self.assertTrue(_normalize_pcm16_peak(path))
+            self.assertTrue(_limit_pcm16_peak(path))
 
             after = read_pcm16_metrics(path)
             target = round(32767 * (10 ** (-1.0 / 20.0)))
@@ -53,10 +46,11 @@ class AudioProcessingTests(unittest.TestCase):
             self.assertEqual(after.sample_rate, before.sample_rate)
             self.assertEqual(after.channels, before.channels)
 
-    def test_peak_normalization_leaves_silence_and_clipping_unchanged(self) -> None:
+    def test_peak_ceiling_leaves_quiet_silence_and_clipping_unchanged(self) -> None:
         with tempfile.TemporaryDirectory() as directory:
             root = Path(directory)
             fixtures = (
+                ("quiet.wav", [1000, -1000, 0, 0]),
                 ("silent.wav", [0, 0, 0, 0]),
                 ("clipped.wav", [32767, -32767, 0, 0]),
             )
@@ -66,7 +60,7 @@ class AudioProcessingTests(unittest.TestCase):
                     write_pcm_samples(path, samples, channels=2)
                     before = path.read_bytes()
 
-                    self.assertFalse(_normalize_pcm16_peak(path))
+                    self.assertFalse(_limit_pcm16_peak(path))
                     self.assertEqual(path.read_bytes(), before)
 
     def test_pcm_metrics_detect_peak_clipping_dc_and_silence(self) -> None:
@@ -94,7 +88,7 @@ class AudioProcessingTests(unittest.TestCase):
             self.assertTrue((root / artifact.waveform_path).is_file())
             self.assertEqual(read_pcm16_metrics(root / artifact.wav_path).sample_rate, 44100)
 
-    def test_process_normalizes_only_generated_one_shot_staging(self) -> None:
+    def test_process_does_not_boost_quiet_generated_one_shot_staging(self) -> None:
         with tempfile.TemporaryDirectory() as directory:
             root = Path(directory)
             request = AudioRequest.from_dict(
@@ -127,9 +121,8 @@ class AudioProcessingTests(unittest.TestCase):
             result = process_audio_candidates(root, request, generation, None, FAKE_FFMPEG, FAKE_FFMPEG)
 
             metrics = read_pcm16_metrics(root / result.artifacts[0].wav_path)
-            target = round(32767 * (10 ** (-1.0 / 20.0)))
             self.assertEqual(raw.read_bytes(), raw_before)
-            self.assertLessEqual(abs(metrics.peak_sample - target), 1)
+            self.assertEqual(metrics.peak_sample, 1000)
             self.assertEqual(metrics.frame_count, 44100)
             self.assertEqual(metrics.channels, 2)
 

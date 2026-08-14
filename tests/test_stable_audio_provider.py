@@ -29,14 +29,43 @@ def load_provider():
 class FakeTensor:
     ndim = 3
 
+    def __init__(self, peak=2.0, overrange=80, count=100):
+        self.peak = peak
+        self.overrange = overrange
+        self.count = count
+        self.gain = 1.0
+        self.converted_to = None
+
     def __getitem__(self, index):
         return self
 
     def cpu(self):
         return self
 
+    def to(self, dtype):
+        self.converted_to = dtype
+        return self
+
+    def abs(self):
+        return self
+
+    def max(self):
+        return SimpleNamespace(item=lambda: self.peak)
+
+    def __gt__(self, _value):
+        return SimpleNamespace(sum=lambda: SimpleNamespace(item=lambda: self.overrange))
+
+    def numel(self):
+        return self.count
+
+    def __mul__(self, gain):
+        self.gain *= gain
+        return self
+
 
 class FakeTorch:
+    float32 = object()
+
     class cuda:
         @staticmethod
         def is_available():
@@ -50,7 +79,7 @@ class FakeTorchaudio:
     @classmethod
     def load(cls, path):
         cls.loaded.append(path)
-        return 48000, FakeTensor()
+        return FakeTensor(), 48000
 
     @classmethod
     def save(cls, path, audio, sample_rate, **kwargs):
@@ -58,15 +87,29 @@ class FakeTorchaudio:
         Path(path).write_bytes(b"fake wav")
 
 
+class FakePretransform:
+    decoded = []
+    parameter_dtype = object()
+
+    def parameters(self):
+        yield SimpleNamespace(dtype=self.parameter_dtype)
+
+    def decode(self, latents):
+        self.decoded.append(latents)
+        return FakeTensor()
+
+
 class FakeModel:
     calls = []
+    load_calls = []
     model_config = {"sample_size": 1234}
-    model = SimpleNamespace(sample_rate=44100)
+    model = SimpleNamespace(sample_rate=44100, pretransform=FakePretransform())
 
     @classmethod
-    def from_pretrained(cls, name):
+    def from_pretrained(cls, name, **kwargs):
         if name != "small-sfx":
             raise AssertionError(name)
+        cls.load_calls.append(kwargs)
         return cls()
 
     def generate(self, **kwargs):
@@ -126,6 +169,7 @@ class StableAudioProviderTests(unittest.TestCase):
     def test_official_api_maps_all_four_modes(self) -> None:
         module = load_provider()
         FakeModel.calls = []
+        FakeModel.load_calls = []
         FakeTorchaudio.loaded = []
         FakeTorchaudio.saved = []
         with tempfile.TemporaryDirectory() as directory:
@@ -135,16 +179,37 @@ class StableAudioProviderTests(unittest.TestCase):
                     result = module._generate(base_payload(mode, root / f"{mode}.wav"))
                 self.assertEqual(result["sample_rate"], 44100)
             text, redraw, inpaint, continuation = FakeModel.calls
+            self.assertEqual(FakeModel.load_calls[0]["model_half"], True)
+            self.assertTrue(all(call["model_half"] is False for call in FakeModel.load_calls[1:]))
+            self.assertTrue(all(call["return_latents"] for call in FakeModel.calls))
             self.assertEqual(text["steps"], 8)
             self.assertEqual(text["cfg_scale"], 1.0)
             self.assertEqual(text["sample_size"], 1234)
             self.assertEqual(redraw["init_noise_level"], 0.4)
+            self.assertTrue(all(call["sampler_type"] == "rk4" for call in (redraw, inpaint, continuation)))
+            self.assertNotIn("sampler_type", text)
             self.assertEqual(inpaint["inpaint_mask_start_seconds"], 0.2)
             self.assertEqual(inpaint["inpaint_mask_end_seconds"], 0.8)
             self.assertEqual(continuation["inpaint_mask_start_seconds"], 0.98)
             self.assertEqual(continuation["inpaint_mask_end_seconds"], 1.5)
             self.assertTrue(all(call["inpaint_audio"][0] == 48000 for call in (inpaint, continuation)))
             self.assertTrue(all(item[2] == 44100 for item in FakeTorchaudio.saved))
+
+    def test_generation_decodes_without_clamping_and_applies_no_boost_peak_protection(self) -> None:
+        module = load_provider()
+        FakeModel.calls = []
+        FakeModel.model.pretransform.decoded = []
+        FakeTorchaudio.saved = []
+        with tempfile.TemporaryDirectory() as directory, patch.object(module, "_load_backend", return_value=(FakeModel, FakeTorch, FakeTorchaudio)):
+            result = module._generate(base_payload("text-to-audio", Path(directory) / "output.wav"))
+
+        self.assertTrue(FakeModel.calls[0]["return_latents"])
+        self.assertEqual(len(FakeModel.model.pretransform.decoded), 1)
+        self.assertIs(FakeModel.model.pretransform.decoded[0].converted_to, FakeModel.model.pretransform.parameter_dtype)
+        self.assertAlmostEqual(result["audio_metrics"]["decoded_peak"], 2.0)
+        self.assertEqual(result["audio_metrics"]["overrange_sample_count"], 80)
+        self.assertLess(result["audio_metrics"]["peak_protection_gain"], 1.0)
+        self.assertLess(FakeTorchaudio.saved[0][1].gain, 1.0)
 
     def test_main_keeps_stdout_as_one_json_object(self) -> None:
         module = load_provider()

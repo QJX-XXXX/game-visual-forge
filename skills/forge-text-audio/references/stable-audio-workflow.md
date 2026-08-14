@@ -14,7 +14,7 @@ The shared runtime sends one UTF-8 JSON object to `scripts/providers/stable_audi
 
 Preflight is non-mutating. It verifies the `stable-audio-3`, `torch`, and `torchaudio` imports; resolves FFmpeg and FFprobe; checks the local model snapshot with `snapshot_download(..., local_files_only=True)`; and reports the package version, Python interpreter, exact model ID, cache, CUDA/device evidence, and availability. It sets `HF_HUB_OFFLINE=1`, `TRANSFORMERS_OFFLINE=1`, `HF_DATASETS_OFFLINE=1`, and `HF_HUB_DISABLE_TELEMETRY=1` before importing model code.
 
-Generation loads the cached model with `StableAudioModel.from_pretrained("small-sfx")`, calls the official `StableAudioModel.generate()` method, and writes the raw provider tensor as a 32-bit floating-point WAV. The wrapper uses the installed model configuration's sample size and sample rate and records the seed and mode. The shared runtime converts the raw result to the delivery contract. Official progress is redirected to stderr so stdout remains exactly one UTF-8 JSON object.
+Generation loads the cached model with `StableAudioModel.from_pretrained("small-sfx")` and calls the official `StableAudioModel.generate(..., return_latents=True)` path. The wrapper decodes those latents with the model's official pretransform so the library cannot clamp the decoded waveform before inspection. It records the decoded peak, overrange sample count, and no-boost peak-protection gain. Only decoded peaks above -1.0 dBFS are globally attenuated; quieter output is unchanged. The protected provider tensor is written as a 32-bit floating-point raw WAV, after which it remains immutable. The wrapper uses the installed model configuration's sample size and sample rate and records the seed and mode. The shared runtime converts the raw result to the delivery contract. Official progress is redirected to stderr so stdout remains exactly one UTF-8 JSON object.
 
 Modes map as follows:
 
@@ -22,5 +22,7 @@ Modes map as follows:
 - `redraw`: generation with source `(sample_rate, waveform)` as `init_audio` and the confirmed `init_noise_level`.
 - `inpaint`: generation with source `inpaint_audio` and `inpaint_mask_start_seconds`/`inpaint_mask_end_seconds`.
 - `continue`: inpainting with a mask from the final join guard of the source through the confirmed target end.
+
+For local Small-SFX editing, use FP32 inference with the RK4 sampler for `redraw`, `inpaint`, and `continue`. The post-trained default ping-pong sampler can overflow source-conditioned latents in FP16; reject non-finite decoded samples instead of saving them. Text-to-audio keeps the model's default fast sampler and FP16 route.
 
 The adapter treats a changed official API, package identity, or model identity as a preflight failure; it never falls back to the retired legacy package.

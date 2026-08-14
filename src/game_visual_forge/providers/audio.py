@@ -154,12 +154,27 @@ def generate_audio_candidates(
             if not output_path.is_file() or output_path.stat().st_size <= 44:
                 raise ForgeError(ErrorCode.PROVIDER_UNAVAILABLE, "audio provider produced no usable output", recoverable=True, context={"outcome": "generation_unknown"})
             digest = hashlib.sha256(output_path.read_bytes()).hexdigest()
-            completed = attempt.replace(status=AudioAttemptStatus.COMPLETED, updated_at=now, output_path=raw_relative, output_sha256=digest)
+            completed_parameters = dict(attempt.parameters)
+            provider_metrics = response.get("audio_metrics")
+            if isinstance(provider_metrics, dict):
+                completed_parameters["provider_metrics"] = provider_metrics
+            completed = attempt.replace(parameters=completed_parameters, status=AudioAttemptStatus.COMPLETED, updated_at=now, output_path=raw_relative, output_sha256=digest)
             _persist_attempt(attempt_file, completed)
             candidates.append(AudioCandidateRecord(1, candidate_id, candidate_id, seed, raw_relative, digest))
         except ForgeError as error:
             unknown = error.context.get("outcome") == "generation_unknown"
             status = AudioAttemptStatus.GENERATION_UNKNOWN if unknown else AudioAttemptStatus.FAILED
-            failed = attempt.replace(status=status, updated_at=now, error_code=("generation_unknown" if unknown else "provider_failed"))
+            failed_parameters = dict(attempt.parameters)
+            failed_parameters["failure"] = {
+                "code": error.code.value,
+                "message": error.message,
+                "context": dict(error.context),
+            }
+            failed = attempt.replace(
+                parameters=failed_parameters,
+                status=status,
+                updated_at=now,
+                error_code=("generation_unknown" if unknown else "provider_failed"),
+            )
             _persist_attempt(attempt_file, failed)
     return AudioGenerationResult(1, fingerprint, request.mode, tuple(candidates), tuple(attempt_paths))

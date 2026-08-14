@@ -55,24 +55,16 @@ def _write_pcm(path: Path, channels: int, rate: int, frames: list[tuple[int, ...
         handle.writeframes(values.tobytes())
 
 
-def _normalize_pcm16_peak(path: Path, target_dbfs: float = -1.0) -> bool:
+def _limit_pcm16_peak(path: Path, target_dbfs: float = -1.0) -> bool:
     channels, rate, frames = _read_pcm(path)
     peak = max((abs(value) for frame in frames for value in frame), default=0)
-    if peak == 0 or peak >= 32767:
-        return False
     target = round(32767 * math.pow(10.0, target_dbfs / 20.0))
+    if peak == 0 or peak >= 32767 or peak <= target:
+        return False
     gain = target / peak
     normalized = [tuple(round(value * gain) for value in frame) for frame in frames]
     _write_pcm(path, channels, rate, normalized)
     return True
-
-
-def _normalization_conversion_filter(request: AudioRequest) -> str | None:
-    if request.mode is AudioGenerationMode.TEXT_TO_AUDIO and request.usage_profile is AudioUsageProfile.ONE_SHOT and not request.loop:
-        return "volume=-1dB"
-    return None
-
-
 def _frame_at(frames: list[tuple[int, ...]], index: int, channels: int) -> tuple[int, ...]:
     if not frames:
         return (0,) * channels
@@ -145,14 +137,9 @@ def process_audio_candidates(
         raw = output_root / candidate.raw_path
         processed = staging / f"{candidate.candidate_id}.wav"
         channels = 1 if request.spatial_mode.value == "3d" else 2
-        conversion = ["-y", "-i", str(raw), "-ar", "44100", "-ac", str(channels)]
-        normalization_filter = _normalization_conversion_filter(request)
-        if normalization_filter is not None:
-            conversion.extend(["-af", normalization_filter])
-        conversion.extend(["-c:a", "pcm_s16le", str(processed)])
-        _run_ffmpeg(ffmpeg, conversion)
-        if normalization_filter is not None:
-            _normalize_pcm16_peak(processed)
+        _run_ffmpeg(ffmpeg, ["-y", "-i", str(raw), "-ar", "44100", "-ac", str(channels), "-c:a", "pcm_s16le", str(processed)])
+        if request.mode is AudioGenerationMode.TEXT_TO_AUDIO and request.usage_profile is AudioUsageProfile.ONE_SHOT and not request.loop:
+            _limit_pcm16_peak(processed)
         if source is not None and request.mode in {AudioGenerationMode.INPAINT, AudioGenerationMode.CONTINUE}:
             protected = staging / f"{candidate.candidate_id}-protected.wav"
             _splice_protected(root / source.path, processed, protected, request, source)

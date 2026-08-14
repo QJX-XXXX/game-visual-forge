@@ -52,6 +52,51 @@ python -c "from rembg import new_session; new_session('birefnet-general')"
 Use `U2NET_HOME` for a shared model directory. CPU is the compatibility default;
 GPU requires a verified CUDA environment. PyMatting is optional and slower.
 
+### Verified Stable Audio 3 GPU examples
+
+`forge-text-audio` produced these local, offline examples with the official
+`stabilityai/stable-audio-3-small-sfx` model.
+
+#### Wooden UI click
+
+Prompt:
+
+```text
+Dry wooden UI click, short transient, no music, no voice
+```
+
+[Listen to the wooden UI click](assets/readme/stable-audio-3-small-sfx-wooden-ui-click.wav)
+
+![Stable Audio 3 wooden UI click waveform](assets/readme/stable-audio-3-small-sfx-wooden-ui-click-waveform.png)
+
+![Stable Audio 3 wooden UI click spectrum](assets/readme/stable-audio-3-small-sfx-wooden-ui-click-spectrum.png)
+
+#### Blacksmith hammer redraw
+
+Prompt:
+
+```text
+TrackType: SFX, a clean professional studio Foley recording of one natural strike of a small steel blacksmith hammer against a red-hot iron billet on a solid anvil, an isolated metallic impact with a fast attack and a short clean natural decay, recorded with a dry close microphone in a quiet room.
+```
+
+- [Listen to blacksmith hammer candidate 1](assets/readme/stable-audio-3-small-sfx-blacksmith-hammer-01.wav)
+- [Listen to blacksmith hammer candidate 2](assets/readme/stable-audio-3-small-sfx-blacksmith-hammer-02.wav)
+- [Listen to blacksmith hammer candidate 3](assets/readme/stable-audio-3-small-sfx-blacksmith-hammer-03.wav)
+
+The editing route uses FP32 inference with RK4 for redraw, inpainting, and
+continuation. Raw decoded audio is inspected before quantization, never boosted,
+and rejected when clipping, non-finite samples, or dense sustained-noise evidence
+is detected. Final listening review remains required because model-quality
+artifacts cannot be ruled out by numeric checks alone.
+
+| Verification | Successful result |
+| --- | --- |
+| Runtime | Isolated `stable-audio-3` 0.1.0, local model cache, no hosted API |
+| GPU | NVIDIA GeForce RTX 4070 Ti, CUDA available |
+| Wooden example | 1.000 s, 44,100 Hz, stereo, 16-bit PCM WAV |
+| Hammer examples | Three 1.200 s, 44,100 Hz, mono, 16-bit PCM WAV candidates |
+| Quality gate | FFmpeg/FFprobe, clipping, finite-sample, transient/tail, and listening review |
+
 ## Install
 
 - [Codex installation](install/codex/README.md)
