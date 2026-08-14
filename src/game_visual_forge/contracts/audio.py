@@ -250,6 +250,62 @@ class AudioRouteDecision:
     reason: str
 
 
+@dataclass(frozen=True)
+class AudioSourceRecord:
+    schema_version: int
+    path: str
+    sha256: str
+    codec_name: str
+    sample_rate: int
+    channels: int
+    channel_layout: str | None
+    sample_format: str
+    duration_seconds: float
+    request_fingerprint: str
+
+    def __post_init__(self) -> None:
+        if self.schema_version != 1:
+            raise ValueError("schema_version must be 1")
+        object.__setattr__(self, "path", normalize_repo_relative_path(self.path, field_name="path"))
+        if not re.fullmatch(r"[0-9a-f]{64}", self.sha256):
+            raise ValueError("sha256 must be a SHA-256 hex digest")
+        if self.sample_rate <= 0 or self.channels not in {1, 2} or self.duration_seconds <= 0:
+            raise ValueError("audio source metadata is invalid")
+        if not self.codec_name or not self.sample_format:
+            raise ValueError("audio source codec and sample format are required")
+        if not re.fullmatch(r"[0-9a-f]{64}", self.request_fingerprint):
+            raise ValueError("request_fingerprint must be a SHA-256 hex digest")
+
+    def to_dict(self) -> dict[str, Any]:
+        return {
+            "schema_version": 1,
+            "path": self.path,
+            "sha256": self.sha256,
+            "codec_name": self.codec_name,
+            "sample_rate": self.sample_rate,
+            "channels": self.channels,
+            "channel_layout": self.channel_layout,
+            "sample_format": self.sample_format,
+            "duration_seconds": self.duration_seconds,
+            "request_fingerprint": self.request_fingerprint,
+        }
+
+    @classmethod
+    def from_dict(cls, value: dict[str, Any]) -> "AudioSourceRecord":
+        return cls(
+            schema_version=int(value["schema_version"]),
+            path=str(value["path"]),
+            sha256=str(value["sha256"]),
+            codec_name=str(value["codec_name"]),
+            sample_rate=int(value["sample_rate"]),
+            channels=int(value["channels"]),
+            channel_layout=value.get("channel_layout"),
+            sample_format=str(value["sample_format"]),
+            duration_seconds=float(value["duration_seconds"]),
+            request_fingerprint=str(value["request_fingerprint"]),
+        )
+
+
 def canonical_audio_confirmation_summary(request: AudioRequest) -> str:
     return json.dumps(request.to_dict(), ensure_ascii=False, sort_keys=True, separators=(",", ":"))
 
