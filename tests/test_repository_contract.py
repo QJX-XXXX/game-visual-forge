@@ -55,11 +55,9 @@ class RepositoryContractTests(unittest.TestCase):
             "forge-2d-sprite",
             "forge-video-to-sprite",
             "forge-text-audio",
-            "install/agent/README.md",
-            "install/codex/README.md",
-            "install/claude/README.md",
+            "install/README.md",
+            "install/README.zh-CN.md",
             "install/stable-audio-3/README.md",
-            "install/ Agent-executable and provider setup guides",
         ):
             self.assertIn(required, english, f"README.md missing public entrypoint: {required}")
         for required in (
@@ -67,17 +65,22 @@ class RepositoryContractTests(unittest.TestCase):
             "forge-2d-sprite",
             "forge-video-to-sprite",
             "forge-text-audio",
-            "install/agent/README.zh-CN.md",
-            "install/codex/README.md",
-            "install/claude/README.md",
+            "install/README.zh-CN.md",
+            "install/README.md",
             "install/stable-audio-3/README.zh-CN.md",
-            "install/ Agent 可执行与 Provider 配置指南",
         ):
             self.assertIn(required, chinese, f"README.zh-CN.md missing public entrypoint: {required}")
+        for retired in ("install/agent/", "install/codex/", "install/claude/"):
+            self.assertNotIn(retired, english)
+            self.assertNotIn(retired, chinese)
         for route_term in ("existing", "MiniMax Hailuo", "Jimeng", "ComfyUI MiniMax H3"):
             self.assertIn(route_term, english, f"README.md missing route term: {route_term}")
         for route_term in ("现有", "海螺/MiniMax", "即梦", "ComfyUI MiniMax H3"):
             self.assertIn(route_term, chinese, f"README.zh-CN.md missing route term: {route_term}")
+
+        for retired_dir in ("install/agent", "install/codex", "install/claude"):
+            self.assertFalse((ROOT / retired_dir / "README.md").exists(), retired_dir)
+            self.assertFalse((ROOT / retired_dir / "README.zh-CN.md").exists(), retired_dir)
 
     def test_readmes_stay_concise_and_do_not_duplicate_workflow(self) -> None:
         forbidden_fragments = ("map plan -> map route -> map ingest -> map process -> map validate", "### M0", "### M1", "### M2", "`map-quality-report.json`", "`Reports/unity-import-report.json`")
@@ -93,21 +96,23 @@ class RepositoryContractTests(unittest.TestCase):
         normalized_english = " ".join(english.split())
         normalized_chinese = " ".join(chinese.split())
 
-        self.assertIn("The shared Agent guide installs the four core Forge Skills only.", normalized_english)
+        self.assertIn("The unified guide contains both a copyable Agent request and the complete manual installation flow.", normalized_english)
+        self.assertIn("It installs the four core Forge Skills only.", normalized_english)
         self.assertIn("Optional workflows are opt-in.", normalized_english)
         self.assertIn("inspects first", normalized_english)
         self.assertIn("asks again before installing missing components", normalized_english)
         self.assertNotIn("The install guides are manual and repository-local.", english)
-        self.assertIn("install/      Agent-executable and provider setup guides", english)
-        self.assertNotIn("install/      Manual setup guides", english)
+        self.assertIn("install/      Unified installation and independent runtime guides", english)
+        self.assertNotIn("install/      Agent-executable and provider setup guides", english)
 
-        self.assertIn("共享 Agent 指南只安装四个核心 Forge Skills。", normalized_chinese)
-        self.assertIn("可选工作流必须由用户主动选择启用。", normalized_chinese)
+        self.assertIn("统一指南同时包含可复制给 Agent 的请求和完整手动安装流程。", normalized_chinese)
+        self.assertIn("核心流程只安装四个 Forge Skills。", normalized_chinese)
+        self.assertIn("可选工作流必须由用户主动选择启用", normalized_chinese)
         self.assertIn("先检查", normalized_chinese)
         self.assertIn("二次确认", normalized_chinese)
         self.assertNotIn("安装指南是手动且仓库本地的", chinese)
-        self.assertIn("install/      Agent 可执行与 Provider 配置指南", chinese)
-        self.assertNotIn("install/      手动安装指南", chinese)
+        self.assertIn("install/      统一安装与独立运行时指南", chinese)
+        self.assertNotIn("install/      Agent 可执行与 Provider 配置指南", chinese)
 
     def test_readmes_explain_hd_cleanup_tools_and_installation(self) -> None:
         required = ("birefnet-general", 'python -m pip install -e ".[image]"', 'python -m pip install -e ".[background]"', 'python -m pip install "rembg[cpu]"', 'python -m pip install "rembg[gpu]"', 'python -m pip install -e ".[matting]"', "U2NET_HOME", "PyMatting", "CUDA", "CPU")
@@ -132,22 +137,29 @@ class RepositoryContractTests(unittest.TestCase):
         for forbidden in ("stable-audio", "torch", "torchaudio", "ffmpeg", "huggingface"):
             self.assertNotIn(forbidden, base)
 
-    def test_agent_core_install_guides_document_the_repository_contract(self) -> None:
+    def test_unified_install_guides_document_the_repository_contract(self) -> None:
         required_skills = ("forge-2d-map", "forge-2d-sprite", "forge-text-audio", "forge-video-to-sprite")
-        shared_fragments = (".agents/skills", "src/", "Python 3.11", "FFmpeg", "FFprobe")
-        english = (ROOT / "install" / "agent" / "README.md").read_text(encoding="utf-8")
-        chinese = (ROOT / "install" / "agent" / "README.zh-CN.md").read_text(encoding="utf-8")
+        shared_fragments = (".agents/skills", "src/", "Python 3.11", "FFmpeg", "FFprobe", "Agent", "manual")
+        english = (ROOT / "install" / "README.md").read_text(encoding="utf-8")
+        chinese = (ROOT / "install" / "README.zh-CN.md").read_text(encoding="utf-8")
         for text in (english, chinese):
             for skill_name in required_skills:
                 self.assertIn(skill_name, text, skill_name)
             for fragment in shared_fragments:
+                self.assertIn(fragment.lower(), text.lower(), fragment)
+            for fragment in ("Comfy MCP", "h3-prompt-writing", "Stable Audio 3", "MINIMAX_API_KEY", "JIMENG_ACCESS_KEY"):
                 self.assertIn(fragment, text, fragment)
         self.assertIn("does not install optional workflows", english)
         self.assertIn("不会安装可选工作流", chinese)
+        for text in (english, chinese):
+            self.assertIn("powershell", text.lower())
+            self.assertIn("ln -s", text)
+            self.assertIn("SKILL.md", text)
+            self.assertIn("--help", text)
 
     def test_agent_guide_gates_optional_comfyui_h3_installation(self) -> None:
-        english = (ROOT / "install" / "agent" / "README.md").read_text(encoding="utf-8")
-        chinese = (ROOT / "install" / "agent" / "README.zh-CN.md").read_text(encoding="utf-8")
+        english = (ROOT / "install" / "README.md").read_text(encoding="utf-8")
+        chinese = (ROOT / "install" / "README.zh-CN.md").read_text(encoding="utf-8")
         self.assert_ordered_fragments(english, (
             "Ask whether to enable ComfyUI MiniMax H3",
             "Inspect without installing",

@@ -57,7 +57,7 @@ The `comfyui-h3` route requires both dependencies below. If a prerequisite is ab
 
 - [Comfy MCP official installation](https://docs.comfy.org/agent-tools/mcp#installation)
 - [MiniMax H3 Prompt Writing Skill official installation](https://github.com/MiniMax-AI/MiniMax-H3/blob/main/skills/README.md#installation)
-- [Repository Agent installation guide](../../install/agent/README.md)
+- [Unified repository installation guide](../../install/README.md)
 
 Other routes remain available when these conditional dependencies are absent.
 

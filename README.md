@@ -87,18 +87,16 @@ Implementation and validation: generated locally with Stable Audio 3 Small-SFX, 
 
 ## Install
 
-- install/ Agent-executable and provider setup guides
-- [Shared Agent guide](install/agent/README.md)
-- [Shared Agent guide, Chinese](install/agent/README.zh-CN.md)
-- [Codex entrypoint](install/codex/README.md)
-- [Claude entrypoint](install/claude/README.md)
+- [Unified installation guide](install/README.md)
+- [统一安装指南（中文）](install/README.zh-CN.md)
 - [Stable Audio 3 setup](install/stable-audio-3/README.md)
 - [Comfy MCP official installation](https://docs.comfy.org/agent-tools/mcp#installation)
 - [MiniMax H3 Prompt Writing Skill official installation](https://github.com/MiniMax-AI/MiniMax-H3/blob/main/skills/README.md#installation)
 
-The shared Agent guide installs the four core Forge Skills only. Optional
-workflows are opt-in. The Agent asks whether to enable them, inspects first,
-then asks again before installing missing components.
+The unified guide contains both a copyable Agent request and the complete
+manual installation flow. It installs the four core Forge Skills only.
+Optional workflows are opt-in. The Agent asks whether to enable them, inspects
+first, then asks again before installing missing components.
 
 Provider setup stays separate from core Skill installation. Core installation
 does not auto-install providers, FFmpeg, credentials, model weights, or
@@ -158,7 +156,7 @@ skills/       Codex Skill instructions and launchers
 src/          Shared contracts, routing, processing, and reports
 integrations/ Unity Tilemap and audio packages plus tests
 assets/       Small checked-in examples and showcase artifacts
-install/      Agent-executable and provider setup guides
+install/      Unified installation and independent runtime guides
 ```
 
 ## Development check

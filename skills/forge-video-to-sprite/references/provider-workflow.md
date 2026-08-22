@@ -27,7 +27,7 @@ stored in the route decision or hosted-provider attempt.
 Install and authenticate these tools yourself according to their official
 instructions. This repository does not install, update, log in to, or copy any
 credential file during ordinary generation work. Only an explicit installation
-request should hand off to the repository [Agent guide](../../install/agent/README.md).
+request should hand off to the repository [unified installation guide](../../install/README.md).
 
 ## Local ComfyUI MiniMax H3
 
@@ -37,7 +37,7 @@ If either dependency is unavailable during ordinary generation work, report the
 appropriate official link and stop this route without installing anything.
 Existing-file and hosted-provider routes remain usable. Only when the user
 explicitly asks to install or enable this workflow should you hand off to the
-repository [Agent guide](../../install/agent/README.md); normal generation
+repository [unified installation guide](../../install/README.md); normal generation
 never activates installer authority.
 
 Use `source_preference: comfyui-h3`, `backend: comfy-mcp`, and no external

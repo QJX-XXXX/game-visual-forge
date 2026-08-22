@@ -85,17 +85,15 @@ TrackType: SFX, a clean professional studio Foley recording of one natural strik
 
 ## 安装
 
-- install/ Agent 可执行与 Provider 配置指南
-- [共享 Agent 指南](install/agent/README.zh-CN.md)
-- [共享 Agent 指南英文版](install/agent/README.md)
-- [Codex 入口](install/codex/README.md)
-- [Claude 入口](install/claude/README.md)
+- [统一安装指南](install/README.zh-CN.md)
+- [统一安装指南英文版](install/README.md)
 - [Stable Audio 3 安装指南](install/stable-audio-3/README.zh-CN.md)
 - [Comfy MCP 官方安装说明](https://docs.comfy.org/agent-tools/mcp#installation)
 - [MiniMax H3 Prompt Writing Skill 官方安装说明](https://github.com/MiniMax-AI/MiniMax-H3/blob/main/skills/README.md#installation)
 
-共享 Agent 指南只安装四个核心 Forge Skills。可选工作流必须由用户主动选择启用。
-Agent 会先询问是否启用，先检查，再在安装缺失组件前二次确认。
+统一指南同时包含可复制给 Agent 的请求和完整手动安装流程。核心流程只安装四个
+Forge Skills。可选工作流必须由用户主动选择启用；Agent 会先询问是否启用，先检查，
+再在安装缺失组件前二次确认。
 
 Provider 配置与核心 Skill 安装分开处理。核心安装不会自动安装 Provider、
 FFmpeg、凭据、模型权重或可选工作流依赖。
@@ -148,7 +146,7 @@ skills/       Codex Skill 说明和启动器
 src/          共享合同、路由、处理和报告
 integrations/ Unity Tilemap 与音频包及测试
 assets/       小型示例和展示素材
-install/      Agent 可执行与 Provider 配置指南
+install/      统一安装与独立运行时指南
 ```
 
 ## 开发检查
