@@ -3,15 +3,18 @@
 ## Goal
 
 Make Game Visual Forge installable by giving an Agent one repository document.
-The Agent installs all four Forge Skills and the shared repository runtime, then
-installs only the tool profiles the user selects. Ordinary asset-generation
-workflows remain unable to install software.
+The Agent installs all four Forge Skills and the shared repository runtime. It
+does not install any optional provider tool during that core installation. The
+Agent asks whether the user wants each optional workflow, inspects that
+workflow's environment read-only, then installs only the missing components
+after a second explicit confirmation. Ordinary asset-generation workflows
+remain unable to install software.
 
 The public video-to-sprite summary stays concise while naming every supported
 source family:
 
-- English: `Turn existing, ComfyUI MiniMax H3, MiniMax Hailuo, or Jimeng video into sprite frames.`
-- Chinese: `将现有或由 ComfyUI MiniMax H3、海螺/MiniMax、即梦生成的视频转换为精灵帧。`
+- English: `Turn existing, MiniMax Hailuo, Jimeng, or optional ComfyUI MiniMax H3 video into sprite frames.`
+- Chinese: `将现有或由海螺/MiniMax、即梦及可选 ComfyUI MiniMax H3 生成的视频转换为精灵帧。`
 
 ## Chosen Approach
 
@@ -61,9 +64,13 @@ root.
 
 ## Installation Profiles
 
-The guide presents one required core profile and optional profiles. The Agent
-asks for the desired profiles in one consolidated confirmation before mutating
-the machine.
+The guide presents one required core profile and optional profiles. Core Skill
+installation never implies selection of an optional profile. For each optional
+profile, the Agent first asks whether to enable it. A declined profile is
+skipped without probing or changing its environment. An accepted profile enters
+a read-only inspection stage; only after showing the detected state, missing
+components, exact planned commands, destinations, and downloads may the Agent
+ask for installation confirmation.
 
 ### Core Skill Pack
 
@@ -76,11 +83,21 @@ the machine.
 
 ### Video: Local ComfyUI MiniMax H3
 
-- ComfyUI/comfy-cli and the first-party Comfy MCP connection.
-- The official `h3-prompt-writing` Skill.
-- A live ComfyUI preflight.
-- MiniMax H3 workflow, node, and model checks only after the user has accepted
-  applicable licenses and approved model download size/location.
+This profile is opt-in and uses this exact gate sequence:
+
+1. Ask whether the user wants to install and enable the local ComfyUI MiniMax H3
+   workflow. Do nothing for this profile when the answer is no.
+2. When the answer is yes, inspect Python, comfy-cli, the selected ComfyUI
+   workspace, ComfyUI running state, existing MCP configuration, Comfy MCP, and
+   the `h3-prompt-writing` Skill without installing or updating anything.
+3. Report installed versions/paths, missing components, conflicts, intended
+   installation directories, commands, and downloads.
+4. Ask for explicit approval of that installation plan.
+5. Install only approved missing components: ComfyUI/comfy-cli, the first-party
+   Comfy MCP connection, and the official `h3-prompt-writing` Skill.
+6. Run a live ComfyUI and Skill preflight. Workflow nodes and MiniMax H3 model
+   installation remain a further optional step gated by applicable license,
+   download size, and destination approval.
 
 ### Video: MiniMax Hailuo API
 
@@ -114,8 +131,10 @@ actions. The Agent can execute the remaining steps after those gates are met.
 ## Authority and Safety
 
 An explicit request such as "follow the Game Visual Forge installation guide"
-authorizes the Agent to perform the confirmed installation profiles. It does
-not authorize unrelated system changes.
+authorizes core Skill installation only. It does not authorize Comfy MCP,
+`h3-prompt-writing`, provider tools, models, nodes, or unrelated system changes.
+Each optional workflow requires its own enable choice, read-only inspection,
+displayed installation plan, and confirmation.
 
 Before execution the Agent shows:
 
@@ -126,11 +145,12 @@ Before execution the Agent shows:
 - external downloads, estimated sizes when available, and model/cache paths;
 - account, API-key, license, and potential-cost gates.
 
-The Agent may install packages and create Skill links after this confirmation.
-It must stop for administrator elevation, destructive replacement, license
-acceptance, account login, secrets, model downloads without a confirmed size and
-location, or any paid request. Credentials never enter repository files or
-command output.
+The Agent may install the core package and create Skill links after the core
+confirmation. It may install an optional profile only after that profile's
+separate inspection and confirmation. It must stop for administrator elevation,
+destructive replacement, license acceptance, account login, secrets, model
+downloads without a confirmed size and location, or any paid request.
+Credentials never enter repository files or command output.
 
 Ordinary Forge Skills retain their `Never install` rules. They may point to the
 Agent installation guide when a prerequisite is missing; they do not inherit
@@ -179,9 +199,10 @@ The Agent finishes by reporting, without secrets:
 Behavioral validation uses two Agent scenarios:
 
 1. Install the core pack plus ComfyUI H3 on a machine with nothing configured.
-   The Agent must ask for paths/profiles, stop at license or model gates, then
-   resume and validate without installing unselected providers.
+   The Agent must finish the core install without installing Comfy components,
+   ask whether to enable ComfyUI H3, inspect first, show the missing-component
+   plan, wait for confirmation, stop again at license or model gates, then resume
+   and validate without installing unselected providers.
 2. Install MiniMax and Jimeng API profiles. The Agent must explain that the APIs
    require credentials but no provider CLI, never submit a paid request, and
    leave CLI compatibility uninstalled without verified first-party sources.
-
