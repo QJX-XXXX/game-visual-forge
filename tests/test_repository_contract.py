@@ -32,6 +32,7 @@ class RepositoryContractTests(unittest.TestCase):
             "docs/superpowers/plans/2026-08-14-stable-audio-3-runtime-migration.md",
             "docs/superpowers/specs/2026-08-14-audio-one-shot-peak-normalization-design.md",
             "docs/superpowers/plans/2026-08-14-audio-one-shot-peak-normalization.md",
+            "docs/superpowers/specs/2026-08-22-agent-executable-installation-design.md",
         }
         for internal_path in (".superpowers", "docs/superpowers"):
             result = subprocess.run(["git", "ls-files", internal_path], cwd=ROOT, capture_output=True, text=True, encoding="utf-8", check=False)
@@ -79,16 +80,18 @@ class RepositoryContractTests(unittest.TestCase):
         for forbidden in ("stable-audio", "torch", "torchaudio", "ffmpeg", "huggingface"):
             self.assertNotIn(forbidden, base)
 
-    def test_install_guides_are_manual_and_repo_local(self) -> None:
-        for agent in ("codex", "claude"):
-            guide = (ROOT / "install" / agent / "README.md").read_text(encoding="utf-8")
-            self.assertIn("copy", guide.lower())
-            self.assertIn("skills", guide.lower())
-            self.assertIn("does not install dependencies", guide.lower())
-            self.assertTrue("src/" in guide or "full repository" in guide.lower())
-            self.assertNotIn("copy each directory under `skills/`", guide.lower())
-            self.assertNotIn("curl |", guide.lower())
-            self.assertNotIn("invoke-webrequest", guide.lower())
+    def test_agent_core_install_guides_document_the_repository_contract(self) -> None:
+        required_skills = ("forge-2d-map", "forge-2d-sprite", "forge-text-audio", "forge-video-to-sprite")
+        shared_fragments = (".agents/skills", "src/", "Python 3.11", "FFmpeg", "FFprobe")
+        english = (ROOT / "install" / "agent" / "README.md").read_text(encoding="utf-8")
+        chinese = (ROOT / "install" / "agent" / "README.zh-CN.md").read_text(encoding="utf-8")
+        for text in (english, chinese):
+            for skill_name in required_skills:
+                self.assertIn(skill_name, text, skill_name)
+            for fragment in shared_fragments:
+                self.assertIn(fragment, text, fragment)
+        self.assertIn("does not install optional workflows", english)
+        self.assertIn("不会安装可选工作流", chinese)
 
     def test_stable_audio_install_guides_are_bilingual_and_isolated(self) -> None:
         english = (ROOT / "install" / "stable-audio-3" / "README.md").read_text(encoding="utf-8")
