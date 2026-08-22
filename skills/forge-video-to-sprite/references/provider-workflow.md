@@ -3,6 +3,7 @@
 ## Contents
 
 - [Route and backend](#route-and-backend)
+- [Local ComfyUI MiniMax H3](#local-comfyui-minimax-h3)
 - [MiniMax Hailuo](#minimax-hailuo)
 - [Jimeng](#jimeng)
 - [Local subprocess protocol](#local-subprocess-protocol)
@@ -10,22 +11,106 @@
 
 ## Route and backend
 
-The supported generated-video providers are MiniMax Hailuo and Jimeng. Each has
-two explicit backends:
+Generated video has one local MCP route and two hosted-provider routes:
 
-| Provider | API backend | CLI compatibility backend |
+| Route | Backend | Execution boundary |
 | --- | --- | --- |
-| MiniMax | REST API with the selected China/global region and current model snapshot | official `mmx` CLI and its existing local authentication/account context |
-| Jimeng | Volcengine Jimeng Visual REST API with local AK/SK HMAC signing | official `dreamina` CLI and its existing OAuth/account-credit context |
+| `comfyui-h3` | `comfy-mcp` | Comfy MCP drives a local ComfyUI MiniMax H3 graph; Cloud or partner nodes inside the graph are a separate spend boundary |
+| `minimax` | `api` or `cli` | REST API with the selected region, or official `mmx` CLI with its existing local account context |
+| `jimeng` | `api` or `cli` | Jimeng Visual REST API with local AK/SK signing, or official `dreamina` CLI with its existing account context |
 
 API and CLI task IDs, credentials, billing, and recovery calls are not
 interchangeable. A capability or credential check only reports availability.
-The user must choose the provider and backend before preflight and the choice is
-stored in the attempt.
+The user must choose the route and backend before preflight; the choice is
+stored in the route decision or hosted-provider attempt.
 
 Install and authenticate these tools yourself according to their official
 instructions. This repository does not install, update, log in to, or copy any
-credential file.
+credential file during ordinary generation work. Only an explicit installation
+request should hand off to the repository [Agent guide](../../install/agent/README.md).
+
+## Local ComfyUI MiniMax H3
+
+This route is conditional on [Comfy MCP](https://docs.comfy.org/agent-tools/mcp#installation)
+and the [MiniMax H3 Prompt Writing Skill](https://github.com/MiniMax-AI/MiniMax-H3/blob/main/skills/README.md#installation).
+If either dependency is unavailable during ordinary generation work, report the
+appropriate official link and stop this route without installing anything.
+Existing-file and hosted-provider routes remain usable. Only when the user
+explicitly asks to install or enable this workflow should you hand off to the
+repository [Agent guide](../../install/agent/README.md); normal generation
+never activates installer authority.
+
+Use `source_preference: comfyui-h3`, `backend: comfy-mcp`, and no external
+`provider`. After `server_info` confirms a running local ComfyUI, write this
+availability artifact for the repository router:
+
+```json
+{"backends":{"comfyui-h3":["comfy-mcp"]}}
+```
+
+Do not infer availability from installed files alone. Use the live Comfy MCP
+capabilities to inspect the target, installed nodes and models, and validate the
+selected workflow before execution. Do not install a workflow, custom node, or
+model. If no runnable MiniMax H3 graph exists, report the missing capability and
+stop.
+
+### H3 prompt handoff
+
+Invoke the H3 Prompt Writing Skill rather than recreating its prompt rules.
+Map the request modes as follows:
+
+| Forge mode | H3 mode | Required media |
+| --- | --- | --- |
+| `t2v` | T2VA | none |
+| `i2v-first` | I2VA | first frame |
+| `i2v-last` | L2VA | last frame |
+| `i2v-first-tail` | FL2VA | first and last frames |
+| `reference-to-video` | Ref2VA | reference media |
+
+Preserve the exact H3 field names, section order, labels, and timing produced by
+that Skill. Bind the effective duration to 4–15 whole seconds. The sprite
+pipeline records whether the fetched video has audio but does not export audio.
+
+Persist the optimized prompt as UTF-8 `comfyui-h3-prompt.txt` before graph
+execution. Bind its SHA-256 together with the request fingerprint, reference
+paths, roles and hashes, workflow JSON path and hash, Comfy target, H3
+checkpoint/model, duration, resolution, and sanitized parameters in
+`comfyui-h3-generation.json`. The record has `route`, `backend`, `prompt`,
+`references`, `workflow`, `spend`, `run`, and `output` sections; initialize the
+last two before execution and update them with `prompt_id`, terminal status,
+selected video path, and video SHA-256. Do not store credentials, Base64 media,
+authorization headers, signed URLs, or raw service responses.
+
+### Spend boundary and recovery
+
+A graph made entirely of local nodes and local weights has no paid-submit gate.
+Before running any graph, inspect it for Comfy Cloud, partner-API, or other
+credit-consuming nodes. Show the provider or node, model, parameters, duration,
+resolution, billing context, estimate status, prompt hash, workflow hash, and
+request fingerprint. If the graph can consume credits or the boundary cannot be
+verified, obtain explicit confirmation bound to those values. Any change
+invalidates that confirmation.
+
+Run the validated graph once and persist the returned `prompt_id` immediately.
+Use the available Comfy MCP job/status or wait operation to recover it and the
+output-fetch operation to copy its completed output. If the run result is
+unknown, inspect the existing queue/history before considering another run;
+never rerun automatically. A non-terminal record for the same request,
+prompt, and workflow hashes must be recovered rather than replaced by a second
+run. If ComfyUI accepted the graph but no `prompt_id` was persisted, bind an
+existing queue/history item only when it can be identified uniquely; otherwise
+stop for user selection and keep the state uncertain.
+
+Record the final job status, fetched repository-relative video path, and video
+SHA-256 without storing transient output URLs. If a graph produces multiple
+complete videos, show their paths, media properties, and hashes and ask the user
+to select one. Persist that choice; never choose by list order, filename, or
+modification time.
+
+The workflow must yield one complete MP4, MOV, or WebM with a decodable video
+stream. Treat missing, partial, still-image-only, or ambiguous outputs as needing
+attention. Once fetched, keep the source immutable and continue through the
+standard ingest, timestamp sampling, cleanup, review, and validation stages.
 
 ## MiniMax Hailuo
 

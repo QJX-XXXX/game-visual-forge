@@ -1,31 +1,28 @@
 # Install Game Visual Forge Skills in Codex
 
-This repository ships four manual Codex Skills:
+Codex core installation is delegated to the shared
+[Agent guide](../agent/README.md).
 
-- `forge-2d-sprite`
+Use that guide to install only the four core Skills:
+
 - `forge-2d-map`
+- `forge-2d-sprite`
 - `forge-video-to-sprite`
 - `forge-text-audio`
 
-Manual install only:
+Codex discovery notes:
 
-- Supported workflow A: repository-local use. Keep this repository root intact and use its existing `skills/` and `src/` layout directly if your Codex workspace supports repository-local Skills.
-- Supported workflow B: copy the full repository layout into a new root that preserves the shared runtime. At minimum, copy all four directories under `skills/`, the repository `src/` tree, and the required package files such as `pyproject.toml`, `README.md`, and any referenced docs/examples you want to keep with the copied root.
-- Copying only an individual Skill directory is not executable by itself unless you also provide a matching `src/` tree and package layout that the launcher can resolve.
-- Restart the Codex task or session after the repository-local setup or full repository copy so Skill discovery reloads.
+- Prefer linked Skill directories under `$HOME/.agents/skills`.
+- Keep the full repository available with shared `src/`, `pyproject.toml`,
+  and the linked Skill directories; links are supported, isolated copies of one
+  Skill are not.
+- `agents/openai.yaml` is Codex discovery metadata only; executable behavior
+  still comes from each `SKILL.md` plus the shared Python package in `src/`.
 
-Safety limits:
+Authority boundary:
 
-- This install flow does not install dependencies, providers, FFmpeg, rembg, or credentials.
-- Stable Audio 3 is an optional, separately documented local runtime. See [the Stable Audio setup](../stable-audio-3/README.md); ordinary Skill installation never installs it.
-- It does not write into your profile automatically.
-- It does not create a Codex Plugin and does not require `.codex-plugin/`.
-- `agents/openai.yaml` is Codex discovery metadata only. The executable behavior still comes from each `SKILL.md` plus the shared Python package in `src/`.
-
-After installation, keep using repository-local commands for verification, for example:
-
-```powershell
-python -m unittest discover -s tests -v
-python skills/forge-2d-sprite/scripts/run.py --help
-python skills/forge-video-to-sprite/scripts/run.py video --help
-```
+- This Codex entrypoint authorizes the shared Agent guide's core install only.
+- Optional workflows are not part of the core install.
+- When optional ComfyUI MiniMax H3, MiniMax Hailuo, Jimeng, CLI compatibility,
+  or Stable Audio 3 setup is requested, follow the shared Agent guide's
+  separate enable, inspect, plan, and confirm flow.

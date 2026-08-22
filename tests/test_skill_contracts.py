@@ -51,14 +51,14 @@ SKILLS = {
         ),
     },
     "forge-video-to-sprite": {
-        "description": 'description: "Convert an existing or explicitly generated video into validated 2D Sprite animation with timestamp sampling, cleanup, stable alignment, quality review, and recoverable MiniMax Hailuo or Jimeng API/CLI workflows."',
+        "description": 'description: "Use when existing, MiniMax Hailuo, Jimeng, optional local ComfyUI MiniMax H3 video must become a validated 2D Sprite animation."',
         "required_body_fragments": (
             "MiniMax Hailuo",
             "Jimeng",
             "existing-file",
             "api",
             "cli",
-            "MiniMax-H3",
+            "ComfyUI MiniMax H3",
             "discovered-unprofiled",
             "submission_unknown",
             "video sprite plan",
@@ -68,6 +68,9 @@ SKILLS = {
             "presentation timestamp",
             "motion-difference",
             "submission_unknown",
+            "If a prerequisite is absent during ordinary asset work, report it and stop the",
+            "Only when the user explicitly asks to install",
+            "repository Agent installation guide",
         ),
     },
     "forge-text-audio": {

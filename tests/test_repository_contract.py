@@ -48,10 +48,36 @@ class RepositoryContractTests(unittest.TestCase):
                 self.assertTrue(tracked.issubset(allowed_internal), tracked)
 
     def test_readmes_expose_public_skill_and_install_entrypoints(self) -> None:
-        for readme_name in ("README.md", "README.zh-CN.md"):
-            text = (ROOT / readme_name).read_text(encoding="utf-8")
-            for required in ("forge-2d-map", "forge-2d-sprite", "forge-video-to-sprite", "forge-text-audio", "install/codex/README.md", "install/claude/README.md"):
-                self.assertIn(required, text, f"{readme_name} missing public entrypoint: {required}")
+        english = (ROOT / "README.md").read_text(encoding="utf-8")
+        chinese = (ROOT / "README.zh-CN.md").read_text(encoding="utf-8")
+        for required in (
+            "forge-2d-map",
+            "forge-2d-sprite",
+            "forge-video-to-sprite",
+            "forge-text-audio",
+            "install/agent/README.md",
+            "install/codex/README.md",
+            "install/claude/README.md",
+            "install/stable-audio-3/README.md",
+            "install/ Agent-executable and provider setup guides",
+        ):
+            self.assertIn(required, english, f"README.md missing public entrypoint: {required}")
+        for required in (
+            "forge-2d-map",
+            "forge-2d-sprite",
+            "forge-video-to-sprite",
+            "forge-text-audio",
+            "install/agent/README.zh-CN.md",
+            "install/codex/README.md",
+            "install/claude/README.md",
+            "install/stable-audio-3/README.zh-CN.md",
+            "install/ Agent 可执行与 Provider 配置指南",
+        ):
+            self.assertIn(required, chinese, f"README.zh-CN.md missing public entrypoint: {required}")
+        for route_term in ("existing", "MiniMax Hailuo", "Jimeng", "ComfyUI MiniMax H3"):
+            self.assertIn(route_term, english, f"README.md missing route term: {route_term}")
+        for route_term in ("现有", "海螺/MiniMax", "即梦", "ComfyUI MiniMax H3"):
+            self.assertIn(route_term, chinese, f"README.zh-CN.md missing route term: {route_term}")
 
     def test_readmes_stay_concise_and_do_not_duplicate_workflow(self) -> None:
         forbidden_fragments = ("map plan -> map route -> map ingest -> map process -> map validate", "### M0", "### M1", "### M2", "`map-quality-report.json`", "`Reports/unity-import-report.json`")

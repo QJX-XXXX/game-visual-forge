@@ -1,35 +1,28 @@
 # Install Game Visual Forge Skills in Claude
 
-This repository ships four manual Skills:
+Claude core installation is delegated to the shared
+[Agent guide](../agent/README.md).
 
-- `forge-2d-sprite`
+Use that guide to install only the four core Skills:
+
 - `forge-2d-map`
+- `forge-2d-sprite`
 - `forge-video-to-sprite`
 - `forge-text-audio`
 
-Manual install only:
+Claude discovery notes:
 
-- Supported workflow A: repository-local use. Keep this repository root intact and use its existing `skills/` and `src/` layout directly if your Claude setup supports repository-local Skills.
-- Supported workflow B: copy the full repository layout into a new root that preserves the shared runtime. At minimum, copy all four directories under `skills/`, the repository `src/` tree, and the required package files such as `pyproject.toml`, `README.md`, and any referenced docs/examples you want to keep with the copied root.
-- Copying only an individual Skill directory is not executable by itself unless you also provide a matching `src/` tree and package layout that the launcher can resolve.
-- Restart the Claude session or task after the repository-local setup or full repository copy so Skill discovery reloads.
+- `SKILL.md` remains the authoritative instruction file for Claude.
+- `agents/openai.yaml` remains in the repository for Codex compatibility and
+  should stay alongside the Skill package.
+- Prefer `$HOME/.agents/skills` when the current Claude environment supports
+  it; otherwise use the current Claude-supported Skill discovery directory while
+  preserving links back to the intact repository root with shared `src/`.
 
-Authority and compatibility notes:
+Authority boundary:
 
-- `SKILL.md` is the authoritative instruction file for Claude.
-- `agents/openai.yaml` is ignored by Claude. It may remain in a copied full repository for Codex-side metadata compatibility, but Claude does not use it to execute the Skill.
-
-Safety limits:
-
-- This install flow does not install dependencies, providers, FFmpeg, rembg, or credentials.
-- Stable Audio 3 is an optional, separately documented local runtime. See [the Stable Audio setup](../stable-audio-3/README.md); ordinary Skill installation never installs it.
-- It does not write into your profile automatically.
-- It does not require Codex-specific metadata for Claude to read the Skill instructions.
-
-After installation, verify from the repository with commands such as:
-
-```powershell
-python -m unittest discover -s tests -v
-python skills/forge-video-to-sprite/scripts/run.py --help
-python skills/forge-video-to-sprite/scripts/run.py video --help
-```
+- This Claude entrypoint authorizes the shared Agent guide's core install only.
+- Optional workflows are not part of the core install.
+- When optional ComfyUI MiniMax H3, MiniMax Hailuo, Jimeng, CLI compatibility,
+  or Stable Audio 3 setup is requested, follow the shared Agent guide's
+  separate enable, inspect, plan, and confirm flow.

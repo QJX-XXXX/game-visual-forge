@@ -11,7 +11,7 @@ Game Visual Forge 是一个仓库内使用的四个 Codex Skills 集合，覆盖
 | --- | --- | --- |
 | [`forge-2d-map`](skills/forge-2d-map/SKILL.md) | 可行走的 2D 地图、Tilemap、地形、道具、碰撞和 Unity 交付 | 地图包、预览、放置数据、质量证据 |
 | [`forge-2d-sprite`](skills/forge-2d-sprite/SKILL.md) | 角色、生物、NPC、道具、特效和动画图集 | 透明精灵图集、帧文件、GIF 预览、元数据 |
-| [`forge-video-to-sprite`](skills/forge-video-to-sprite/SKILL.md) | 将选定视频或生成的动作视频转换为精灵帧 | 抽帧、精灵条、GIF 预览、元数据 |
+| [`forge-video-to-sprite`](skills/forge-video-to-sprite/SKILL.md) | 将现有或由海螺/MiniMax、即梦及可选 ComfyUI MiniMax H3 生成的视频转换为精灵帧。 | 抽帧、精灵条、GIF 预览、元数据 |
 | [`forge-text-audio`](skills/forge-text-audio/SKILL.md) | 明确请求的 SFX、UI 音效、动作音效和环境音 | 审核后的 44,100 Hz 16-bit PCM WAV 与 Unity AudioClip 清单 |
 
 ## 提供的能力
@@ -23,7 +23,7 @@ Game Visual Forge 是一个仓库内使用的四个 Codex Skills 集合，覆盖
 - 原生图集会在验证前按声明的网格、Tile 尺寸、边距和间距标准化；这只统一图集几何，不修复画面、接缝或地图拓扑。
 - 对付费或外部操作提供 Provider、费用和提交确认门槛。
 - `forge-video-to-sprite` 使用 FFmpeg/FFprobe、本地时间戳抽帧、rembg/Chroma 清理、稳定对齐、图集、GIF 预览和运动质量证据处理现有视频。
-- 视频生成支持明确选择 MiniMax Hailuo 或即梦，并支持 API 或官方 CLI 兼容后端；工具和凭据由用户手动配置，不会自动切换。
+- 视频生成支持明确选择现有、海螺/MiniMax、即梦或可选 ComfyUI MiniMax H3 路线；工具和凭据由用户手动配置，不会自动切换。
 - `forge-text-audio` 使用隔离的官方 Stable Audio 3 `small-sfx` 本地运行时，支持 text-to-audio、redraw、inpaint 和 continue，只交付 WAV，并要求最终试听审核。
 
 ## 展示
@@ -85,9 +85,17 @@ TrackType: SFX, a clean professional studio Foley recording of one natural strik
 
 ## 安装
 
-- [Codex 安装指南](install/codex/README.md)
-- [Claude 安装指南](install/claude/README.md)
+- install/ Agent 可执行与 Provider 配置指南
+- [共享 Agent 指南](install/agent/README.zh-CN.md)
+- [共享 Agent 指南英文版](install/agent/README.md)
+- [Codex 入口](install/codex/README.md)
+- [Claude 入口](install/claude/README.md)
 - [Stable Audio 3 安装指南](install/stable-audio-3/README.zh-CN.md)
+- [Comfy MCP 官方安装说明](https://docs.comfy.org/agent-tools/mcp#installation)
+- [MiniMax H3 Prompt Writing Skill 官方安装说明](https://github.com/MiniMax-AI/MiniMax-H3/blob/main/skills/README.md#installation)
+
+共享 Agent 指南只安装四个核心 Forge Skills；核心流程不会安装可选工作流。
+当用户请求可选工作流时，Agent 会先询问是否启用，先检查，再在安装缺失组件前二次确认。
 
 安装指南是手动且仓库本地的，不会自动安装 Provider、FFmpeg、凭据、模型权重或依赖。
 
@@ -112,12 +120,17 @@ TrackType: SFX, a clean professional studio Foley recording of one natural strik
 ```
 
 ```text
+使用 forge-video-to-sprite 和本地 ComfyUI MiniMax H3，从我的首帧图优化 I2VA
+提示词，然后导出对齐的 16 帧与 32 帧精灵图集。
+```
+
+```text
 使用 forge-text-audio 制作三组干燥的铁剑击中钢盾音效，不要音乐或人声，审核候选并准备 Unity AudioClip。
 ```
 
-本地视频处理需要手动安装 FFmpeg 和 FFprobe。MiniMax API 使用
-`MINIMAX_API_KEY`；即梦 API 使用 `JIMENG_ACCESS_KEY` 和 `JIMENG_SECRET_KEY`；
-官方 `mmx` 与 `dreamina` CLI 是可选项。
+本地视频处理需要手动安装 FFmpeg 和 FFprobe。海螺/MiniMax API 使用
+`MINIMAX_API_KEY`；即梦 API 使用 `JIMENG_ACCESS_KEY` 和
+`JIMENG_SECRET_KEY`；官方 `mmx` 与 `dreamina` CLI 是可选项。
 
 ## Unity 集成
 

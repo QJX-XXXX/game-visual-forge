@@ -12,7 +12,7 @@ video-to-sprite animation, and reviewed sound effects.
 | --- | --- | --- |
 | [`forge-2d-map`](skills/forge-2d-map/SKILL.md) | Playable 2D maps, Tilemaps, terrain, props, collision, and Unity handoff | Map bundle, preview, placement data, quality evidence |
 | [`forge-2d-sprite`](skills/forge-2d-sprite/SKILL.md) | Characters, creatures, NPCs, props, effects, and animation sheets | Clean sprite sheets, frames, GIF previews, metadata |
-| [`forge-video-to-sprite`](skills/forge-video-to-sprite/SKILL.md) | Turning a selected video or generated motion clip into dense sprite frames | Extracted frames, sprite strips, GIF previews, metadata |
+| [`forge-video-to-sprite`](skills/forge-video-to-sprite/SKILL.md) | Turn existing, MiniMax Hailuo, Jimeng, or optional ComfyUI MiniMax H3 video into sprite frames. | Extracted frames, sprite strips, GIF previews, metadata |
 | [`forge-text-audio`](skills/forge-text-audio/SKILL.md) | Explicitly requested SFX, UI sounds, action sounds, and ambience | Reviewed 44,100 Hz 16-bit PCM WAV and Unity AudioClip manifest |
 
 ## What it provides
@@ -24,7 +24,7 @@ video-to-sprite animation, and reviewed sound effects.
 - Native map atlases are normalized to the declared grid, tile size, margins, and spacing before validation. This standardizes atlas geometry only; it does not repair artwork, seams, or map topology.
 - Provider, cost, and submission confirmation gates for paid or external work.
 - `forge-video-to-sprite` processes existing video locally with FFmpeg/FFprobe, timestamp sampling, rembg/Chroma cleanup, stable alignment, strips, sheets, GIF previews, and motion-quality evidence.
-- Generated video routes support explicit MiniMax Hailuo or Jimeng selection with either their API or official CLI compatibility backend; tools and credentials are configured manually and never switched automatically.
+- Generated video routes support explicit existing, MiniMax Hailuo, Jimeng, or optional ComfyUI MiniMax H3 selection; tools and credentials are configured manually and never switched automatically.
 - `forge-text-audio` uses the official local Stable Audio 3 `small-sfx` model through the isolated `stable-audio-3` runtime. It supports text-to-audio, redraw, inpaint, and continue modes, with WAV-only delivery and a final listening review.
 
 ## Showcase
@@ -87,9 +87,19 @@ Implementation and validation: generated locally with Stable Audio 3 Small-SFX, 
 
 ## Install
 
-- [Codex installation](install/codex/README.md)
-- [Claude installation](install/claude/README.md)
+- install/ Agent-executable and provider setup guides
+- [Shared Agent guide](install/agent/README.md)
+- [Shared Agent guide, Chinese](install/agent/README.zh-CN.md)
+- [Codex entrypoint](install/codex/README.md)
+- [Claude entrypoint](install/claude/README.md)
 - [Stable Audio 3 setup](install/stable-audio-3/README.md)
+- [Comfy MCP official installation](https://docs.comfy.org/agent-tools/mcp#installation)
+- [MiniMax H3 Prompt Writing Skill official installation](https://github.com/MiniMax-AI/MiniMax-H3/blob/main/skills/README.md#installation)
+
+The shared Agent guide installs the four core Forge Skills only. Optional
+workflows are not installed by core. When an optional workflow is requested,
+the Agent asks whether to enable it, inspects first, then asks again before
+installing missing components.
 
 The install guides are manual and repository-local. They do not install
 providers, FFmpeg, credentials, model weights, or dependencies automatically.
@@ -118,12 +128,17 @@ Use forge-video-to-sprite with my existing MP4 and export a feet-aligned
 ```
 
 ```text
+Use forge-video-to-sprite with local ComfyUI MiniMax H3, optimize an I2VA
+prompt from my first frame, then export aligned 16- and 32-frame sprite sheets.
+```
+
+```text
 Use forge-text-audio to create three dry iron-sword impacts against a steel
 shield, no music or voice, review the candidates, and prepare a Unity AudioClip.
 ```
 
-For local video processing, install FFmpeg and FFprobe yourself. MiniMax API
-uses `MINIMAX_API_KEY`; Jimeng API uses `JIMENG_ACCESS_KEY` and
+For local video processing, install FFmpeg and FFprobe yourself. MiniMax Hailuo
+API uses `MINIMAX_API_KEY`; Jimeng API uses `JIMENG_ACCESS_KEY` and
 `JIMENG_SECRET_KEY`. The official `mmx` and `dreamina` CLIs are optional.
 
 ## Unity integration

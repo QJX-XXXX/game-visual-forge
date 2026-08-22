@@ -1,4 +1,4 @@
 interface:
   display_name: "Forge Video to Sprite"
-  short_description: "Convert video into validated 2D Sprite animation"
-  default_prompt: "Use $forge-video-to-sprite to convert or generate a video and deliver a validated Sprite animation."
+  short_description: "Convert existing, Hailuo, Jimeng, or optional ComfyUI H3 video"
+  default_prompt: "Use $forge-video-to-sprite to obtain a video from my selected existing, Hailuo, Jimeng, or optional ComfyUI H3 source and deliver a validated Sprite animation."
