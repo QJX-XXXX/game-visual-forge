@@ -191,6 +191,22 @@ def build_video_execution_plan(request: VideoSpriteRequest, *, now: str | None =
             ("final-motion-review", "agent", True),
             ("validate-video-artifacts", "local-runtime", False),
         )
+    elif request.source_preference is VideoSourcePreference.COMFYUI_H3:
+        actions = (
+            ("creative-delivery-confirmation", "agent", True),
+            ("route-video-source", "agent", False),
+            ("write-minimax-h3-prompt", "agent", False),
+            ("preflight-comfy-mcp", "comfy-mcp", False),
+            ("validate-comfyui-h3-workflow", "comfy-mcp", False),
+            ("inspect-comfyui-spend-boundary", "agent", False),
+            ("run-comfyui-h3-workflow", "comfy-mcp", False),
+            ("recover-comfyui-job", "comfy-mcp", False),
+            ("fetch-comfyui-video", "comfy-mcp", False),
+            ("ingest-local-video", "local-runtime", False),
+            ("process-local-video-sprite", "local-runtime", False),
+            ("final-motion-review", "agent", True),
+            ("validate-video-artifacts", "local-runtime", False),
+        )
     else:
         actions = (
             ("creative-delivery-confirmation", "agent", True),

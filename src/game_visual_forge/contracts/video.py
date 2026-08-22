@@ -61,6 +61,7 @@ def _strings(value: Any, field: str) -> tuple[str, ...]:
 
 class VideoSourcePreference(StrEnum):
     EXISTING_FILE = "existing-file"
+    COMFYUI_H3 = "comfyui-h3"
     MINIMAX = "minimax"
     JIMENG = "jimeng"
 
@@ -68,6 +69,7 @@ class VideoSourcePreference(StrEnum):
 class VideoGenerationMode(StrEnum):
     T2V = "t2v"
     I2V_FIRST = "i2v-first"
+    I2V_LAST = "i2v-last"
     I2V_FIRST_TAIL = "i2v-first-tail"
     REFERENCE_TO_VIDEO = "reference-to-video"
 
@@ -191,6 +193,8 @@ class VideoSpriteRequest:
     def _validate_references(self) -> None:
         if self.generation_mode is VideoGenerationMode.I2V_FIRST and self.first_frame_path is None:
             raise ValueError("first_frame_path is required for i2v-first")
+        if self.generation_mode is VideoGenerationMode.I2V_LAST and self.last_frame_path is None:
+            raise ValueError("last_frame_path is required for i2v-last")
         if self.generation_mode is VideoGenerationMode.I2V_FIRST_TAIL and (self.first_frame_path is None or self.last_frame_path is None):
             raise ValueError("first_frame_path and last_frame_path are required for i2v-first-tail")
         if self.generation_mode is VideoGenerationMode.REFERENCE_TO_VIDEO and not self.reference_paths:

@@ -38,6 +38,27 @@ class VideoRoutingTests(unittest.TestCase):
         self.assertTrue(decision.requires_paid_confirmation)
         self.assertEqual(decision.backend, VideoProviderBackend.API)
 
+    def test_explicit_local_comfyui_h3_route_is_ready_without_paid_confirmation(self) -> None:
+        request = VideoSpriteRequest.from_dict(
+            valid_request(
+                source_preference="comfyui-h3",
+                existing_video_path=None,
+                backend="comfy-mcp",
+            )
+        )
+        try:
+            decision = route_video(
+                request,
+                available_backends={"comfyui-h3": ("comfy-mcp",)},
+            )
+        except ValueError as error:
+            self.fail(f"the local Comfy MCP route should be supported: {error}")
+        self.assertFalse(decision.requires_user_selection)
+        self.assertFalse(decision.requires_paid_confirmation)
+        self.assertIsNone(decision.provider)
+        self.assertEqual(decision.backend, "comfy-mcp")
+        self.assertEqual(decision.reason, "explicit-local-comfyui-h3-route")
+
 
 if __name__ == "__main__":
     unittest.main()

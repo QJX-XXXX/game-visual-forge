@@ -50,6 +50,19 @@ class VideoContractTests(unittest.TestCase):
         self.assertEqual(request.background_mode, VideoBackgroundMode.REMBG)
         self.assertEqual(request.source_preference, VideoSourcePreference.EXISTING_FILE)
 
+    def test_request_accepts_comfyui_h3_as_a_video_source(self) -> None:
+        try:
+            request = VideoSpriteRequest.from_dict(
+                valid_request(
+                    source_preference="comfyui-h3",
+                    existing_video_path=None,
+                    backend="comfy-mcp",
+                )
+            )
+        except ValueError as error:
+            self.fail(f"comfyui-h3 should be a supported video source: {error}")
+        self.assertEqual(request.source_preference.value, "comfyui-h3")
+
     def test_default_density_is_24(self) -> None:
         request = VideoSpriteRequest.from_dict(valid_request(frame_counts=None))
         self.assertEqual(request.frame_counts, (24,))
@@ -61,6 +74,20 @@ class VideoContractTests(unittest.TestCase):
     def test_non_t2v_requires_reference_for_image_to_video(self) -> None:
         with self.assertRaisesRegex(ValueError, "first_frame_path"):
             VideoSpriteRequest.from_dict(valid_request(generation_mode="i2v-first"))
+
+    def test_h3_last_frame_mode_requires_and_accepts_a_last_frame(self) -> None:
+        with self.assertRaisesRegex(ValueError, "last_frame_path"):
+            VideoSpriteRequest.from_dict(valid_request(generation_mode="i2v-last"))
+        try:
+            request = VideoSpriteRequest.from_dict(
+                valid_request(
+                    generation_mode="i2v-last",
+                    last_frame_path="inputs/walk-last.png",
+                )
+            )
+        except ValueError as error:
+            self.fail(f"i2v-last should be supported when a last frame is supplied: {error}")
+        self.assertEqual(request.generation_mode.value, "i2v-last")
 
     def test_contract_paths_reject_absolute_and_parent_segments(self) -> None:
         for value in ("C:/secret/video.mp4", "../video.mp4", "/tmp/video.mp4"):
