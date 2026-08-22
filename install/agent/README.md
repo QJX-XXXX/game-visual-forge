@@ -69,3 +69,47 @@ Core flow:
 7. Run launcher `--help` with the chosen Python interpreter to confirm the shared runtime resolves from `src/`.
 
 Core installation complete; no optional workflow was installed.
+
+## Optional workflows
+
+Core installation grants no authority for the profiles below. Handle one profile at a time. Ask whether to enable it; when declined, skip it without probing or changing its environment.
+
+### ComfyUI MiniMax H3
+
+#### Ask whether to enable ComfyUI MiniMax H3
+
+Ask whether to enable the optional local ComfyUI MiniMax H3 workflow after the core install is complete. If the user declines, stop this profile immediately without checking `comfy-cli`, `Comfy MCP`, `h3-prompt-writing`, models, nodes, or credentials.
+
+#### Inspect without installing
+
+Inspect read-only only after the user accepts this profile. Check the selected Python interpreter, `comfy --version`, the selected ComfyUI workspace and whether that ComfyUI instance is running, the current MCP configuration, whether the `comfy-mcp` command is already available, and whether `$HOME/.agents/skills/h3-prompt-writing/SKILL.md` already exists. Do not create links, install packages, or download anything in this inspection step.
+
+#### Show the missing-component plan
+
+Show installed versions and paths, any conflicts, every missing component, the exact commands you would run, every destination path, and every download that would be required for `comfy-cli`, `Comfy MCP`, and `h3-prompt-writing`. Include the current official [Comfy MCP installation](https://docs.comfy.org/agent-tools/mcp#installation) and [MiniMax H3 Skill installation](https://github.com/MiniMax-AI/MiniMax-H3/blob/main/skills/README.md#installation) references. State clearly that this step is still a plan and that nothing has been installed yet.
+
+#### Confirm the optional installation
+
+Ask for a second explicit confirmation after presenting the missing-component plan. Do not continue if the user does not approve the exact commands, destinations, and downloads.
+
+#### Install only approved missing components
+
+Install only the approved missing pieces for `comfy-cli`, `Comfy MCP`, and `h3-prompt-writing`. Do not install H3 workflow nodes or MiniMax H3 model weights in this step. Validate the approved profile after installation by re-checking versions, paths, command availability, and the prompt-skill link target.
+
+Workflow nodes and MiniMax H3 model weights are a separate optional install. Show license, download size, destination, and exact node/model identifiers, then ask again. Do not download them from the Comfy MCP/H3 Skill confirmation alone.
+
+### MiniMax Hailuo API
+
+Ask whether to enable `MiniMax Hailuo API`. If declined, skip it without probing. If accepted, inspect only whether `MINIMAX_API_KEY` is present, without printing the value and without installing any CLI. Show the no-charge preflight or model-discovery commands and the official API reference already used by `provider-workflow.md`, then ask for confirmation before running only those no-charge checks. Never submit a paid or generative request during installation.
+
+### Jimeng API
+
+Ask whether to enable `Jimeng API`. If declined, skip it without probing. If accepted, inspect only whether `JIMENG_ACCESS_KEY` and `JIMENG_SECRET_KEY` are present, without printing the values and without installing any CLI. Show the repository's no-charge preflight commands, ask for confirmation before running them, and never submit a generation request during installation.
+
+### CLI compatibility
+
+Evaluate `mmx` and `dreamina` only when the user explicitly asks for CLI compatibility. Never install either CLI unless a verified first-party source and the required video commands are both established at installation time. Otherwise report `CLI auto-install unavailable` and offer the corresponding API route without switching automatically.
+
+### Stable Audio 3
+
+Ask whether to enable `Stable Audio 3`. If declined, skip it without probing or changing its environment. If accepted, delegate to `../stable-audio-3/README.md`, preserve its directory-choice gate, preserve personal license/model-access confirmation, and preserve any required download approval before executing its installation steps.

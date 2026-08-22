@@ -7,6 +7,10 @@ from tests._bootstrap import ROOT
 
 
 class RepositoryContractTests(unittest.TestCase):
+    def assert_ordered_fragments(self, text: str, fragments: tuple[str, ...]) -> None:
+        positions = tuple(text.index(fragment) for fragment in fragments)
+        self.assertEqual(positions, tuple(sorted(positions)))
+
     def test_readmes_have_reciprocal_language_links(self) -> None:
         english = (ROOT / "README.md").read_text(encoding="utf-8")
         chinese = (ROOT / "README.zh-CN.md").read_text(encoding="utf-8")
@@ -92,6 +96,27 @@ class RepositoryContractTests(unittest.TestCase):
                 self.assertIn(fragment, text, fragment)
         self.assertIn("does not install optional workflows", english)
         self.assertIn("不会安装可选工作流", chinese)
+
+    def test_agent_guide_gates_optional_comfyui_h3_installation(self) -> None:
+        english = (ROOT / "install" / "agent" / "README.md").read_text(encoding="utf-8")
+        chinese = (ROOT / "install" / "agent" / "README.zh-CN.md").read_text(encoding="utf-8")
+        self.assert_ordered_fragments(english, (
+            "Ask whether to enable ComfyUI MiniMax H3",
+            "Inspect without installing",
+            "Show the missing-component plan",
+            "Confirm the optional installation",
+            "Install only approved missing components",
+        ))
+        self.assert_ordered_fragments(chinese, (
+            "询问是否启用 ComfyUI MiniMax H3",
+            "只读检查，不执行安装",
+            "展示缺失组件计划",
+            "确认可选安装",
+            "只安装已批准的缺失组件",
+        ))
+        for text in (english, chinese):
+            for required in ("comfy-cli", "Comfy MCP", "h3-prompt-writing", "MiniMax Hailuo API", "Jimeng API", "mmx", "dreamina", "Stable Audio 3"):
+                self.assertIn(required, text)
 
     def test_stable_audio_install_guides_are_bilingual_and_isolated(self) -> None:
         english = (ROOT / "install" / "stable-audio-3" / "README.md").read_text(encoding="utf-8")
