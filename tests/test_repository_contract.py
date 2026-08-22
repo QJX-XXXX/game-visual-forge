@@ -87,6 +87,28 @@ class RepositoryContractTests(unittest.TestCase):
             for forbidden in forbidden_fragments:
                 self.assertNotIn(forbidden, text, f"{readme_name} duplicates internal workflow: {forbidden}")
 
+    def test_readmes_align_install_messaging_and_layout(self) -> None:
+        english = (ROOT / "README.md").read_text(encoding="utf-8")
+        chinese = (ROOT / "README.zh-CN.md").read_text(encoding="utf-8")
+        normalized_english = " ".join(english.split())
+        normalized_chinese = " ".join(chinese.split())
+
+        self.assertIn("The shared Agent guide installs the four core Forge Skills only.", normalized_english)
+        self.assertIn("Optional workflows are opt-in.", normalized_english)
+        self.assertIn("inspects first", normalized_english)
+        self.assertIn("asks again before installing missing components", normalized_english)
+        self.assertNotIn("The install guides are manual and repository-local.", english)
+        self.assertIn("install/      Agent-executable and provider setup guides", english)
+        self.assertNotIn("install/      Manual setup guides", english)
+
+        self.assertIn("共享 Agent 指南只安装四个核心 Forge Skills。", normalized_chinese)
+        self.assertIn("可选工作流必须由用户主动选择启用。", normalized_chinese)
+        self.assertIn("先检查", normalized_chinese)
+        self.assertIn("二次确认", normalized_chinese)
+        self.assertNotIn("安装指南是手动且仓库本地的", chinese)
+        self.assertIn("install/      Agent 可执行与 Provider 配置指南", chinese)
+        self.assertNotIn("install/      手动安装指南", chinese)
+
     def test_readmes_explain_hd_cleanup_tools_and_installation(self) -> None:
         required = ("birefnet-general", 'python -m pip install -e ".[image]"', 'python -m pip install -e ".[background]"', 'python -m pip install "rembg[cpu]"', 'python -m pip install "rembg[gpu]"', 'python -m pip install -e ".[matting]"', "U2NET_HOME", "PyMatting", "CUDA", "CPU")
         for readme_name in ("README.md", "README.zh-CN.md"):

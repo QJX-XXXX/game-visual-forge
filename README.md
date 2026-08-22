@@ -97,12 +97,12 @@ Implementation and validation: generated locally with Stable Audio 3 Small-SFX, 
 - [MiniMax H3 Prompt Writing Skill official installation](https://github.com/MiniMax-AI/MiniMax-H3/blob/main/skills/README.md#installation)
 
 The shared Agent guide installs the four core Forge Skills only. Optional
-workflows are not installed by core. When an optional workflow is requested,
-the Agent asks whether to enable it, inspects first, then asks again before
-installing missing components.
+workflows are opt-in. The Agent asks whether to enable them, inspects first,
+then asks again before installing missing components.
 
-The install guides are manual and repository-local. They do not install
-providers, FFmpeg, credentials, model weights, or dependencies automatically.
+Provider setup stays separate from core Skill installation. Core installation
+does not auto-install providers, FFmpeg, credentials, model weights, or
+optional workflow dependencies.
 
 To delegate the optional audio runtime setup to an Agent, copy this request:
 
@@ -158,7 +158,7 @@ skills/       Codex Skill instructions and launchers
 src/          Shared contracts, routing, processing, and reports
 integrations/ Unity Tilemap and audio packages plus tests
 assets/       Small checked-in examples and showcase artifacts
-install/      Manual setup guides
+install/      Agent-executable and provider setup guides
 ```
 
 ## Development check
