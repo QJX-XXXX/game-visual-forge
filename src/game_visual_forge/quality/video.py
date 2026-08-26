@@ -104,6 +104,13 @@ def assess_video_outputs(repo_root: Path, request: VideoSpriteRequest, source: V
     metrics = calculate_temporal_metrics(frames) if frames else None
     temporal = QualityStatus.NEEDS_ATTENTION if metrics is not None and metrics.attention_reasons else QualityStatus.PASSED
     metric_dict = {} if metrics is None else {"frame_count": metrics.frame_count, "exact_duplicate_rate": metrics.exact_duplicate_rate, "near_duplicate_rate": metrics.near_duplicate_rate, "motion_coverage": metrics.motion_coverage, "static_intervals": list(metrics.static_intervals), "subject_bounds_variation": metrics.subject_bounds_variation, "anchor_jitter": metrics.anchor_jitter, "first_last_loop_difference": metrics.first_last_loop_difference, "alpha_coverage": metrics.alpha_coverage, "clipping_risk": metrics.clipping_risk, "frame_flicker": metrics.frame_flicker, "attention_reasons": list(metrics.attention_reasons)}
+    metric_dict["layout_mode"] = request.layout_mode.value
+    try:
+        from game_visual_forge.contracts.serialization import load_json
+        timing = load_json(root / processing.timing_path)
+        metric_dict["reference_bounds"] = timing.get("reference_bounds")
+    except (OSError, ValueError, KeyError):
+        metric_dict["reference_bounds"] = None
     return VideoQualityReport(1, request.asset_id, source.request_fingerprint, deterministic, temporal, QualityStatus.NEEDS_VISUAL_REVIEW, tuple(checks), metric_dict, {})
 
 

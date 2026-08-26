@@ -11,6 +11,7 @@ from game_visual_forge.jobs import fingerprint_request, load_job, save_job, tran
 from game_visual_forge.processing.video_frames import build_sampling_plan, extract_highest_density
 from game_visual_forge.processing.video_probe import discover_toolchain, ingest_video
 from game_visual_forge.processing.video_sprite import process_video_sprite
+from game_visual_forge.processing.comfy_h3_workflow import load_and_inspect_comfy_h3_workflow
 from game_visual_forge.processing.video_review import calculate_temporal_metrics, create_anchor_diagnostic, create_contact_sheet, create_motion_difference, record_video_motion_review
 from game_visual_forge.providers.cli import run_provider_command
 from game_visual_forge.providers.video import download_video_attempt, query_video_attempt, submit_video_attempt
@@ -110,6 +111,12 @@ def run_video_process(request_path: Path, source_path: Path, raw_frames_path: Pa
     return {"schema_version": 1, "status": state.status.value, "processing_result_path": str(result_path)}
 
 
+def run_video_inspect_h3(workflow_path: Path, out_path: Path) -> dict[str, Any]:
+    report = load_and_inspect_comfy_h3_workflow(workflow_path)
+    dump_json(out_path, report.to_dict())
+    return {"schema_version": 1, "status": "inspected", "ok": report.ok, "report_path": str(out_path)}
+
+
 def run_video_assess(request_path: Path, source_path: Path, processing_path: Path, repo_root: Path, out_path: Path) -> dict[str, Any]:
     request, _ = _request(request_path)
     source = VideoSourceRecord.from_dict(load_json(source_path))
@@ -136,7 +143,10 @@ def run_video_record_review(request_path: Path, source_path: Path, processing_pa
     evidence_dir = repo_root / processing.staging_dir / "delivery" / "previews"
     contact = create_contact_sheet(tuple(frames), timestamps or tuple(float(index) for index in range(len(frames))), evidence_dir / "contact-sheet.png")
     motion = create_motion_difference(tuple(frames), evidence_dir / "motion-difference.png")
-    anchor = create_anchor_diagnostic(tuple(frames), evidence_dir / "anchor-diagnostic.png")
+    timing = load_json(repo_root / processing.timing_path)
+    raw_reference_bounds = timing.get("reference_bounds")
+    reference_bounds = None if not isinstance(raw_reference_bounds, list) or len(raw_reference_bounds) != 4 else tuple(int(item) for item in raw_reference_bounds)
+    anchor = create_anchor_diagnostic(tuple(frames), evidence_dir / "anchor-diagnostic.png", reference_bounds=reference_bounds)
     preview = repo_root / processing.artifacts[f"gif:{highest}"]
     checks = {str(key): bool(value) for key, value in load_json(checks_path).items()}
     review = record_video_motion_review(repo_root, source.request_fingerprint, source.sha256, quality_path, {"contact-sheet": contact, "motion-difference": motion, "anchor-diagnostic": anchor, "preview": preview}, checks, all(checks.values()), reviewed_at)

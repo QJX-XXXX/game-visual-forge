@@ -10,6 +10,7 @@ from game_visual_forge.contracts.video import (
     VideoAnchor,
     VideoBackgroundMode,
     VideoFrameRecord,
+    VideoLayoutMode,
     VideoOutput,
     VideoProcessingMode,
     VideoProcessingResult,
@@ -50,8 +51,16 @@ def _delivery_frames(frames: tuple[Any, ...], request: VideoSpriteRequest) -> tu
     if any(bound is None for bound in bounds):
         raise ValueError("video frame has no visible content")
     typed_bounds = tuple(bound for bound in bounds if bound is not None)
-    max_width = max(right - left for left, _, right, _ in typed_bounds)
-    max_height = max(bottom - top for _, top, _, bottom in typed_bounds)
+    if request.layout_mode is VideoLayoutMode.REFERENCE_LOCKED:
+        if len({frame.size for frame in frames}) != 1:
+            raise ValueError("reference-locked frames must have the same dimensions")
+        reference_bounds = typed_bounds[0]
+        max_width = reference_bounds[2] - reference_bounds[0]
+        max_height = reference_bounds[3] - reference_bounds[1]
+    else:
+        reference_bounds = None
+        max_width = max(right - left for left, _, right, _ in typed_bounds)
+        max_height = max(bottom - top for _, top, _, bottom in typed_bounds)
     canvas_width = request.canvas_width or max_width
     canvas_height = request.canvas_height or max_height
     scale = min(canvas_width * request.fit_scale / max_width, canvas_height * request.fit_scale / max_height)
@@ -59,17 +68,32 @@ def _delivery_frames(frames: tuple[Any, ...], request: VideoSpriteRequest) -> tu
     resampling = Image.Resampling.NEAREST if request.processing_mode is VideoProcessingMode.PIXEL else Image.Resampling.LANCZOS
     result = []
     for frame, (left, top, right, bottom) in zip(frames, typed_bounds, strict=True):
-        cropped = frame.convert("RGBA").crop((left, top, right, bottom))
-        width = max(1, round(cropped.width * scale))
-        height = max(1, round(cropped.height * scale))
-        scaled = resize_rgba_alpha_safe(cropped, (width, height), resample=resampling)
+        if request.layout_mode is VideoLayoutMode.REFERENCE_LOCKED:
+            cropped = frame.convert("RGBA")
+            width = max(1, round(cropped.width * scale))
+            height = max(1, round(cropped.height * scale))
+            scaled = resize_rgba_alpha_safe(cropped, (width, height), resample=resampling)
+            ref_left, ref_top, ref_right, ref_bottom = reference_bounds
+            reference_center_x = ((ref_left + ref_right) / 2) * scale
+            reference_bottom_y = ref_bottom * scale
+        else:
+            cropped = frame.convert("RGBA").crop((left, top, right, bottom))
+            width = max(1, round(cropped.width * scale))
+            height = max(1, round(cropped.height * scale))
+            scaled = resize_rgba_alpha_safe(cropped, (width, height), resample=resampling)
         if request.background_mode is VideoBackgroundMode.CHROMA:
             scaled = remove_chroma(scaled, request.chroma_color or "#ff00ff", tolerance=VIDEO_CHROMA_TOLERANCE)
         canvas = Image.new("RGBA", (canvas_width, canvas_height), (0, 0, 0, 0))
-        x = (canvas_width - width) // 2
+        if request.layout_mode is VideoLayoutMode.REFERENCE_LOCKED:
+            x = round(canvas_width / 2 - reference_center_x)
+        else:
+            x = (canvas_width - width) // 2
         if request.anchor is VideoAnchor.FEET:
             bottom_margin = round(canvas_height * (1 - request.fit_scale) / 2)
-            y = canvas_height - bottom_margin - height
+            if request.layout_mode is VideoLayoutMode.REFERENCE_LOCKED:
+                y = round(canvas_height - bottom_margin - reference_bottom_y)
+            else:
+                y = canvas_height - bottom_margin - height
         else:
             y = (canvas_height - height) // 2
         canvas.alpha_composite(scaled, (x, y))
@@ -152,13 +176,36 @@ def process_video_sprite(
         if attention and "background-removal-failed" not in reasons:
             reasons.append("background-removal-failed")
         try:
-            cleaned.append(trim_alpha(background))
+            if request.layout_mode is VideoLayoutMode.REFERENCE_LOCKED:
+                cleaned.append(background.convert("RGBA"))
+            else:
+                cleaned.append(trim_alpha(background))
         except Exception:
             needs_attention = True
             reasons.append("empty-clean-frame")
     if not cleaned:
         return VideoProcessingResult(1, request.asset_id, source.request_fingerprint, staging.relative_to(root).as_posix(), (), {}, "frame-timing.json", tuple(methods), True, tuple(reasons))
     delivery, scale, bounds = _delivery_frames(tuple(cleaned), request)
+    reference_delivery_bounds = None
+    if request.layout_mode is VideoLayoutMode.REFERENCE_LOCKED:
+        reference = bounds[0]
+        canvas_width = request.canvas_width or delivery[0].width
+        canvas_height = request.canvas_height or delivery[0].height
+        ref_left, ref_top, ref_right, ref_bottom = reference
+        ref_center_x = ((ref_left + ref_right) / 2) * scale
+        ref_bottom_y = ref_bottom * scale
+        x = round(canvas_width / 2 - ref_center_x)
+        if request.anchor is VideoAnchor.FEET:
+            bottom_margin = round(canvas_height * (1 - request.fit_scale) / 2)
+            y = round(canvas_height - bottom_margin - ref_bottom_y)
+        else:
+            y = round((canvas_height - (ref_bottom - ref_top) * scale) / 2 - ref_top * scale)
+        reference_delivery_bounds = [
+            round(x + ref_left * scale),
+            round(y + ref_top * scale),
+            round(x + ref_right * scale),
+            round(y + ref_bottom * scale),
+        ]
     requested = tuple(sorted(set(frame_counts or request.frame_counts)))
     artifacts: dict[str, str] = {}
     all_records: list[VideoFrameRecord] = []
@@ -184,5 +231,5 @@ def process_video_sprite(
             for index, path in enumerate(frame_paths):
                 all_records.append(VideoFrameRecord(1, index, raw_frames[index].source_timestamp, raw_frames[index].source_frame_index, raw_frames[index].raw_path, None, path.relative_to(root).as_posix(), sha256_file(path)))
     timing_path = staging / "frame-timing.json"
-    dump_json(timing_path, {"schema_version": 1, "loop": request.loop, "frames": timing, "scale": scale, "source_bounds": [list(item) for item in bounds], "cleanup_methods": methods})
+    dump_json(timing_path, {"schema_version": 1, "loop": request.loop, "layout_mode": request.layout_mode.value, "frames": timing, "scale": scale, "source_bounds": [list(item) for item in bounds], "reference_bounds": reference_delivery_bounds, "reference_source_bounds": list(bounds[0]) if request.layout_mode is VideoLayoutMode.REFERENCE_LOCKED else None, "cleanup_methods": methods})
     return VideoProcessingResult(1, request.asset_id, source.request_fingerprint, staging.relative_to(root).as_posix(), tuple(all_records), artifacts, timing_path.relative_to(root).as_posix(), tuple(methods), needs_attention, tuple(dict.fromkeys(reasons)))

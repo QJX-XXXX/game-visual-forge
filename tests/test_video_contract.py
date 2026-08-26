@@ -7,6 +7,7 @@ from tests._bootstrap import ROOT
 from game_visual_forge.contracts.video import (
     VideoBackgroundMode,
     VideoGenerationMode,
+    VideoLayoutMode,
     VideoProcessingMode,
     VideoSourcePreference,
     VideoSpriteRequest,
@@ -49,6 +50,12 @@ class VideoContractTests(unittest.TestCase):
         self.assertEqual(request.frame_counts, (8, 16, 24))
         self.assertEqual(request.background_mode, VideoBackgroundMode.REMBG)
         self.assertEqual(request.source_preference, VideoSourcePreference.EXISTING_FILE)
+        self.assertEqual(request.layout_mode, VideoLayoutMode.TIGHT)
+
+    def test_request_accepts_reference_locked_layout(self) -> None:
+        request = VideoSpriteRequest.from_dict(valid_request(layout_mode="reference-locked"))
+        self.assertEqual(request.layout_mode, VideoLayoutMode.REFERENCE_LOCKED)
+        self.assertEqual(request.to_dict()["layout_mode"], "reference-locked")
 
     def test_request_accepts_comfyui_h3_as_a_video_source(self) -> None:
         try:

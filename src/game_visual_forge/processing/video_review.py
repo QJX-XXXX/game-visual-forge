@@ -91,7 +91,7 @@ def create_motion_difference(frames: tuple[Any, ...], path: Path) -> Path:
     return path
 
 
-def create_anchor_diagnostic(frames: tuple[Any, ...], path: Path) -> Path:
+def create_anchor_diagnostic(frames: tuple[Any, ...], path: Path, *, reference_bounds: tuple[int, int, int, int] | None = None) -> Path:
     from PIL import Image, ImageDraw
     width = max(frame.width for frame in frames)
     height = max(frame.height for frame in frames)
@@ -103,6 +103,10 @@ def create_anchor_diagnostic(frames: tuple[Any, ...], path: Path) -> Path:
             continue
         draw.rectangle(bound, outline=((index * 53) % 255, 220, 80, 255), width=1)
         draw.line(((bound[0] + bound[2]) / 2, bound[3], (bound[0] + bound[2]) / 2, height), fill=(255, 255, 255, 180), width=1)
+    if reference_bounds is not None:
+        draw.rectangle(reference_bounds, outline=(255, 80, 80, 255), width=2)
+        center_x = (reference_bounds[0] + reference_bounds[2]) / 2
+        draw.line((center_x, reference_bounds[3], center_x, height), fill=(255, 80, 80, 220), width=2)
     path.parent.mkdir(parents=True, exist_ok=True)
     canvas.save(path, format="PNG", optimize=False)
     return path

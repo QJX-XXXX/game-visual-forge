@@ -38,9 +38,14 @@ Background modes are explicit:
   color was declared. If removal fails without a valid fallback, mark the run
   as needing attention instead of claiming transparency.
 
-Trim transparent bounds per frame, compute a stable bottom-center/feet anchor,
-and place every frame on one canvas with one scale policy. Pixel mode uses
-nearest-neighbor resizing. HD mode uses high-quality resampling.
+For the default `tight` layout, trim transparent bounds per frame, compute a
+stable bottom-center/feet anchor, and place every frame on one canvas with one
+scale policy. For `reference-locked`, keep each cleaned frame's full source
+coordinates, derive scale and the feet anchor from the first frame only, and
+reuse that placement for every frame. Require identical source dimensions and
+leave out-of-canvas pixels visible to the clipping-risk check instead of
+silently rescaling them. Pixel mode uses nearest-neighbor resizing. HD mode
+uses high-quality resampling.
 
 ## Artifacts
 
@@ -74,7 +79,9 @@ more than 1.0% visible near-key pixels in any frame fails publication.
 
 Temporal metrics report exact and near duplicates, motion coverage, static
 intervals, bounds and area variation, anchor jitter, loop difference, alpha
-coverage, clipping risk, background change, and flicker. These metrics can set
+coverage, clipping risk, background change, and flicker. Reference-locked runs
+also record the immutable reference bounds and draw them in the anchor
+diagnostic. These metrics can set
 `needs_attention`; they do not decide whether a deliberate hold or impact frame
 is semantically correct.
 

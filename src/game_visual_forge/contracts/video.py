@@ -90,6 +90,11 @@ class VideoAnchor(StrEnum):
     FEET = "feet"
 
 
+class VideoLayoutMode(StrEnum):
+    TIGHT = "tight"
+    REFERENCE_LOCKED = "reference-locked"
+
+
 class VideoOutput(StrEnum):
     FRAMES = "frames"
     STRIPS = "strips"
@@ -126,6 +131,7 @@ class VideoSpriteRequest:
     canvas_width: int | None = None
     canvas_height: int | None = None
     anchor: VideoAnchor = VideoAnchor.FEET
+    layout_mode: VideoLayoutMode = VideoLayoutMode.TIGHT
     fit_scale: float = 0.88
     target_engine_notes: str | None = None
 
@@ -185,6 +191,8 @@ class VideoSpriteRequest:
         _optional_positive_int(self.canvas_height, "canvas_height")
         if not isinstance(self.anchor, VideoAnchor):
             raise TypeError("anchor must be VideoAnchor")
+        if not isinstance(self.layout_mode, VideoLayoutMode):
+            raise TypeError("layout_mode must be VideoLayoutMode")
         scale = _number(self.fit_scale, "fit_scale")
         if not 0 < scale <= 1:
             raise ValueError("fit_scale must be in (0, 1]")
@@ -229,6 +237,7 @@ class VideoSpriteRequest:
             "canvas_width": self.canvas_width,
             "canvas_height": self.canvas_height,
             "anchor": self.anchor.value,
+            "layout_mode": self.layout_mode.value,
             "fit_scale": self.fit_scale,
             "target_engine_notes": self.target_engine_notes,
         }
@@ -266,6 +275,7 @@ class VideoSpriteRequest:
             canvas_width=value.get("canvas_width"),
             canvas_height=value.get("canvas_height"),
             anchor=VideoAnchor(value.get("anchor", "feet")),
+            layout_mode=VideoLayoutMode(value.get("layout_mode", "tight")),
             fit_scale=value.get("fit_scale", 0.88),
             target_engine_notes=_optional_string(value.get("target_engine_notes"), "target_engine_notes"),
         )

@@ -68,8 +68,12 @@ Map the request modes as follows:
 | `reference-to-video` | Ref2VA | reference media |
 
 Preserve the exact H3 field names, section order, labels, and timing produced by
-that Skill. Bind the effective duration to 4–15 whole seconds. The sprite
-pipeline records whether the fetched video has audio but does not export audio.
+that Skill. Bind the effective duration to 4–15 whole seconds. For a stationary
+game-character attack, FL2VA must connect the same ready-pose image to both
+`first_frame` and `last_frame`; fixed seed and a valid H3 `17k + 5` length are
+required. Describe the final ready-pose hold even when the Sprite request later
+selects a shorter PTS interval. The sprite pipeline records whether the fetched
+video has audio but does not export audio.
 
 Persist the optimized prompt as UTF-8 `comfyui-h3-prompt.txt` before graph
 execution. Bind its SHA-256 together with the request fingerprint, reference
@@ -80,6 +84,15 @@ checkpoint/model, duration, resolution, and sanitized parameters in
 last two before execution and update them with `prompt_id`, terminal status,
 selected video path, and video SHA-256. Do not store credentials, Base64 media,
 authorization headers, signed URLs, or raw service responses.
+
+Run the read-only workflow check before execution:
+
+```powershell
+python skills/forge-video-to-sprite/scripts/run.py video sprite inspect-h3 --workflow inputs/workflow.json --out runs/h3/workflow-report.json
+```
+
+Do not proceed when the report has a disconnected end frame, randomized seed,
+invalid H3 length, or non-local/API node.
 
 ### Spend boundary and recovery
 

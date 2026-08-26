@@ -79,6 +79,7 @@ from .video import (
     VideoBackgroundMode,
     VideoFrameRecord,
     VideoGenerationMode,
+    VideoLayoutMode,
     VideoOutput,
     VideoProcessingMode,
     VideoProcessingResult,
@@ -98,6 +99,7 @@ from .video_provider import (
 )
 from .video_review import VideoMotionReview
 from .video_quality import VideoQualityReport
+from .comfy_h3 import ComfyH3GenerationRecord, ComfyH3WorkflowReport
 from .audio import (
     AudioGenerationMode,
     AudioUsageProfile,

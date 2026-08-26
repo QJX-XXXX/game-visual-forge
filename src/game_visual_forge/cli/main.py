@@ -37,6 +37,7 @@ from game_visual_forge.cli.sprite import (
 from game_visual_forge.cli.video import (
     run_video_assess,
     run_video_ingest,
+    run_video_inspect_h3,
     run_video_plan,
     run_video_process,
     run_video_provider_download,
@@ -298,6 +299,9 @@ def build_parser() -> argparse.ArgumentParser:
     video_process.add_argument("--out-dir", type=Path, required=True)
     video_process.add_argument("--state", type=Path, required=True)
     video_process.add_argument("--now", required=True)
+    video_inspect_h3 = video_sprite_commands.add_parser("inspect-h3")
+    video_inspect_h3.add_argument("--workflow", type=Path, required=True)
+    video_inspect_h3.add_argument("--out", type=Path, required=True)
     video_review = video_sprite_commands.add_parser("record-review")
     video_review.add_argument("--request", type=Path, required=True)
     video_review.add_argument("--source", type=Path, required=True)
@@ -500,6 +504,8 @@ def main(argv: list[str] | None = None) -> int:
             payload = run_video_ingest(args.request, args.video, args.repo_root, args.out, args.state, args.now, args.ffprobe)
         elif args.command == "video" and args.video_command == "sprite" and args.video_sprite_command == "process":
             payload = run_video_process(args.request, args.source, args.raw_frames, args.repo_root, args.out_dir, args.state, args.now, args.ffmpeg)
+        elif args.command == "video" and args.video_command == "sprite" and args.video_sprite_command == "inspect-h3":
+            payload = run_video_inspect_h3(args.workflow, args.out)
         elif args.command == "video" and args.video_command == "sprite" and args.video_sprite_command == "record-review":
             payload = run_video_record_review(args.request, args.source, args.processing_result, args.repo_root, args.quality_report, args.out, args.checks, args.now)
         elif args.command == "video" and args.video_command == "sprite" and args.video_sprite_command == "validate":
