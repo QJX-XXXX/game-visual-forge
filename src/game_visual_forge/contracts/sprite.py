@@ -100,6 +100,7 @@ class SpriteOutput(StrEnum):
 
 
 class BackgroundRemoval(StrEnum):
+    AUTO = "auto"
     REMBG = "rembg"
     CHROMA = "chroma"
     PRESERVE = "preserve"
@@ -173,7 +174,7 @@ class SpriteRequest:
     frame_height: int | None = None
     grid_rows: int = 1
     grid_columns: int = 1
-    background_removal: BackgroundRemoval = BackgroundRemoval.PRESERVE
+    background_removal: BackgroundRemoval = BackgroundRemoval.AUTO
     chroma_color: str | None = None
     rembg_refinement: RembgRefinement | None = None
     delivery_normalization: DeliveryNormalization | None = None
@@ -248,12 +249,13 @@ class SpriteRequest:
         if (
             self.rembg_refinement is not None
             and (
-                self.background_removal is not BackgroundRemoval.REMBG
+                self.background_removal
+                not in {BackgroundRemoval.REMBG, BackgroundRemoval.AUTO}
                 or self.chroma_color is None
             )
         ):
             raise ValueError(
-                "rembg_refinement requires rembg removal with chroma_color"
+                "rembg_refinement requires rembg or auto removal with chroma_color"
             )
         if (
             self.delivery_normalization is not None
@@ -329,7 +331,11 @@ class SpriteRequest:
             frame_height=(None if value.get("frame_height") is None else _require_int(value["frame_height"], "frame_height")),
             grid_rows=_require_int(value["grid_rows"], "grid_rows"),
             grid_columns=_require_int(value["grid_columns"], "grid_columns"),
-            background_removal=_require_enum(value["background_removal"], BackgroundRemoval, "background_removal"),
+            background_removal=_require_enum(
+                value.get("background_removal", BackgroundRemoval.AUTO.value),
+                BackgroundRemoval,
+                "background_removal",
+            ),
             chroma_color=_require_optional_string(value.get("chroma_color"), "chroma_color"),
             rembg_refinement=(
                 None
@@ -407,8 +413,10 @@ class PromptPackage:
     grid_rows: int
     grid_columns: int
     frame_order: tuple[str, ...]
+    transparent_background: bool
     solid_background: str | None
     expected_output_path: str
+    transparent_background_prompt: str | None = None
 
     def __post_init__(self) -> None:
         _require_schema_version(self.schema_version)
@@ -420,8 +428,19 @@ class PromptPackage:
         _require_int(self.grid_rows, "grid_rows")
         _require_int(self.grid_columns, "grid_columns")
         _require_string_sequence(self.frame_order, "frame_order")
+        _require_bool(self.transparent_background, "transparent_background")
         if self.solid_background is not None and not _HEX_COLOR_PATTERN.fullmatch(self.solid_background):
             raise ValueError("solid_background must be an RGB hex color")
+        if self.transparent_background and self.solid_background is not None:
+            raise ValueError("transparent_background and solid_background are mutually exclusive")
+        _require_optional_string(
+            self.transparent_background_prompt,
+            "transparent_background_prompt",
+        )
+        if not self.transparent_background and self.transparent_background_prompt is not None:
+            raise ValueError(
+                "transparent_background_prompt requires transparent_background"
+            )
         object.__setattr__(self, "expected_output_path", normalize_repo_relative_path(self.expected_output_path, field_name="expected_output_path"))
 
     def to_dict(self) -> dict[str, Any]:
@@ -435,8 +454,10 @@ class PromptPackage:
             "grid_rows": self.grid_rows,
             "grid_columns": self.grid_columns,
             "frame_order": list(self.frame_order),
+            "transparent_background": self.transparent_background,
             "solid_background": self.solid_background,
             "expected_output_path": self.expected_output_path,
+            "transparent_background_prompt": self.transparent_background_prompt,
         }
 
 

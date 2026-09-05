@@ -8,6 +8,7 @@ from typing import Any
 from game_visual_forge.contracts import (
     ArtifactRecord,
     AssetManifest,
+    BackgroundRemoval,
     QualityCheck,
     QualityReport,
     QualityStatus,
@@ -80,6 +81,36 @@ def check_alpha_coverage(staging_dir: Path, processing: ProcessingResult, *, min
     return _check("alpha-coverage", QualityStatus.PASSED, "alpha coverage is within configured limits")
 
 
+def check_transparent_background(
+    request: SpriteRequest,
+    processing: ProcessingResult,
+) -> QualityCheck:
+    if request.background_removal is BackgroundRemoval.PRESERVE:
+        return _check(
+            "transparent-background",
+            QualityStatus.PASSED,
+            "transparent background is not required",
+        )
+    report = processing.background_alpha
+    if not isinstance(report, dict) or not isinstance(report.get("output"), dict):
+        return _check(
+            "transparent-background",
+            QualityStatus.NEEDS_ATTENTION,
+            "background alpha inspection metadata is missing",
+        )
+    output = report["output"]
+    valid = output.get("transparent_background_valid") is True
+    return _check(
+        "transparent-background",
+        QualityStatus.PASSED if valid else QualityStatus.FAILED,
+        (
+            "processed sprite contains transparent background pixels"
+            if valid
+            else "processed sprite is fully opaque or lacks a real Alpha channel"
+        ),
+    )
+
+
 def check_exact_duplicates(staging_dir: Path, processing: ProcessingResult) -> QualityCheck:
     hashes: dict[str, list[str]] = {}
     for path in _frame_paths(processing):
@@ -97,6 +128,7 @@ def validate_sprite_outputs(staging_dir: Path, request: SpriteRequest, record: R
         check_frame_count(request, processing),
         check_frame_readability(staging_dir, processing),
         check_frame_dimensions(staging_dir, processing),
+        check_transparent_background(request, processing),
         check_alpha_coverage(staging_dir, processing, minimum=0.001, maximum=1.0),
         check_exact_duplicates(staging_dir, processing),
     )

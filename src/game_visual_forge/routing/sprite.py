@@ -16,6 +16,11 @@ from game_visual_forge.contracts import (
 from game_visual_forge.jobs.fingerprints import fingerprint_request
 
 
+TRANSPARENT_BACKGROUND_PROMPT = (
+    "移除此图像的背景。保持所有前景主体不变且完整，边缘干净平滑。将背景设为透明。"
+)
+
+
 @dataclass(frozen=True)
 class AgentImageCapabilities:
     supported: bool
@@ -152,6 +157,10 @@ def route_sprite(
 
 
 def build_prompt_package(request: SpriteRequest) -> PromptPackage:
+    transparent_background = request.background_removal is BackgroundRemoval.AUTO
+    transparent_background_prompt = (
+        TRANSPARENT_BACKGROUND_PROMPT if transparent_background else None
+    )
     frames_per_direction = request.frame_count // len(request.directions)
     frame_order = tuple(
         f"{direction}:{index:02d}"
@@ -162,11 +171,19 @@ def build_prompt_package(request: SpriteRequest) -> PromptPackage:
         "no text",
         "no watermark",
         "no cropped body parts",
+        *(("no white background", "no checkerboard background") if transparent_background else ()),
         *request.identity_constraints,
     )
+    positive_prompt = request.prompt
+    if transparent_background:
+        positive_prompt = (
+            f"{positive_prompt} {transparent_background_prompt} "
+            "Return a PNG with a true transparent background "
+            "and a real Alpha channel; every background pixel must have alpha 0."
+        )
     return PromptPackage(
         schema_version=1,
-        positive_prompt=request.prompt,
+        positive_prompt=positive_prompt,
         negative_constraints=negatives,
         reference_paths=request.reference_paths,
         canvas_width=request.canvas_width,
@@ -174,10 +191,12 @@ def build_prompt_package(request: SpriteRequest) -> PromptPackage:
         grid_rows=request.grid_rows,
         grid_columns=request.grid_columns,
         frame_order=frame_order,
+        transparent_background=transparent_background,
         solid_background=(
             request.chroma_color
             if request.background_removal in {BackgroundRemoval.CHROMA, BackgroundRemoval.REMBG}
             else None
         ),
         expected_output_path=f"{request.output_dir}/raw/source.png",
+        transparent_background_prompt=transparent_background_prompt,
     )

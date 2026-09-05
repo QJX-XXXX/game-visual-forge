@@ -111,6 +111,43 @@ class SpriteRoutingTests(unittest.TestCase):
         package = build_prompt_package(request)
         self.assertEqual(package.solid_background, "#ff00ff")
 
+    def test_auto_prompt_package_requests_a_real_transparent_png(self) -> None:
+        request = replace(
+            make_request(),
+            background_removal=BackgroundRemoval.AUTO,
+            chroma_color=None,
+        )
+
+        package = build_prompt_package(request)
+
+        self.assertTrue(package.transparent_background)
+        self.assertIsNone(package.solid_background)
+        self.assertIn("true transparent background", package.positive_prompt)
+        self.assertIn("no white background", package.negative_constraints)
+        self.assertIn("no checkerboard background", package.negative_constraints)
+
+    def test_auto_prompt_package_owns_the_verbatim_background_removal_instruction(self) -> None:
+        instruction = "移除此图像的背景。保持所有前景主体不变且完整，边缘干净平滑。将背景设为透明。"
+        request = replace(
+            make_request(),
+            background_removal=BackgroundRemoval.AUTO,
+            chroma_color=None,
+        )
+
+        package = build_prompt_package(request)
+
+        self.assertEqual(package.transparent_background_prompt, instruction)
+        self.assertIn(instruction, package.positive_prompt)
+        self.assertEqual(
+            package.to_dict()["transparent_background_prompt"],
+            instruction,
+        )
+
+    def test_non_auto_prompt_package_does_not_add_background_removal_instruction(self) -> None:
+        package = build_prompt_package(make_request())
+
+        self.assertIsNone(package.transparent_background_prompt)
+
 
 if __name__ == "__main__":
     unittest.main()

@@ -9,6 +9,7 @@ from PIL import Image
 
 from tests._bootstrap import ROOT  # noqa: F401
 from game_visual_forge.contracts import (
+    BackgroundRemoval,
     DeliveryAnchor,
     DeliveryNormalization,
     QualityStatus,
@@ -89,6 +90,75 @@ class SpriteQualityTests(unittest.TestCase):
         manifest = build_asset_manifest(staging, request, record, processing, report)
         self.assertEqual(manifest.delivery_normalization, processing.delivery_metadata)
         self.assertEqual(manifest.artifacts[-1].role, "delivery-frame")
+
+    def test_auto_background_fails_when_processed_sheet_has_no_transparent_pixels(self) -> None:
+        root, staging, request, record, processing = self.make_data()
+        for index, path in enumerate(processing.frame_paths):
+            Image.new("RGBA", (4, 4), (20 + index, 30, 40, 255)).save(
+                staging / path
+            )
+        request = replace(
+            request,
+            background_removal=BackgroundRemoval.AUTO,
+            chroma_color=None,
+        )
+        processing = replace(
+            processing,
+            background_alpha={
+                "source": {
+                    "has_alpha_channel": False,
+                    "transparent_pixels": 0,
+                },
+                "output": {
+                    "has_alpha_channel": True,
+                    "transparent_pixels": 0,
+                    "transparent_background_valid": False,
+                },
+                "fallback_triggered": True,
+            },
+        )
+
+        report = validate_sprite_outputs(staging, request, record, processing)
+
+        self.assertEqual(report.deterministic_status, QualityStatus.FAILED)
+        transparency = next(
+            item for item in report.deterministic_checks
+            if item.check_id == "transparent-background"
+        )
+        self.assertEqual(transparency.status, QualityStatus.FAILED)
+
+    def test_auto_background_fails_for_an_opaque_white_border_despite_sparse_alpha(self) -> None:
+        root, staging, request, record, processing = self.make_data()
+        for index, path in enumerate(processing.frame_paths):
+            Image.new("RGBA", (4, 4), (20 + index, 30, 40, 255)).save(
+                staging / path
+            )
+        request = replace(
+            request,
+            background_removal=BackgroundRemoval.AUTO,
+            chroma_color=None,
+        )
+        processing = replace(
+            processing,
+            background_alpha={
+                "source": {},
+                "output": {
+                    "has_alpha_channel": True,
+                    "transparent_pixels": 1,
+                    "transparent_background_valid": False,
+                    "opaque_white_background": True,
+                },
+                "fallback_triggered": False,
+            },
+        )
+
+        report = validate_sprite_outputs(staging, request, record, processing)
+
+        transparency = next(
+            item for item in report.deterministic_checks
+            if item.check_id == "transparent-background"
+        )
+        self.assertEqual(transparency.status, QualityStatus.FAILED)
 
 
 if __name__ == "__main__":

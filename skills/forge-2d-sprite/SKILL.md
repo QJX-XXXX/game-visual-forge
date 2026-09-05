@@ -1,6 +1,6 @@
 ---
 name: forge-2d-sprite
-description: "Generate production-oriented 2D game assets from natural-language requests, references, or existing images, including characters, creatures, props, effects, frames, sheets, and transparent exports."
+description: "Use when creating or processing production-oriented 2D game sprites, animation sheets, transparent PNG frames, characters, creatures, props, or effects from prompts, references, or existing images."
 ---
 
 # Forge 2D Sprite
@@ -18,6 +18,11 @@ direction and frame count, art direction and references, background treatment,
 canvas/anchor/output formats, engine delivery, and source policy. Ask once for
 all missing or contradictory fields; do not repeat answered questions. Route
 the source only after the user confirms the consolidated summary.
+
+Unless the user explicitly requests an opaque background, make transparent PNG
+delivery the default and set `background_removal=auto` in the normalized Sprite
+request. This policy expresses the delivery requirement independently from the
+fallback processor chosen after generation.
 
 ## Complex action boundary
 
@@ -52,6 +57,38 @@ strict temporal consistency.
    native generation, switch the source, accept the current image, or stop.
 6. After entering a third-party route, ask the user to choose Jimeng or Wanxiang every time.
    Never infer the provider from credentials, login state, or history.
+
+## Transparent PNG policy
+
+When native generation is selected, ask the image tool for a true transparent PNG
+with a real Alpha channel. Require background pixels to have alpha 0 and reject
+rendered white, checkerboard, or color-key backgrounds as substitutes for
+transparency. Keep the requested grid, containment, identity, and frame order
+constraints in the same prompt package.
+
+The prompt package's `transparent_background_prompt` is the project-owned,
+verbatim background-extraction instruction. Append it unchanged to the native
+transparent-generation prompt. If the first native PNG fails Alpha inspection
+and the same native tool supports image editing, reuse that exact instruction
+for at most one background-extraction edit before the local rembg fallback.
+
+After native generation, ingest the unmodified PNG and run `sprite process` with
+`background_removal=auto`. The processor inspects the original Alpha channel
+before converting the image:
+
+- If transparent pixels already exist, preserve the native Alpha data and skip
+  background removal.
+- If Alpha is absent, every pixel is opaque, or the tool returned an opaque white
+  background, let the automatic path run rembg and inspect the resulting Alpha
+  channel again.
+- If rembg is unavailable, fails, or still returns a fully opaque image, stop with
+  `needs_attention`. The asset must not be published or accepted through visual
+  review alone.
+
+Use explicit `chroma` only for a known color-key source. Use explicit `preserve`
+only when the user requested an opaque background. Do not replace a failed
+transparent-output check with a third-party submission without the source choice
+and paid confirmation required above.
 
 ## Paid submission gate
 

@@ -21,6 +21,7 @@ class BackgroundResult:
     image: Any
     method: str
     needs_attention: bool
+    alpha_report: dict[str, Any] | None = None
 
 
 DEFAULT_REMBG_MODEL = "birefnet-general"
@@ -32,6 +33,80 @@ DEFAULT_REMBG_CHROMA_SOFT_DISTANCE = 0.5
 MAX_REMBG_FAILURE_DETAIL_LENGTH = 240
 REMBG_MODEL_ENV = "GAME_VISUAL_FORGE_REMBG_MODEL"
 REMBG_PROVIDER_TIMEOUT_ENV = "GAME_VISUAL_FORGE_REMBG_PROVIDER_TIMEOUT_SECONDS"
+MIN_TRANSPARENT_BACKGROUND_RATIO = 0.01
+MAX_OPAQUE_WHITE_BORDER_RATIO = 0.10
+
+
+def inspect_alpha(image: Any) -> dict[str, Any]:
+    bands = tuple(str(item) for item in image.getbands())
+    has_alpha_channel = "A" in bands or "transparency" in image.info
+    alpha = image.convert("RGBA").getchannel("A")
+    histogram = alpha.histogram()
+    total_pixels = image.width * image.height
+    transparent_pixels = int(histogram[0])
+    opaque_pixels = int(histogram[255])
+    partial_pixels = int(total_pixels - transparent_pixels - opaque_pixels)
+    minimum_alpha, maximum_alpha = alpha.getextrema()
+    rgba = image.convert("RGBA")
+    pixels = rgba.load()
+    border_coordinates = [
+        *((x, 0) for x in range(image.width)),
+        *((x, image.height - 1) for x in range(image.width)),
+        *((0, y) for y in range(1, max(1, image.height - 1))),
+        *((image.width - 1, y) for y in range(1, max(1, image.height - 1))),
+    ]
+    opaque_white_border_pixels = sum(
+        1
+        for x, y in border_coordinates
+        if pixels[x, y][3] >= 250 and min(pixels[x, y][:3]) >= 245
+    )
+    border_pixels = len(border_coordinates)
+    opaque_white_border_ratio = (
+        opaque_white_border_pixels / border_pixels if border_pixels else 0.0
+    )
+    transparent_ratio = transparent_pixels / total_pixels
+    opaque_white_background = (
+        opaque_white_border_ratio > MAX_OPAQUE_WHITE_BORDER_RATIO
+    )
+    return {
+        "has_alpha_channel": has_alpha_channel,
+        "minimum_alpha": int(minimum_alpha),
+        "maximum_alpha": int(maximum_alpha),
+        "transparent_pixels": transparent_pixels,
+        "partial_pixels": partial_pixels,
+        "opaque_pixels": opaque_pixels,
+        "total_pixels": total_pixels,
+        "transparent_ratio": round(transparent_ratio, 6),
+        "opaque_white_border_pixels": opaque_white_border_pixels,
+        "border_pixels": border_pixels,
+        "opaque_white_border_ratio": round(opaque_white_border_ratio, 6),
+        "opaque_white_background": opaque_white_background,
+        "transparent_background_valid": (
+            has_alpha_channel
+            and transparent_ratio >= MIN_TRANSPARENT_BACKGROUND_RATIO
+            and not opaque_white_background
+        ),
+    }
+
+
+def _finalize_background_result(
+    source: Any,
+    image: Any,
+    method: str,
+    needs_attention: bool,
+    *,
+    fallback_triggered: bool,
+) -> BackgroundResult:
+    return BackgroundResult(
+        image.convert("RGBA"),
+        method,
+        needs_attention,
+        {
+            "source": inspect_alpha(source),
+            "output": inspect_alpha(image),
+            "fallback_triggered": fallback_triggered,
+        },
+    )
 
 
 @dataclass(frozen=True)
@@ -459,14 +534,24 @@ def _refine_rembg_result(
 
 
 def remove_background(image: Any, request: SpriteRequest) -> BackgroundResult:
-    if request.background_removal is BackgroundRemoval.REMBG:
+    if request.background_removal is BackgroundRemoval.AUTO:
+        source_alpha = inspect_alpha(image)
+        if source_alpha["transparent_background_valid"]:
+            return _finalize_background_result(
+                image,
+                image,
+                "native-alpha",
+                False,
+                fallback_triggered=False,
+            )
+
         result = _remove_rembg_with_fallbacks(image)
         if result is not None and not result.needs_attention:
             if request.chroma_color is not None:
                 try:
-                    return _refine_rembg_result(image, result, request)
+                    result = _refine_rembg_result(image, result, request)
                 except Exception as exc:
-                    return BackgroundResult(
+                    result = BackgroundResult(
                         clean_rembg_chroma_residue(
                             result.image,
                             request.chroma_color,
@@ -477,29 +562,121 @@ def remove_background(image: Any, request: SpriteRequest) -> BackgroundResult:
                         ),
                         True,
                     )
-            return result
+            output_alpha = inspect_alpha(result.image)
+            valid = output_alpha["transparent_background_valid"]
+            method = f"auto-{result.method}"
+            if not valid:
+                method = f"{method}-alpha-invalid"
+            return _finalize_background_result(
+                image,
+                result.image,
+                method,
+                result.needs_attention or not valid,
+                fallback_triggered=True,
+            )
+        if request.chroma_color is not None:
+            method = (
+                "auto-chroma-fallback"
+                if result is None
+                else f"auto-chroma-fallback-after-{result.method}"
+            )
+            cleaned = remove_chroma(
+                image,
+                request.chroma_color,
+                tolerance=DEFAULT_CHROMA_FALLBACK_TOLERANCE,
+            )
+            return _finalize_background_result(
+                image,
+                cleaned,
+                method,
+                True,
+                fallback_triggered=True,
+            )
+        method = (
+            "auto-preserve-after-alpha-invalid"
+            if result is None
+            else f"auto-{result.method}-alpha-invalid"
+        )
+        output = image if result is None else result.image
+        return _finalize_background_result(
+            image,
+            output,
+            method,
+            True,
+            fallback_triggered=True,
+        )
+
+    if request.background_removal is BackgroundRemoval.REMBG:
+        result = _remove_rembg_with_fallbacks(image)
+        if result is not None and not result.needs_attention:
+            if request.chroma_color is not None:
+                try:
+                    result = _refine_rembg_result(image, result, request)
+                except Exception as exc:
+                    result = BackgroundResult(
+                        clean_rembg_chroma_residue(
+                            result.image,
+                            request.chroma_color,
+                        ),
+                        (
+                            f"{result.method}+chroma-clean-after-"
+                            f"{_failure_detail('refinement', exc)}"
+                        ),
+                        True,
+                    )
+            return _finalize_background_result(
+                image,
+                result.image,
+                result.method,
+                result.needs_attention,
+                fallback_triggered=False,
+            )
         if request.chroma_color is not None:
             method = (
                 "chroma-fallback"
                 if result is None
                 else f"chroma-fallback-after-{result.method}"
             )
-            return BackgroundResult(
-                remove_chroma(
-                    image,
-                    request.chroma_color,
-                    tolerance=DEFAULT_CHROMA_FALLBACK_TOLERANCE,
-                ),
+            cleaned = remove_chroma(
+                image,
+                request.chroma_color,
+                tolerance=DEFAULT_CHROMA_FALLBACK_TOLERANCE,
+            )
+            return _finalize_background_result(
+                image,
+                cleaned,
                 method,
                 True,
+                fallback_triggered=True,
             )
         if result is not None:
-            return result
-        return BackgroundResult(image.convert("RGBA"), "preserve-background", True)
+            return _finalize_background_result(
+                image,
+                result.image,
+                result.method,
+                result.needs_attention,
+                fallback_triggered=False,
+            )
+        return _finalize_background_result(
+            image,
+            image,
+            "preserve-background",
+            True,
+            fallback_triggered=False,
+        )
     if request.background_removal is BackgroundRemoval.CHROMA:
-        return BackgroundResult(
-            remove_chroma(image, request.chroma_color or "#ff00ff"),
+        cleaned = remove_chroma(image, request.chroma_color or "#ff00ff")
+        return _finalize_background_result(
+            image,
+            cleaned,
             "chroma",
             False,
+            fallback_triggered=False,
         )
-    return BackgroundResult(image.convert("RGBA"), "preserve-background", True)
+    return _finalize_background_result(
+        image,
+        image,
+        "preserve-background",
+        True,
+        fallback_triggered=False,
+    )

@@ -27,6 +27,7 @@ class ProcessingResult:
     delivery_sheet_path: str | None = None
     delivery_gif_path: str | None = None
     delivery_metadata: dict[str, Any] | None = None
+    background_alpha: dict[str, Any] | None = None
 
     def to_dict(self) -> dict[str, Any]:
         return {
@@ -41,6 +42,7 @@ class ProcessingResult:
             "delivery_sheet_path": self.delivery_sheet_path,
             "delivery_gif_path": self.delivery_gif_path,
             "delivery_metadata": self.delivery_metadata,
+            "background_alpha": self.background_alpha,
         }
 
     @classmethod
@@ -61,6 +63,7 @@ class ProcessingResult:
             delivery_sheet_path=None if value.get("delivery_sheet_path") is None else str(value["delivery_sheet_path"]),
             delivery_gif_path=None if value.get("delivery_gif_path") is None else str(value["delivery_gif_path"]),
             delivery_metadata=value.get("delivery_metadata"),
+            background_alpha=value.get("background_alpha"),
         )
 
     @classmethod
@@ -78,6 +81,7 @@ class ProcessingResult:
         delivery_sheet_path: Path | None = None,
         delivery_gif_path: Path | None = None,
         delivery_metadata: dict[str, Any] | None = None,
+        background_alpha: dict[str, Any] | None = None,
     ) -> "ProcessingResult":
         root = repo_root.resolve()
         staging_relative = PurePosixPath(staging.resolve().relative_to(root).as_posix()).as_posix()
@@ -95,6 +99,7 @@ class ProcessingResult:
             None if delivery_sheet_path is None else relative(delivery_sheet_path),
             None if delivery_gif_path is None else relative(delivery_gif_path),
             delivery_metadata,
+            background_alpha,
         )
 
 
@@ -108,8 +113,7 @@ def process_sprite(
     Image = _load_pillow()
     source = repo_root.resolve() / PurePosixPath(record.path)
     with Image.open(source) as opened:
-        image = opened.convert("RGBA")
-    background = remove_background(image, request)
+        background = remove_background(opened, request)
     frames = split_grid(background.image, rows=request.grid_rows, columns=request.grid_columns, frame_count=request.frame_count)
     aligned = align_bottom_center(tuple(trim_alpha(frame) for frame in frames))
     staging = output_dir.parent / f".{output_dir.name}.staging-{record.sha256[:12]}"
@@ -157,6 +161,7 @@ def process_sprite(
         delivery_sheet_path=delivery_sheet_path,
         delivery_gif_path=delivery_gif_path,
         delivery_metadata=delivery_metadata,
+        background_alpha=background.alpha_report,
     )
 
 

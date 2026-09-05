@@ -48,6 +48,15 @@ class SpriteRequestTests(unittest.TestCase):
         request = make_request()
         self.assertEqual(SpriteRequest.from_dict(request.to_dict()), request)
 
+    def test_missing_background_policy_defaults_to_native_transparency_auto(self) -> None:
+        payload = make_request().to_dict()
+        payload.pop("background_removal")
+        payload["chroma_color"] = None
+
+        request = SpriteRequest.from_dict(payload)
+
+        self.assertEqual(request.background_removal, BackgroundRemoval.AUTO)
+
     def test_grid_capacity_must_cover_frame_count(self) -> None:
         payload = make_request().to_dict()
         payload["grid_columns"] = 3

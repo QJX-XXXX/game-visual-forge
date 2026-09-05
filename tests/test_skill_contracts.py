@@ -13,7 +13,7 @@ CJK_PATTERN = re.compile(r"[\u3400-\u4dbf\u4e00-\u9fff\u3040-\u30ff\uac00-\ud7af
 
 SKILLS = {
     "forge-2d-sprite": {
-        "description": 'description: "Generate production-oriented 2D game assets from natural-language requests, references, or existing images, including characters, creatures, props, effects, frames, sheets, and transparent exports."',
+        "description": 'description: "Use when creating or processing production-oriented 2D game sprites, animation sheets, transparent PNG frames, characters, creatures, props, or effects from prompts, references, or existing images."',
         "required_body_fragments": (
             "Prefer an existing image",
             "native image tool",
@@ -36,6 +36,12 @@ SKILLS = {
             "`forge-video-to-sprite`",
             "continue with `forge-2d-sprite` or switch",
             "must not switch workflows automatically",
+            "true transparent PNG",
+            "`background_removal=auto`",
+            "real Alpha channel",
+            "opaque white",
+            "must not be published",
+            "`transparent_background_prompt`",
         ),
     },
     "forge-2d-map": {

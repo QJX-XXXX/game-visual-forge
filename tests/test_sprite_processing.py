@@ -136,6 +136,95 @@ class SpriteProcessingTests(unittest.TestCase):
         self.assertEqual(result.method, "preserve-background")
         self.assertTrue(result.needs_attention)
 
+    def test_auto_preserves_native_alpha_without_running_rembg(self) -> None:
+        image = Image.new("RGBA", (4, 4), (0, 0, 0, 0))
+        image.putpixel((1, 1), (20, 30, 40, 255))
+        request = replace(
+            self.request(),
+            background_removal=BackgroundRemoval.AUTO,
+            chroma_color=None,
+        )
+
+        with patch(
+            "game_visual_forge.processing.background._remove_rembg_with_fallbacks"
+        ) as remove:
+            result = remove_background(image, request)
+
+        remove.assert_not_called()
+        self.assertEqual(result.method, "native-alpha")
+        self.assertFalse(result.needs_attention)
+        self.assertTrue(result.alpha_report["source"]["has_alpha_channel"])
+        self.assertGreater(result.alpha_report["output"]["transparent_pixels"], 0)
+        self.assertFalse(result.alpha_report["fallback_triggered"])
+
+    def test_auto_runs_rembg_when_native_output_has_an_opaque_white_background(self) -> None:
+        image = Image.new("RGB", (4, 4), (255, 255, 255))
+        image.putpixel((1, 1), (20, 30, 40))
+        cleaned = Image.new("RGBA", (4, 4), (0, 0, 0, 0))
+        cleaned.putpixel((1, 1), (20, 30, 40, 255))
+        request = replace(
+            self.request(),
+            background_removal=BackgroundRemoval.AUTO,
+            chroma_color=None,
+        )
+
+        with patch(
+            "game_visual_forge.processing.background._remove_rembg_with_fallbacks",
+            return_value=BackgroundResult(cleaned, "rembg-test", False),
+        ):
+            result = remove_background(image, request)
+
+        self.assertEqual(result.method, "auto-rembg-test")
+        self.assertFalse(result.needs_attention)
+        self.assertFalse(result.alpha_report["source"]["has_alpha_channel"])
+        self.assertEqual(result.alpha_report["source"]["transparent_pixels"], 0)
+        self.assertGreater(result.alpha_report["output"]["transparent_pixels"], 0)
+        self.assertTrue(result.alpha_report["fallback_triggered"])
+
+    def test_auto_does_not_accept_a_white_canvas_with_one_transparent_pixel(self) -> None:
+        image = Image.new("RGBA", (10, 10), (255, 255, 255, 255))
+        image.putpixel((5, 5), (0, 0, 0, 0))
+        cleaned = Image.new("RGBA", (10, 10), (0, 0, 0, 0))
+        cleaned.putpixel((5, 5), (20, 30, 40, 255))
+        request = replace(
+            self.request(),
+            background_removal=BackgroundRemoval.AUTO,
+            chroma_color=None,
+        )
+
+        with patch(
+            "game_visual_forge.processing.background._remove_rembg_with_fallbacks",
+            return_value=BackgroundResult(cleaned, "rembg-test", False),
+        ) as remove:
+            result = remove_background(image, request)
+
+        remove.assert_called_once()
+        self.assertEqual(result.method, "auto-rembg-test")
+        self.assertTrue(result.alpha_report["source"]["opaque_white_background"])
+        self.assertTrue(result.alpha_report["output"]["transparent_background_valid"])
+
+    def test_auto_rejects_a_rembg_result_that_is_still_fully_opaque(self) -> None:
+        image = Image.new("RGB", (4, 4), (255, 255, 255))
+        request = replace(
+            self.request(),
+            background_removal=BackgroundRemoval.AUTO,
+            chroma_color=None,
+        )
+
+        with patch(
+            "game_visual_forge.processing.background._remove_rembg_with_fallbacks",
+            return_value=BackgroundResult(
+                image.convert("RGBA"),
+                "rembg-test",
+                False,
+            ),
+        ):
+            result = remove_background(image, request)
+
+        self.assertEqual(result.method, "auto-rembg-test-alpha-invalid")
+        self.assertTrue(result.needs_attention)
+        self.assertEqual(result.alpha_report["output"]["transparent_pixels"], 0)
+
     def test_rembg_prefers_cuda_before_cpu(self) -> None:
         image = Image.new("RGBA", (2, 2), (1, 2, 3, 255))
         request = replace(
