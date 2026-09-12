@@ -22,12 +22,18 @@ and shared `src/` package available; the launcher is
    `comfyui-h3` uses the conditional `comfy-mcp` backend. Hosted generation
    asks for `api` or `cli` in the same route choice. Detection reports
    availability; it never chooses or switches a route or backend.
-4. For `comfyui-h3`, require the H3 Prompt Writing Skill and Comfy MCP, use the
-   prompt Skill for the selected H3 mode, then preflight and validate the local
-   workflow. Bind the prompt, references, workflow, model, duration, resolution,
-   and their hashes before execution. Inspect the graph for Cloud or partner
-   nodes; obtain explicit spend confirmation when it can consume credits or the
-   billing boundary is unverified. A fully local graph needs no paid confirmation.
+4. For `comfyui-h3`, require the H3 Prompt Writing Skill and Comfy MCP. For a
+   local H3 2D game-character or Sprite animation, also read
+   [`references/h3-character-quality-profile.md`](references/h3-character-quality-profile.md)
+   before writing the prompt. Merge its quality and identity blocks into the
+   H3-required `integrated_multimodal_description`; do not apply it to
+   unrelated video, map, audio, existing-file, or hosted-provider requests.
+   Use the prompt Skill for the selected H3 mode, then preflight and validate
+   the local workflow. Bind the prompt, references, workflow, model, duration,
+   resolution, and their hashes before execution. Inspect the graph for Cloud
+   or partner nodes; obtain explicit spend confirmation when it can consume
+   credits or the billing boundary is unverified. A fully local graph needs no
+   paid confirmation.
 5. Run a confirmed ComfyUI graph once, persist its `prompt_id`, and recover it
    through the Comfy MCP job/status and output-fetch tools. Never rerun an
    uncertain graph automatically. Fetch one immutable video before local ingest.
@@ -59,11 +65,17 @@ body:
 
 1. Use `i2v-first-tail` / FL2VA and connect the same ready-pose image to both
    the H3 `first_frame` and `last_frame` inputs. A prompt that merely says
-   “return to the start” is not an end-frame condition.
+   "return to the start" is not an end-frame condition.
 2. Use a fixed seed and a valid H3 `17k + 5` length (124 frames is the default
    five-second baseline). Describe the complete duration, including the final
    return and hold; select the shorter gameplay interval later by presentation
-   timestamp.
+   timestamp. I2VA/FL2VA selection remains action-specific: use FL2VA when an
+   exact first and last pose are required, and use I2VA when the approved
+   opening frame should develop forward without an exact final keyframe. The
+   mode must be justified by end-pose requirements and visual review, not
+   treated as a universal sharpness switch. The fixed seed supports provenance
+   and reproducibility; it does not promise equal clarity across prompt,
+   model, software, hardware, or other changes.
 3. For a no-motion idle, use one static source image. Do not generate an H3
    video solely to simulate a standing idle.
 4. Set the request `layout_mode` to `reference-locked`. This uses the first
