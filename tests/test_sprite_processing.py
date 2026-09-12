@@ -129,6 +129,40 @@ class SpriteProcessingTests(unittest.TestCase):
             self.assertEqual(result.delivery_metadata["anchor"], "feet")
             self.assertIn("delivery-normalize-feet", result.processing_steps)
 
+    def test_lock_frame1_replaces_generated_first_frame_with_seed(self) -> None:
+        with tempfile.TemporaryDirectory() as directory:
+            root = Path(directory)
+            source = self.make_image(root)
+            seed = root / "references" / "hero-seed.png"
+            seed.parent.mkdir()
+            seed_image = Image.new("RGBA", (2, 2), (0, 0, 0, 0))
+            seed_image.putpixel((0, 0), (220, 40, 60, 255))
+            seed_image.putpixel((1, 0), (220, 40, 60, 255))
+            seed_image.putpixel((0, 1), (220, 40, 60, 255))
+            seed_image.putpixel((1, 1), (220, 40, 60, 255))
+            seed_image.save(seed)
+            request = replace(
+                self.request(),
+                frame_count=4,
+                seed_frame_path="references/hero-seed.png",
+                lock_frame1=True,
+            )
+            record = ingest_image(root, source, request_source_type(request), "a" * 64)
+
+            result = process_sprite(root, request, record, root / request.output_dir)
+            staging = root / result.staging_dir
+            with Image.open(staging / result.frame_paths[0]) as first:
+                rgba = first.convert("RGBA")
+                colors = {
+                    rgba.getpixel((x, y))
+                    for y in range(rgba.height)
+                    for x in range(rgba.width)
+                }
+            self.assertIn((220, 40, 60, 255), colors)
+            self.assertIn("lock-frame1-to-seed", result.processing_steps)
+            self.assertEqual(result.generation_metadata["seed_frame_path"], "references/hero-seed.png")
+            self.assertTrue(result.generation_metadata["whole_strip"])
+
     def test_missing_rembg_preserves_background_with_attention_flag(self) -> None:
         request = replace(self.request(), background_removal=BackgroundRemoval.REMBG, chroma_color=None)
         with patch("game_visual_forge.processing.background._load_rembg", return_value=None):

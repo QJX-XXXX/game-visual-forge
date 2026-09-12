@@ -91,6 +91,25 @@ class SpriteQualityTests(unittest.TestCase):
         self.assertEqual(manifest.delivery_normalization, processing.delivery_metadata)
         self.assertEqual(manifest.artifacts[-1].role, "delivery-frame")
 
+    def test_manifest_records_seeded_generation_metadata(self) -> None:
+        root, staging, request, record, processing = self.make_data()
+        processing = replace(
+            processing,
+            generation_metadata={
+                "route": "seeded-whole-strip",
+                "seed_frame_path": "references/hero-seed.png",
+                "whole_strip": True,
+                "lock_frame1": True,
+            },
+        )
+        report = validate_sprite_outputs(staging, request, record, processing)
+        manifest = build_asset_manifest(staging, request, record, processing, report)
+        self.assertEqual(manifest.generation_metadata, processing.generation_metadata)
+        self.assertEqual(
+            type(manifest).from_dict(manifest.to_dict()).generation_metadata,
+            processing.generation_metadata,
+        )
+
     def test_auto_background_fails_when_processed_sheet_has_no_transparent_pixels(self) -> None:
         root, staging, request, record, processing = self.make_data()
         for index, path in enumerate(processing.frame_paths):

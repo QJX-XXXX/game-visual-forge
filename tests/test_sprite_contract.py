@@ -121,6 +121,33 @@ class SpriteRequestTests(unittest.TestCase):
         with self.assertRaisesRegex(ValueError, "fit_scale"):
             DeliveryNormalization(canvas_width=64, canvas_height=64, fit_scale=1.1)
 
+    def test_seed_frame_and_lock_frame1_round_trip(self) -> None:
+        request = replace(
+            make_request(),
+            seed_frame_path="references/hero-seed.png",
+            lock_frame1=True,
+        )
+        restored = SpriteRequest.from_dict(request.to_dict())
+        self.assertEqual(restored, request)
+
+    def test_old_request_without_seed_fields_remains_compatible(self) -> None:
+        payload = make_request().to_dict()
+        payload.pop("seed_frame_path")
+        payload.pop("lock_frame1")
+        restored = SpriteRequest.from_dict(payload)
+        self.assertIsNone(restored.seed_frame_path)
+        self.assertFalse(restored.lock_frame1)
+
+    def test_lock_frame1_requires_a_seed_frame(self) -> None:
+        with self.assertRaisesRegex(ValueError, "seed_frame_path"):
+            replace(make_request(), lock_frame1=True)
+
+    def test_seed_frame_path_rejects_absolute_and_parent_paths(self) -> None:
+        for path in ("C:/secret.png", "/secret.png", "../secret.png"):
+            with self.subTest(path=path):
+                with self.assertRaisesRegex(ValueError, "seed_frame_path"):
+                    replace(make_request(), seed_frame_path=path)
+
     def test_refinement_requires_rembg_with_chroma_color(self) -> None:
         payload = make_request().to_dict()
         payload["rembg_refinement"] = "pymatting"

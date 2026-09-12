@@ -32,6 +32,11 @@ class AgentImageCapabilities:
         if not isinstance(self.operations, tuple) or not all(isinstance(item, str) for item in self.operations):
             raise TypeError("operations must be a tuple of strings")
 
+    def supports(self, operation: str) -> bool:
+        if not isinstance(operation, str) or not operation.strip():
+            raise ValueError("operation must be a non-empty string")
+        return self.supported and operation in self.operations
+
 
 class NativeAttemptOutcome(StrEnum):
     NOT_ATTEMPTED = "not-attempted"
@@ -85,7 +90,7 @@ def route_sprite(
             reason="user-selected-existing-file",
         )
 
-    native_supported = native.supported and "text-to-image" in native.operations
+    native_supported = native.supports("text-to-image")
     if native_supported and native_outcome is NativeAttemptOutcome.NOT_ATTEMPTED:
         return _decision(
             request,
@@ -161,6 +166,15 @@ def build_prompt_package(request: SpriteRequest) -> PromptPackage:
     transparent_background_prompt = (
         TRANSPARENT_BACKGROUND_PROMPT if transparent_background else None
     )
+    whole_strip = request.frame_count > 1
+    seed_frame_path = request.seed_frame_path or (
+        request.reference_paths[0]
+        if whole_strip and request.reference_paths
+        else None
+    )
+    reference_paths = request.reference_paths
+    if seed_frame_path is not None and seed_frame_path not in reference_paths:
+        reference_paths = (seed_frame_path, *reference_paths)
     frames_per_direction = request.frame_count // len(request.directions)
     frame_order = tuple(
         f"{direction}:{index:02d}"
@@ -175,6 +189,30 @@ def build_prompt_package(request: SpriteRequest) -> PromptPackage:
         *request.identity_constraints,
     )
     positive_prompt = request.prompt
+    if whole_strip:
+        positive_prompt = (
+            f"{positive_prompt} Generate one coherent whole animation sheet in a single request "
+            f"with exactly {request.frame_count} frames arranged as {request.grid_rows} rows by "
+            f"{request.grid_columns} columns in the requested order. "
+            "Keep the same character identity, facing, palette, silhouette, outfit, equipment, and proportions across every frame."
+        )
+        negatives = (
+            *negatives,
+            "no independently generated frames",
+            "no per-frame restyling",
+            "no scene background",
+            "no labels or poster layout",
+        )
+        if seed_frame_path is not None:
+            positive_prompt = (
+                f"{positive_prompt} Use the approved seed frame reference as the identity anchor "
+                "for every frame."
+            )
+        if request.lock_frame1:
+            positive_prompt = (
+                f"{positive_prompt} Keep frame 01 identical to the approved seed frame "
+                "after compositing and normalization."
+            )
     if transparent_background:
         positive_prompt = (
             f"{positive_prompt} {transparent_background_prompt} "
@@ -185,7 +223,7 @@ def build_prompt_package(request: SpriteRequest) -> PromptPackage:
         schema_version=1,
         positive_prompt=positive_prompt,
         negative_constraints=negatives,
-        reference_paths=request.reference_paths,
+        reference_paths=reference_paths,
         canvas_width=request.canvas_width,
         canvas_height=request.canvas_height,
         grid_rows=request.grid_rows,
@@ -199,4 +237,7 @@ def build_prompt_package(request: SpriteRequest) -> PromptPackage:
         ),
         expected_output_path=f"{request.output_dir}/raw/source.png",
         transparent_background_prompt=transparent_background_prompt,
+        seed_frame_path=seed_frame_path,
+        whole_strip=whole_strip,
+        lock_frame1=request.lock_frame1,
     )

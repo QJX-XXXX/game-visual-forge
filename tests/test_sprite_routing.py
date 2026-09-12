@@ -23,6 +23,15 @@ from tests.test_sprite_contract import make_request
 
 
 class SpriteRoutingTests(unittest.TestCase):
+    def test_native_capabilities_expose_operation_lookup(self) -> None:
+        capabilities = AgentImageCapabilities(
+            True,
+            ("text-to-image", "reference-image", "native-alpha-generate"),
+        )
+        self.assertTrue(capabilities.supports("reference-image"))
+        self.assertFalse(capabilities.supports("whole-strip"))
+        self.assertFalse(AgentImageCapabilities(False, ("text-to-image",)).supports("text-to-image"))
+
     def test_existing_file_wins_before_native_capability(self) -> None:
         request = replace(make_request(), source_preference=SpriteSourcePreference.EXISTING_FILE)
         decision = route_sprite(request, AgentImageCapabilities(True, ("text-to-image",)))
@@ -147,6 +156,30 @@ class SpriteRoutingTests(unittest.TestCase):
         package = build_prompt_package(make_request())
 
         self.assertIsNone(package.transparent_background_prompt)
+
+    def test_animation_prompt_package_uses_seeded_whole_strip_metadata(self) -> None:
+        request = replace(
+            make_request(),
+            background_removal=BackgroundRemoval.AUTO,
+            chroma_color=None,
+            seed_frame_path="references/hero-seed.png",
+            lock_frame1=True,
+        )
+        package = build_prompt_package(request)
+
+        self.assertTrue(package.whole_strip)
+        self.assertEqual(package.seed_frame_path, "references/hero-seed.png")
+        self.assertEqual(package.reference_paths[0], "references/hero-seed.png")
+        self.assertTrue(package.lock_frame1)
+        self.assertIn("one coherent whole animation sheet", package.positive_prompt)
+        self.assertIn("exactly 8 frames", package.positive_prompt)
+        self.assertIn("2 rows by 4 columns", package.positive_prompt)
+        self.assertIn("seed frame", package.positive_prompt)
+
+    def test_first_reference_is_used_as_seed_metadata_when_no_explicit_seed_exists(self) -> None:
+        package = build_prompt_package(make_request())
+        self.assertEqual(package.seed_frame_path, "references/hero.png")
+        self.assertTrue(package.whole_strip)
 
 
 if __name__ == "__main__":

@@ -44,6 +44,7 @@ class AssetManifest:
     processing_steps: tuple[str, ...]
     quality_status: str
     delivery_normalization: dict[str, Any] | None = None
+    generation_metadata: dict[str, Any] | None = None
 
     def __post_init__(self) -> None:
         if self.schema_version != 1:
@@ -58,6 +59,8 @@ class AssetManifest:
             raise TypeError("artifacts must contain ArtifactRecord objects")
         if self.delivery_normalization is not None and not isinstance(self.delivery_normalization, dict):
             raise TypeError("delivery_normalization must be an object")
+        if self.generation_metadata is not None and not isinstance(self.generation_metadata, dict):
+            raise TypeError("generation_metadata must be an object")
         paths = [item.path for item in self.artifacts]
         if len(paths) != len(set(paths)):
             raise ValueError("artifact paths must be unique")
@@ -73,6 +76,7 @@ class AssetManifest:
             "processing_steps": list(self.processing_steps),
             "quality_status": self.quality_status,
             "delivery_normalization": self.delivery_normalization,
+            "generation_metadata": self.generation_metadata,
         }
 
     @classmethod
@@ -99,4 +103,5 @@ class AssetManifest:
             processing_steps=tuple(value["processing_steps"]),
             quality_status=value["quality_status"],
             delivery_normalization=value.get("delivery_normalization"),
+            generation_metadata=value.get("generation_metadata"),
         )

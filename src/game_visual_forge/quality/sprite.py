@@ -193,4 +193,5 @@ def build_asset_manifest(staging_dir: Path, request: SpriteRequest, record: RawI
         processing.processing_steps,
         quality_status,
         processing.delivery_metadata,
+        processing.generation_metadata,
     )

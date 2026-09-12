@@ -179,6 +179,8 @@ class SpriteRequest:
     rembg_refinement: RembgRefinement | None = None
     delivery_normalization: DeliveryNormalization | None = None
     target_engine_notes: str | None = None
+    seed_frame_path: str | None = None
+    lock_frame1: bool = False
 
     def __post_init__(self) -> None:
         _require_schema_version(self.schema_version)
@@ -264,6 +266,16 @@ class SpriteRequest:
             raise TypeError("delivery_normalization must be DeliveryNormalization")
         _require_optional_string(self.action_name, "action_name")
         _require_optional_string(self.target_engine_notes, "target_engine_notes")
+        seed_frame_path = _require_optional_string(self.seed_frame_path, "seed_frame_path")
+        if seed_frame_path is not None:
+            object.__setattr__(
+                self,
+                "seed_frame_path",
+                normalize_repo_relative_path(seed_frame_path, field_name="seed_frame_path"),
+            )
+        _require_bool(self.lock_frame1, "lock_frame1")
+        if self.lock_frame1 and self.seed_frame_path is None:
+            raise ValueError("lock_frame1 requires seed_frame_path")
 
     def to_dict(self) -> dict[str, Any]:
         return {
@@ -299,6 +311,8 @@ class SpriteRequest:
                 else self.delivery_normalization.to_dict()
             ),
             "target_engine_notes": self.target_engine_notes,
+            "seed_frame_path": self.seed_frame_path,
+            "lock_frame1": self.lock_frame1,
         }
 
     @classmethod
@@ -352,6 +366,8 @@ class SpriteRequest:
                 else DeliveryNormalization.from_dict(value["delivery_normalization"])
             ),
             target_engine_notes=_require_optional_string(value.get("target_engine_notes"), "target_engine_notes"),
+            seed_frame_path=_require_optional_string(value.get("seed_frame_path"), "seed_frame_path"),
+            lock_frame1=_require_bool(value.get("lock_frame1", False), "lock_frame1"),
         )
 
 
@@ -417,6 +433,9 @@ class PromptPackage:
     solid_background: str | None
     expected_output_path: str
     transparent_background_prompt: str | None = None
+    seed_frame_path: str | None = None
+    whole_strip: bool = False
+    lock_frame1: bool = False
 
     def __post_init__(self) -> None:
         _require_schema_version(self.schema_version)
@@ -441,6 +460,17 @@ class PromptPackage:
             raise ValueError(
                 "transparent_background_prompt requires transparent_background"
             )
+        seed_frame_path = _require_optional_string(self.seed_frame_path, "seed_frame_path")
+        if seed_frame_path is not None:
+            object.__setattr__(
+                self,
+                "seed_frame_path",
+                normalize_repo_relative_path(seed_frame_path, field_name="seed_frame_path"),
+            )
+        _require_bool(self.whole_strip, "whole_strip")
+        _require_bool(self.lock_frame1, "lock_frame1")
+        if self.lock_frame1 and self.seed_frame_path is None:
+            raise ValueError("lock_frame1 requires seed_frame_path")
         object.__setattr__(self, "expected_output_path", normalize_repo_relative_path(self.expected_output_path, field_name="expected_output_path"))
 
     def to_dict(self) -> dict[str, Any]:
@@ -458,6 +488,9 @@ class PromptPackage:
             "solid_background": self.solid_background,
             "expected_output_path": self.expected_output_path,
             "transparent_background_prompt": self.transparent_background_prompt,
+            "seed_frame_path": self.seed_frame_path,
+            "whole_strip": self.whole_strip,
+            "lock_frame1": self.lock_frame1,
         }
 
 

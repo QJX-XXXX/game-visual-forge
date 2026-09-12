@@ -24,6 +24,32 @@ delivery the default and set `background_removal=auto` in the normalized Sprite
 request. This policy expresses the delivery requirement independently from the
 fallback processor chosen after generation.
 
+## Seeded whole-strip animation
+
+For any request with more than one frame, prefer a single coherent generation
+request for the entire action. Use `seed_frame_path` when the user supplies an
+approved seed; otherwise use the first approved reference image as the seed
+metadata. Build one coherent whole animation sheet in the requested grid or
+strip with the exact frame count and order. Do not generate animation cells as
+independent images by default.
+
+Preserve the seed identity, facing, palette, silhouette, outfit, equipment,
+proportions, and transparent-background constraints across every frame. Set
+`lock_frame1=true` only when the approved seed must become frame 01; the local
+processor then replaces the generated first cell before alignment and records
+the operation in the processing result. For engine delivery, use the existing
+delivery normalizer so every frame receives the same shared scale and anchor,
+and inspect the generated sheet or GIF before approval.
+
+Use the built-in imagegen as the default native source when it is available.
+Treat reference-image editing, native transparency, whole-strip generation, and
+fast targeted iteration as capabilities rather than model-name assumptions.
+The capability declaration may expose operation tokens such as
+`text-to-image`, `reference-image`, `native-alpha-generate`,
+`native-alpha-edit`, and `whole-strip`; use the ones actually advertised.
+Do not hard-code a model name; inspect the Agent capability declaration and let
+the current tool choose its supported model or operation.
+
 ## Complex action boundary
 
 Before source routing, warn the user when a request involves complex character motion,

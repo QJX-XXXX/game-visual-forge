@@ -42,6 +42,13 @@ SKILLS = {
             "opaque white",
             "must not be published",
             "`transparent_background_prompt`",
+            "Seeded whole-strip animation",
+            "one coherent whole animation sheet",
+            "shared scale and anchor",
+            "lock_frame1",
+            "reference-image",
+            "built-in imagegen",
+            "Do not hard-code a model name",
         ),
     },
     "forge-2d-map": {

@@ -6,6 +6,7 @@ from pathlib import Path, PurePosixPath
 from typing import Any
 
 from game_visual_forge.contracts import RawImageRecord, SpriteRequest
+from game_visual_forge.errors import ErrorCode, ForgeError
 from game_visual_forge.processing.alignment import align_bottom_center
 from game_visual_forge.processing.background import remove_background
 from game_visual_forge.processing.delivery import normalize_delivery_frames
@@ -28,6 +29,7 @@ class ProcessingResult:
     delivery_gif_path: str | None = None
     delivery_metadata: dict[str, Any] | None = None
     background_alpha: dict[str, Any] | None = None
+    generation_metadata: dict[str, Any] | None = None
 
     def to_dict(self) -> dict[str, Any]:
         return {
@@ -43,6 +45,7 @@ class ProcessingResult:
             "delivery_gif_path": self.delivery_gif_path,
             "delivery_metadata": self.delivery_metadata,
             "background_alpha": self.background_alpha,
+            "generation_metadata": self.generation_metadata,
         }
 
     @classmethod
@@ -64,6 +67,7 @@ class ProcessingResult:
             delivery_gif_path=None if value.get("delivery_gif_path") is None else str(value["delivery_gif_path"]),
             delivery_metadata=value.get("delivery_metadata"),
             background_alpha=value.get("background_alpha"),
+            generation_metadata=value.get("generation_metadata"),
         )
 
     @classmethod
@@ -82,25 +86,81 @@ class ProcessingResult:
         delivery_gif_path: Path | None = None,
         delivery_metadata: dict[str, Any] | None = None,
         background_alpha: dict[str, Any] | None = None,
+        generation_metadata: dict[str, Any] | None = None,
     ) -> "ProcessingResult":
         root = repo_root.resolve()
         staging_relative = PurePosixPath(staging.resolve().relative_to(root).as_posix()).as_posix()
         def relative(path: Path) -> str:
             return PurePosixPath(path.resolve().relative_to(staging.resolve()).as_posix()).as_posix()
         return cls(
-            1,
-            staging_relative,
-            tuple(relative(path) for path in frame_paths),
-            None if sheet_path is None else relative(sheet_path),
-            None if gif_path is None else relative(gif_path),
-            processing_steps,
-            needs_attention,
-            tuple(relative(path) for path in delivery_frame_paths),
-            None if delivery_sheet_path is None else relative(delivery_sheet_path),
-            None if delivery_gif_path is None else relative(delivery_gif_path),
-            delivery_metadata,
-            background_alpha,
+            schema_version=1,
+            staging_dir=staging_relative,
+            frame_paths=tuple(relative(path) for path in frame_paths),
+            sheet_path=None if sheet_path is None else relative(sheet_path),
+            gif_path=None if gif_path is None else relative(gif_path),
+            processing_steps=processing_steps,
+            needs_attention=needs_attention,
+            delivery_frame_paths=tuple(relative(path) for path in delivery_frame_paths),
+            delivery_sheet_path=None if delivery_sheet_path is None else relative(delivery_sheet_path),
+            delivery_gif_path=None if delivery_gif_path is None else relative(delivery_gif_path),
+            delivery_metadata=delivery_metadata,
+            background_alpha=background_alpha,
+            generation_metadata=generation_metadata,
         )
+
+
+def _seed_reference_path(request: SpriteRequest) -> str | None:
+    if request.seed_frame_path is not None:
+        return request.seed_frame_path
+    if request.frame_count > 1 and request.reference_paths:
+        return request.reference_paths[0]
+    return None
+
+
+def _load_seed_frame(
+    repo_root: Path,
+    request: SpriteRequest,
+    Image: Any,
+) -> tuple[Any, bool, dict[str, Any] | None]:
+    if request.seed_frame_path is None:
+        raise ForgeError(
+            ErrorCode.INVALID_REQUEST,
+            "lock_frame1 requires an explicit seed frame path",
+            recoverable=True,
+            context={"field": "seed_frame_path"},
+        )
+    seed_path = repo_root.resolve() / PurePosixPath(request.seed_frame_path)
+    try:
+        with Image.open(seed_path) as opened:
+            seed_background = remove_background(opened, request)
+    except (OSError, ValueError) as error:
+        raise ForgeError(
+            ErrorCode.IMAGE_UNREADABLE,
+            "seed frame cannot be decoded",
+            recoverable=True,
+            context={"path": request.seed_frame_path},
+        ) from error
+    return trim_alpha(seed_background.image), seed_background.needs_attention, seed_background.alpha_report
+
+
+def _merge_alpha_reports(
+    primary: dict[str, Any] | None,
+    seed: dict[str, Any] | None,
+) -> dict[str, Any] | None:
+    if seed is None:
+        return primary
+    merged = dict(primary or {})
+    merged["seed"] = seed
+    primary_output = merged.get("output")
+    seed_output = seed.get("output") if isinstance(seed, dict) else None
+    if isinstance(primary_output, dict) and isinstance(seed_output, dict):
+        output = dict(primary_output)
+        output["transparent_background_valid"] = (
+            output.get("transparent_background_valid") is True
+            and seed_output.get("transparent_background_valid") is True
+        )
+        merged["output"] = output
+    return merged
 
 
 def process_sprite(
@@ -115,7 +175,24 @@ def process_sprite(
     with Image.open(source) as opened:
         background = remove_background(opened, request)
     frames = split_grid(background.image, rows=request.grid_rows, columns=request.grid_columns, frame_count=request.frame_count)
-    aligned = align_bottom_center(tuple(trim_alpha(frame) for frame in frames))
+    trimmed_frames = tuple(trim_alpha(frame) for frame in frames)
+    seed_needs_attention = False
+    seed_alpha_report: dict[str, Any] | None = None
+    processing_steps = [
+        "verify-source",
+        background.method,
+        "split-grid",
+        "trim-alpha",
+    ]
+    if request.lock_frame1:
+        seed_frame, seed_needs_attention, seed_alpha_report = _load_seed_frame(
+            repo_root,
+            request,
+            Image,
+        )
+        trimmed_frames = (seed_frame, *trimmed_frames[1:])
+        processing_steps.append("lock-frame1-to-seed")
+    aligned = align_bottom_center(trimmed_frames)
     staging = output_dir.parent / f".{output_dir.name}.staging-{record.sha256[:12]}"
     staging.mkdir(parents=True, exist_ok=True)
     frame_paths = export_frames(aligned, staging)
@@ -125,13 +202,7 @@ def process_sprite(
     delivery_sheet_path: Path | None = None
     delivery_gif_path: Path | None = None
     delivery_metadata: dict[str, Any] | None = None
-    processing_steps = [
-        "verify-source",
-        background.method,
-        "split-grid",
-        "trim-alpha",
-        "align-bottom-center",
-    ]
+    processing_steps.append("align-bottom-center")
     if request.delivery_normalization is not None:
         delivery = normalize_delivery_frames(aligned, request.delivery_normalization)
         delivery_dir = staging / "delivery"
@@ -156,12 +227,24 @@ def process_sprite(
         sheet_path,
         gif_path,
         processing_steps=tuple(processing_steps),
-        needs_attention=background.needs_attention,
+        needs_attention=background.needs_attention or seed_needs_attention,
         delivery_frame_paths=delivery_frame_paths,
         delivery_sheet_path=delivery_sheet_path,
         delivery_gif_path=delivery_gif_path,
         delivery_metadata=delivery_metadata,
-        background_alpha=background.alpha_report,
+        background_alpha=_merge_alpha_reports(background.alpha_report, seed_alpha_report),
+        generation_metadata={
+            "route": (
+                "seeded-whole-strip"
+                if request.frame_count > 1 and _seed_reference_path(request) is not None
+                else "whole-strip"
+                if request.frame_count > 1
+                else "single-frame"
+            ),
+            "seed_frame_path": _seed_reference_path(request),
+            "whole_strip": request.frame_count > 1,
+            "lock_frame1": request.lock_frame1,
+        },
     )
 
 
