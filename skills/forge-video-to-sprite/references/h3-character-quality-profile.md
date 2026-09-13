@@ -44,13 +44,15 @@ stable across frames. Preserve the complete prop inside the frame. Derive the
 frame margin from the source composition so the prop is not cropped; a fixed
 margin that cuts off a large prop is invalid.
 
-For a game Sprite request, set `canvas_policy: strict` and choose the
-`safe_frame_margin` before generation. Inside
+For a game Sprite request, set `canvas_policy: strict` and use the default
+`safe_frame_margin: 0` unless an optional positive guard band is useful. Inside
 `integrated_multimodal_description`, state that the complete character,
 shield, defining weapon, projectile origin, and the farthest point of the
-full attack sweep remain inside that safe frame for every frame. Require a
-locked static camera and prohibit cropping, panning, zooming, an out-of-frame
-weapon tip, or any action that leaves the declared canvas. This composition
+full attack sweep remain inside that safe frame for every frame. Being close to
+or touching the canvas edge is acceptable when the complete shape remains
+visible. Require a locked static camera and prohibit cropping, panning,
+zooming, an out-of-frame weapon tip, or any action that leaves the declared
+canvas. This composition
 constraint complements the crisp-outline, no-motion-blur, no-smear,
 no-defocus, and no-ghosting quality prefix; it does not change the H3 field
 names or alignment-line rules.

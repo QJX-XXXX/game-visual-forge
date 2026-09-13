@@ -51,10 +51,10 @@ uses high-quality resampling.
 ## Canvas containment
 
 `VideoSpriteRequest` exposes `canvas_policy` (`strict` or `report-only`) and a
-normalized `safe_frame_margin` in `(0, 0.5)` for strict game output (or
-`[0, 0.5)` for report-only). Strict is the default for game
-Sprites and uses a 5% margin unless the request deliberately chooses another
-value. The half-open safe rectangle is:
+normalized `safe_frame_margin` in `[0, 0.5)`. Strict is the default for game
+Sprites and uses `0` by default: the complete canvas is allowed, so content
+may approach or touch an edge. A positive margin is an optional guard band,
+not a mandatory rejection threshold. The half-open safe rectangle is:
 
 ```text
 left   = ceil(width  * safe_frame_margin)
@@ -68,17 +68,18 @@ Foreground bounds use alpha >= 8. The quality report records per-frame
 `edge_contact_frames`, `out_of_safe_frame_frames`, and
 `source_edge_contact_frames`. The last field is measured on the cleaned source
 before `tight` trimming so a cropped weapon cannot be hidden by recentering the
-remaining pixels; any such contact drives `minimum_margin` to zero. Every requested density is checked; the highest-density
-timeline remains the canonical temporal metric source.
+remaining pixels; any such contact drives `minimum_margin` to zero. Every
+requested density is checked; the highest-density timeline remains the
+canonical temporal metric source.
 
 An evaluated strict violation produces the deterministic `canvas-containment`
 failure and blocks publication. A strict `preserve` background is likewise a
 hard failure because it has no foreground mask. `report-only` records the same
 evidence as `needs_attention` and can proceed only through intentional manual
-review. Edge contact is recorded separately from safe-frame violation so review
-can distinguish a border touch (for example with an explicitly zero report-only
-margin) from evidence of cropped source content; strict game requests do not
-allow a zero margin.
+review. Edge contact is not a violation when the visible bounds remain within
+the declared safe rectangle; it is recorded as `needs_attention` so review can
+distinguish a border touch from evidence of cropped source content. Source-edge
+contact is also a review warning, not an automatic margin failure.
 
 ## Artifacts
 

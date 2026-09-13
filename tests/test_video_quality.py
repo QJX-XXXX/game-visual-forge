@@ -62,7 +62,9 @@ class VideoQualityTests(unittest.TestCase):
             processing = process_video_sprite(root, request, source, tuple(raw_frames), frame_counts=(4,))
             report = assess_video_outputs(root, request, source, processing)
             self.assertEqual(report.canvas_containment["source_edge_contact_frames"], [0])
-            self.assertEqual(report.canvas_containment["status"], "failed")
+            self.assertEqual(report.canvas_containment["status"], "needs_attention")
+            self.assertEqual(report.canvas_containment["densities"]["4"]["status"], "needs_attention")
+            self.assertEqual(report.deterministic_status, QualityStatus.PASSED)
 
     def test_containment_checks_all_requested_densities(self) -> None:
         with tempfile.TemporaryDirectory(dir=ROOT) as directory:

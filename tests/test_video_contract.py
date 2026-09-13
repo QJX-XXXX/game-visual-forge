@@ -61,7 +61,7 @@ class VideoContractTests(unittest.TestCase):
     def test_canvas_containment_defaults_and_round_trips(self) -> None:
         request = VideoSpriteRequest.from_dict(valid_request())
         self.assertEqual(request.canvas_policy, VideoCanvasPolicy.STRICT)
-        self.assertEqual(request.safe_frame_margin, 0.05)
+        self.assertEqual(request.safe_frame_margin, 0.0)
         report_only = VideoSpriteRequest.from_dict(valid_request(canvas_policy="report-only", safe_frame_margin=0.12))
         self.assertEqual(report_only.canvas_policy, VideoCanvasPolicy.REPORT_ONLY)
         restored = VideoSpriteRequest.from_dict(report_only.to_dict())
@@ -72,8 +72,8 @@ class VideoContractTests(unittest.TestCase):
             VideoSpriteRequest.from_dict(valid_request(safe_frame_margin=-0.01))
         with self.assertRaisesRegex(ValueError, "safe_frame_margin"):
             VideoSpriteRequest.from_dict(valid_request(safe_frame_margin=0.5))
-        with self.assertRaisesRegex(ValueError, "strict canvas_policy"):
-            VideoSpriteRequest.from_dict(valid_request(safe_frame_margin=0))
+        zero_margin = VideoSpriteRequest.from_dict(valid_request(safe_frame_margin=0))
+        self.assertEqual(zero_margin.safe_frame_margin, 0.0)
         VideoSpriteRequest.from_dict(valid_request(canvas_policy="report-only", safe_frame_margin=0))
         with self.assertRaises((TypeError, ValueError)):
             VideoSpriteRequest.from_dict(valid_request(canvas_policy="unknown"))

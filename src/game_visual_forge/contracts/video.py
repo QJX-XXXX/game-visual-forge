@@ -140,7 +140,7 @@ class VideoSpriteRequest:
     fit_scale: float = 0.88
     target_engine_notes: str | None = None
     canvas_policy: VideoCanvasPolicy = VideoCanvasPolicy.STRICT
-    safe_frame_margin: float = 0.05
+    safe_frame_margin: float = 0.0
 
     def __post_init__(self) -> None:
         if self.schema_version != 1:
@@ -208,8 +208,6 @@ class VideoSpriteRequest:
         margin = _number(self.safe_frame_margin, "safe_frame_margin")
         if not 0 <= margin < 0.5:
             raise ValueError("safe_frame_margin must be in [0, 0.5)")
-        if self.canvas_policy is VideoCanvasPolicy.STRICT and margin <= 0:
-            raise ValueError("strict canvas_policy requires safe_frame_margin greater than 0")
         object.__setattr__(self, "safe_frame_margin", margin)
         _optional_string(self.target_engine_notes, "target_engine_notes")
 
@@ -295,7 +293,7 @@ class VideoSpriteRequest:
             layout_mode=VideoLayoutMode(value.get("layout_mode", "tight")),
             fit_scale=value.get("fit_scale", 0.88),
             canvas_policy=VideoCanvasPolicy(value.get("canvas_policy", "strict")),
-            safe_frame_margin=value.get("safe_frame_margin", 0.05),
+            safe_frame_margin=value.get("safe_frame_margin", 0.0),
             target_engine_notes=_optional_string(value.get("target_engine_notes"), "target_engine_notes"),
         )
 

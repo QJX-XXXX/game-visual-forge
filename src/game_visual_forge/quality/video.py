@@ -61,7 +61,7 @@ def _bounds_sequence(bounds: tuple[tuple[int, int, int, int] | None, ...]) -> li
 
 
 def _containment_metrics_dict(metrics: Any) -> dict[str, Any]:
-    status = "needs_attention" if not metrics.canvas_containment_evaluable else "passed" if metrics.canvas_containment_passed else "failed"
+    status = "needs_attention" if (not metrics.canvas_containment_evaluable or metrics.edge_contact_frames or metrics.source_edge_contact_frames) else "passed" if metrics.canvas_containment_passed else "failed"
     return {
         "safe_frame_bounds": _bounds_list(metrics.safe_frame_bounds),
         "swept_bounds": _bounds_list(metrics.swept_bounds),
@@ -153,7 +153,7 @@ def assess_video_outputs(repo_root: Path, request: VideoSpriteRequest, source: V
     metric_dict = {} if metrics is None else {"frame_count": metrics.frame_count, "exact_duplicate_rate": metrics.exact_duplicate_rate, "near_duplicate_rate": metrics.near_duplicate_rate, "motion_coverage": metrics.motion_coverage, "static_intervals": list(metrics.static_intervals), "subject_bounds_variation": metrics.subject_bounds_variation, "anchor_jitter": metrics.anchor_jitter, "first_last_loop_difference": metrics.first_last_loop_difference, "alpha_coverage": metrics.alpha_coverage, "clipping_risk": metrics.clipping_risk, "frame_flicker": metrics.frame_flicker, "attention_reasons": list(metrics.attention_reasons), "frame_bounds": _bounds_sequence(metrics.frame_bounds), "swept_bounds": _bounds_list(metrics.swept_bounds), "safe_frame_bounds": _bounds_list(metrics.safe_frame_bounds), "edge_contact_frames": list(metrics.edge_contact_frames), "out_of_safe_frame_frames": list(metrics.out_of_safe_frame_frames), "source_edge_contact_frames": list(source_edge_contacts), "minimum_margin": metrics.minimum_margin, "canvas_containment_passed": metrics.canvas_containment_passed, "canvas_containment_evaluable": metrics.canvas_containment_evaluable}
     metric_dict["layout_mode"] = request.layout_mode.value
     metric_dict["reference_bounds"] = timing.get("reference_bounds")
-    containment_violation = metrics is None or bool(source_edge_contacts) or any(
+    containment_violation = metrics is None or any(
         item.get("passed") is False for item in density_containment.values()
     )
     if metrics is None:
@@ -164,7 +164,10 @@ def assess_video_outputs(repo_root: Path, request: VideoSpriteRequest, source: V
         containment_message = "preserved background has no foreground mask; strict publication is blocked pending a report-only decision"
     elif containment_violation:
         containment_status = QualityStatus.FAILED if request.canvas_policy is VideoCanvasPolicy.STRICT else QualityStatus.NEEDS_ATTENTION
-        containment_message = "visible foreground or source bounds leave the declared safe frame"
+        containment_message = "visible foreground leaves the declared safe frame"
+    elif metrics.edge_contact_frames or source_edge_contacts:
+        containment_status = QualityStatus.NEEDS_ATTENTION
+        containment_message = "edge contact is recorded; manual clipping and equipment-completeness review is required"
     else:
         containment_status = QualityStatus.PASSED
         containment_message = "all requested densities remain inside the declared safe frame"

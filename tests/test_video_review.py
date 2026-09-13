@@ -82,10 +82,17 @@ class VideoReviewTests(unittest.TestCase):
         self.assertTrue(metrics.canvas_containment_passed)
         self.assertEqual(metrics.edge_contact_frames, ())
 
+    def test_zero_margin_allows_exact_border_contact(self) -> None:
+        metrics = calculate_temporal_metrics(edge_weapon_frames(), safe_frame_margin=0.0)
+        self.assertTrue(metrics.canvas_containment_passed)
+        self.assertEqual(metrics.out_of_safe_frame_frames, ())
+        self.assertEqual(metrics.edge_contact_frames, (2,))
+        self.assertIn("clipping-risk", metrics.attention_reasons)
+
     def test_source_edge_evidence_sets_minimum_margin_to_zero(self) -> None:
         metrics = calculate_temporal_metrics(frames(), safe_frame_margin=0.05, source_edge_contact_frames=(1,))
         self.assertEqual(metrics.minimum_margin, 0.0)
-        self.assertFalse(metrics.canvas_containment_passed)
+        self.assertTrue(metrics.canvas_containment_passed)
 
     def test_anchor_diagnostic_accepts_safe_and_swept_bounds(self) -> None:
         with tempfile.TemporaryDirectory(dir=ROOT) as directory:

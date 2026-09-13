@@ -128,7 +128,7 @@ def calculate_temporal_metrics(
     if not foreground_evaluable:
         containment_passed: bool | None = None
     elif containment_required:
-        containment_passed = not out_of_safe and not source_edges
+        containment_passed = not out_of_safe
     else:
         containment_passed = True
     clipping = bool(edge_contact_frames or source_edges)

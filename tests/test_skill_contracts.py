@@ -204,6 +204,8 @@ class SkillContractTests(unittest.TestCase):
             with self.subTest(fragment=fragment):
                 self.assertTrue(any(fragment in content for content in (skill, quality, profile)))
         self.assertIn("integrated_multimodal_description", profile)
+        self.assertIn("edge contact is not a violation", quality.lower())
+        self.assertIn("uses `0` by default", quality.lower())
 
     def test_map_launcher_exposes_m2_commands(self) -> None:
         launcher = ROOT / "skills" / "forge-2d-map" / "scripts" / "run.py"

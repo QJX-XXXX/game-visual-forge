@@ -78,8 +78,10 @@ video has audio but does not export audio.
 For game Sprite output, compose the safe-frame constraint inside
 `integrated_multimodal_description`: keep the complete character, defining
 equipment, and farthest point of the weapon's full motion sweep inside the
-declared `safe_frame_margin` with a locked static camera. Do not describe a
-crop, pan, zoom, or out-of-frame prop as an acceptable transition. The Forge
+declared canvas (the default `safe_frame_margin` may be zero) with a locked
+static camera. Near-edge or exact-edge contact is acceptable when the complete
+shape remains visible. Do not describe a crop, pan, zoom, or out-of-frame prop
+as an acceptable transition. The Forge
 processor enforces `canvas_policy` after cleanup; this prompt constraint does
 not replace the deterministic `canvas-containment` check.
 

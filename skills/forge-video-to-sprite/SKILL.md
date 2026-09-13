@@ -48,8 +48,9 @@ and shared `src/` package available; the launcher is
    an existing task when recovering; never resubmit `submission_unknown`.
 8. Ingest the immutable video, sample by presentation timestamp, clean and
    align frames, export the requested densities, and run deterministic checks.
-   For game Sprite output, use the strict `canvas_policy` by default and set a
-   deliberate `safe_frame_margin`; the complete character and every moving
+   For game Sprite output, use the strict `canvas_policy` by default and use
+   `safe_frame_margin: 0` unless an optional positive guard band is desired;
+   the complete character and every moving
    prop must remain inside that safe frame at every requested density.
 9. Present source interval, timestamped contact sheet, transparent GIF,
    motion-difference image, anchor diagnostic, strips, and sheets for the final
@@ -65,19 +66,24 @@ same source video and do not create a new paid task.
 Game Sprite delivery is governed by a geometric frame contract in addition to
 the visual review. `canvas_policy` defaults to `strict`; use `report-only` only
 when a preserved-background or non-game run cannot produce a foreground mask.
-`safe_frame_margin` is a positive normalized inset (default `0.05`) applied to every
-side of the delivery canvas. The report records per-frame `frame_bounds`, the
-half-open safe rectangle, `swept_bounds` for the union of all visible frames, `minimum_margin`,
+`safe_frame_margin` is an optional normalized inset (default `0`) applied to
+each side of the delivery canvas. A zero margin means the full canvas is the
+allowed area; being close to or exactly on an edge is acceptable. The report
+records per-frame `frame_bounds`, the half-open safe rectangle, `swept_bounds`
+for the union of all visible frames, `minimum_margin`,
 `edge_contact_frames`, `out_of_safe_frame_frames`, and
 `source_edge_contact_frames` captured before `tight` trimming.
 
 In strict mode, a visible foreground or defining weapon that leaves the safe
 frame is a deterministic failure and cannot be published, even when a manual
-review is approved. A preserved opaque background is explicitly
+review is approved. Exact edge contact is not itself a violation; it is
+recorded as `needs_attention` for manual clipping and equipment-completeness
+review. A preserved opaque background is explicitly
 `foreground_evaluable=false` and is also a deterministic failure under strict
 policy; choose `report-only` only when manual review is intentionally allowed.
 It is never silently claimed to be contained. Tight layout must not erase
-source-edge evidence by recentering a cropped weapon.
+source-edge evidence by recentering a cropped weapon; source-edge evidence is a
+review warning, not an automatic margin failure.
 
 Manual review must include the exact checks `no-canvas-clipping` and
 `equipment-in-safe-frame`. Inspect the anchor diagnostic's safe rectangle and
@@ -110,11 +116,14 @@ body:
    frame's scale and feet anchor for every frame, so an extending weapon cannot
    move or resize the character. The default `tight` layout remains unchanged
    for ordinary clips.
-5. Set `canvas_policy: strict` and choose `safe_frame_margin` from the
-   reference composition before generation. Keep the complete body, shield,
-   weapon, projectile origin, and farthest point of the full attack sweep
-   inside that safe frame with a locked camera. The quality report must pass
-   `swept_bounds` and `source_edge_contact_frames` before publication.
+5. Set `canvas_policy: strict`; use the default `safe_frame_margin: 0` unless
+   the reference composition benefits from an optional positive guard band.
+   Keep the complete body, shield, weapon, projectile origin, and farthest
+   point of the full attack sweep inside that safe frame with a locked camera.
+   Edge contact is acceptable but must be manually reviewed; the quality report
+   must have no out-of-safe-frame `swept_bounds`, and any
+   `source_edge_contact_frames` must be explained by complete visible
+   equipment.
 6. Treat a flying projectile as runtime-owned after the release frame. Reject
    the clip if the held arrow becomes a duplicated, symmetric, malformed, or
    anatomically attached projectile.
