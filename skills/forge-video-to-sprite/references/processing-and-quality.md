@@ -4,6 +4,7 @@
 
 - [Tool discovery and source](#tool-discovery-and-source)
 - [Sampling and cleanup](#sampling-and-cleanup)
+- [Canvas containment](#canvas-containment)
 - [Artifacts](#artifacts)
 - [Quality and review](#quality-and-review)
 
@@ -47,6 +48,38 @@ leave out-of-canvas pixels visible to the clipping-risk check instead of
 silently rescaling them. Pixel mode uses nearest-neighbor resizing. HD mode
 uses high-quality resampling.
 
+## Canvas containment
+
+`VideoSpriteRequest` exposes `canvas_policy` (`strict` or `report-only`) and a
+normalized `safe_frame_margin` in `(0, 0.5)` for strict game output (or
+`[0, 0.5)` for report-only). Strict is the default for game
+Sprites and uses a 5% margin unless the request deliberately chooses another
+value. The half-open safe rectangle is:
+
+```text
+left   = ceil(width  * safe_frame_margin)
+top    = ceil(height * safe_frame_margin)
+right  = floor(width  * (1 - safe_frame_margin))
+bottom = floor(height * (1 - safe_frame_margin))
+```
+
+Foreground bounds use alpha >= 8. The quality report records per-frame
+`frame_bounds`, along with `safe_frame_bounds`, `swept_bounds`, `minimum_margin`,
+`edge_contact_frames`, `out_of_safe_frame_frames`, and
+`source_edge_contact_frames`. The last field is measured on the cleaned source
+before `tight` trimming so a cropped weapon cannot be hidden by recentering the
+remaining pixels; any such contact drives `minimum_margin` to zero. Every requested density is checked; the highest-density
+timeline remains the canonical temporal metric source.
+
+An evaluated strict violation produces the deterministic `canvas-containment`
+failure and blocks publication. A strict `preserve` background is likewise a
+hard failure because it has no foreground mask. `report-only` records the same
+evidence as `needs_attention` and can proceed only through intentional manual
+review. Edge contact is recorded separately from safe-frame violation so review
+can distinguish a border touch (for example with an explicitly zero report-only
+margin) from evidence of cropped source content; strict game requests do not
+allow a zero margin.
+
 ## Artifacts
 
 The staging run records raw/clean/delivery frames, per-density strips and
@@ -66,8 +99,9 @@ the final output. Raw evidence may remain in the staging run.
 
 Deterministic blocking checks cover source/request/attempt/model/artifact hash
 mismatches, missing or unordered frames, wrong counts or dimensions, corrupt
-images, empty visible content, out-of-canvas content, fully opaque requested
-transparency, visible direct-chroma residue, and manifest path/hash mismatches.
+images, empty visible content, the `canvas-containment` safe-frame gate,
+out-of-canvas content, fully opaque requested transparency, visible direct-
+chroma residue, and manifest path/hash mismatches.
 Direct chroma cleanup tolerates small codec color drift, and the residue check
 blocks significant remaining key color before publication.
 
@@ -79,14 +113,21 @@ more than 1.0% visible near-key pixels in any frame fails publication.
 
 Temporal metrics report exact and near duplicates, motion coverage, static
 intervals, bounds and area variation, anchor jitter, loop difference, alpha
-coverage, clipping risk, background change, and flicker. Reference-locked runs
-also record the immutable reference bounds and draw them in the anchor
-diagnostic. These metrics can set
+coverage, clipping risk, background change, flicker, safe-frame bounds, swept
+bounds, per-frame bounds, edge-contact indexes, source-edge indexes, and
+minimum margin. `temporal_metrics.frame_bounds` is the highest-density
+timeline; lower-density containment evidence is under
+`canvas_containment.densities`.
+Reference-locked runs also record the immutable reference bounds and draw them
+alongside the safe rectangle and swept bounds in the anchor diagnostic. These metrics can set
 `needs_attention`; they do not decide whether a deliberate hold or impact frame
-is semantically correct.
+is semantically correct. `clipping_risk` is a broad historical signal; the
+deterministic `canvas-containment` check is the publication gate.
 
 The final review checks identity, clothing/colors/equipment, action and
 direction, timing, start/end pose, anatomy, camera lock, drift, cleanup, edge
-quality, loop continuity, text/watermarks, and semantic duplicates. The review
-record binds all displayed artifacts and the quality report by hash. A current
-approved record is required for atomic publication.
+quality, loop continuity, text/watermarks, semantic duplicates,
+`no-canvas-clipping`, and `equipment-in-safe-frame`. The review record binds
+all displayed artifacts and the quality report by hash. A current approved
+record is required for atomic publication; it cannot override a failed
+deterministic containment check.

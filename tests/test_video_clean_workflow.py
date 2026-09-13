@@ -27,7 +27,7 @@ class VideoCleanWorkflowTests(unittest.TestCase):
             quality_path = staging / "video-quality-report.json"
             dump_json(quality_path, report.to_dict())
             preview = staging / "delivery" / "previews" / "density-4.gif"
-            review = record_video_motion_review(root, source.request_fingerprint, source.sha256, quality_path, {"preview": preview}, {"action": True}, True, "2026-08-09T00:00:00Z")
+            review = record_video_motion_review(root, source.request_fingerprint, source.sha256, quality_path, {"preview": preview}, {"action": True, "no-canvas-clipping": True, "equipment-in-safe-frame": True}, True, "2026-08-09T00:00:00Z")
             reviewed = validate_reviewed_video_outputs(root, request, source, processing, review, quality_path, {"preview": preview})
             manifest = build_video_asset_manifest(root, request, source, processing, reviewed)
             final = root / "outputs" / "clean-final"

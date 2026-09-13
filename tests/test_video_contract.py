@@ -6,6 +6,7 @@ from tests._bootstrap import ROOT
 
 from game_visual_forge.contracts.video import (
     VideoBackgroundMode,
+    VideoCanvasPolicy,
     VideoGenerationMode,
     VideoLayoutMode,
     VideoProcessingMode,
@@ -56,6 +57,26 @@ class VideoContractTests(unittest.TestCase):
         request = VideoSpriteRequest.from_dict(valid_request(layout_mode="reference-locked"))
         self.assertEqual(request.layout_mode, VideoLayoutMode.REFERENCE_LOCKED)
         self.assertEqual(request.to_dict()["layout_mode"], "reference-locked")
+
+    def test_canvas_containment_defaults_and_round_trips(self) -> None:
+        request = VideoSpriteRequest.from_dict(valid_request())
+        self.assertEqual(request.canvas_policy, VideoCanvasPolicy.STRICT)
+        self.assertEqual(request.safe_frame_margin, 0.05)
+        report_only = VideoSpriteRequest.from_dict(valid_request(canvas_policy="report-only", safe_frame_margin=0.12))
+        self.assertEqual(report_only.canvas_policy, VideoCanvasPolicy.REPORT_ONLY)
+        restored = VideoSpriteRequest.from_dict(report_only.to_dict())
+        self.assertEqual(restored, report_only)
+
+    def test_safe_frame_margin_is_normalized_and_bounded(self) -> None:
+        with self.assertRaisesRegex(ValueError, "safe_frame_margin"):
+            VideoSpriteRequest.from_dict(valid_request(safe_frame_margin=-0.01))
+        with self.assertRaisesRegex(ValueError, "safe_frame_margin"):
+            VideoSpriteRequest.from_dict(valid_request(safe_frame_margin=0.5))
+        with self.assertRaisesRegex(ValueError, "strict canvas_policy"):
+            VideoSpriteRequest.from_dict(valid_request(safe_frame_margin=0))
+        VideoSpriteRequest.from_dict(valid_request(canvas_policy="report-only", safe_frame_margin=0))
+        with self.assertRaises((TypeError, ValueError)):
+            VideoSpriteRequest.from_dict(valid_request(canvas_policy="unknown"))
 
     def test_request_accepts_comfyui_h3_as_a_video_source(self) -> None:
         try:

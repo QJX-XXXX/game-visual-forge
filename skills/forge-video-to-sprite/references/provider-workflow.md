@@ -75,6 +75,14 @@ required. Describe the final ready-pose hold even when the Sprite request later
 selects a shorter PTS interval. The sprite pipeline records whether the fetched
 video has audio but does not export audio.
 
+For game Sprite output, compose the safe-frame constraint inside
+`integrated_multimodal_description`: keep the complete character, defining
+equipment, and farthest point of the weapon's full motion sweep inside the
+declared `safe_frame_margin` with a locked static camera. Do not describe a
+crop, pan, zoom, or out-of-frame prop as an acceptable transition. The Forge
+processor enforces `canvas_policy` after cleanup; this prompt constraint does
+not replace the deterministic `canvas-containment` check.
+
 Persist the optimized prompt as UTF-8 `comfyui-h3-prompt.txt` before graph
 execution. Bind its SHA-256 together with the request fingerprint, reference
 paths, roles and hashes, workflow JSON path and hash, Comfy target, H3

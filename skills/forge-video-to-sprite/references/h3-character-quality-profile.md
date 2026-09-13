@@ -44,6 +44,17 @@ stable across frames. Preserve the complete prop inside the frame. Derive the
 frame margin from the source composition so the prop is not cropped; a fixed
 margin that cuts off a large prop is invalid.
 
+For a game Sprite request, set `canvas_policy: strict` and choose the
+`safe_frame_margin` before generation. Inside
+`integrated_multimodal_description`, state that the complete character,
+shield, defining weapon, projectile origin, and the farthest point of the
+full attack sweep remain inside that safe frame for every frame. Require a
+locked static camera and prohibit cropping, panning, zooming, an out-of-frame
+weapon tip, or any action that leaves the declared canvas. This composition
+constraint complements the crisp-outline, no-motion-blur, no-smear,
+no-defocus, and no-ghosting quality prefix; it does not change the H3 field
+names or alignment-line rules.
+
 ## Mode selection
 
 I2VA and FL2VA are action-level choices, not universal quality switches. Use
@@ -85,6 +96,8 @@ Review the current candidate for, at minimum:
 - action semantics, direction, and camera lock;
 - crisp edges, readable fine details, and absence of blur or ghosting;
 - transparency cleanup, clipping, and complete in-frame equipment;
+- `no-canvas-clipping` and `equipment-in-safe-frame` checks, including the
+  complete weapon sweep;
 - frame semantics, timing, and loop/end pose where applicable;
 - absence of text, watermarks, or extra characters.
 

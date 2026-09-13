@@ -12,7 +12,7 @@ from game_visual_forge.processing.video_frames import build_sampling_plan, extra
 from game_visual_forge.processing.video_probe import discover_toolchain, ingest_video
 from game_visual_forge.processing.video_sprite import process_video_sprite
 from game_visual_forge.processing.comfy_h3_workflow import load_and_inspect_comfy_h3_workflow
-from game_visual_forge.processing.video_review import calculate_temporal_metrics, create_anchor_diagnostic, create_contact_sheet, create_motion_difference, record_video_motion_review
+from game_visual_forge.processing.video_review import calculate_safe_frame_bounds, calculate_temporal_metrics, create_anchor_diagnostic, create_contact_sheet, create_motion_difference, record_video_motion_review
 from game_visual_forge.providers.cli import run_provider_command
 from game_visual_forge.providers.video import download_video_attempt, query_video_attempt, submit_video_attempt
 from game_visual_forge.quality.video import assess_video_outputs, build_video_asset_manifest, publish_video_outputs, validate_reviewed_video_outputs
@@ -146,7 +146,25 @@ def run_video_record_review(request_path: Path, source_path: Path, processing_pa
     timing = load_json(repo_root / processing.timing_path)
     raw_reference_bounds = timing.get("reference_bounds")
     reference_bounds = None if not isinstance(raw_reference_bounds, list) or len(raw_reference_bounds) != 4 else tuple(int(item) for item in raw_reference_bounds)
-    anchor = create_anchor_diagnostic(tuple(frames), evidence_dir / "anchor-diagnostic.png", reference_bounds=reference_bounds)
+    raw_safe_bounds = timing.get("safe_frame_bounds")
+    safe_bounds = None if not isinstance(raw_safe_bounds, list) or len(raw_safe_bounds) != 4 else tuple(int(item) for item in raw_safe_bounds)
+    if safe_bounds is None and frames:
+        safe_bounds = calculate_safe_frame_bounds(frames[0].width, frames[0].height, request.safe_frame_margin)
+    raw_source_edges = timing.get("source_edge_contact_frames", [])
+    source_edges = tuple(int(item) for item in raw_source_edges) if isinstance(raw_source_edges, list) else ()
+    containment_metrics = calculate_temporal_metrics(
+        tuple(frames),
+        safe_frame_margin=request.safe_frame_margin,
+        source_edge_contact_frames=source_edges,
+        foreground_evaluable=request.background_mode.value != "preserve",
+    )
+    anchor = create_anchor_diagnostic(
+        tuple(frames),
+        evidence_dir / "anchor-diagnostic.png",
+        reference_bounds=reference_bounds,
+        safe_frame_bounds=safe_bounds,
+        swept_bounds=containment_metrics.swept_bounds,
+    )
     preview = repo_root / processing.artifacts[f"gif:{highest}"]
     checks = {str(key): bool(value) for key, value in load_json(checks_path).items()}
     review = record_video_motion_review(repo_root, source.request_fingerprint, source.sha256, quality_path, {"contact-sheet": contact, "motion-difference": motion, "anchor-diagnostic": anchor, "preview": preview}, checks, all(checks.values()), reviewed_at)

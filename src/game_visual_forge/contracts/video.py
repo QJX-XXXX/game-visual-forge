@@ -95,6 +95,11 @@ class VideoLayoutMode(StrEnum):
     REFERENCE_LOCKED = "reference-locked"
 
 
+class VideoCanvasPolicy(StrEnum):
+    STRICT = "strict"
+    REPORT_ONLY = "report-only"
+
+
 class VideoOutput(StrEnum):
     FRAMES = "frames"
     STRIPS = "strips"
@@ -134,6 +139,8 @@ class VideoSpriteRequest:
     layout_mode: VideoLayoutMode = VideoLayoutMode.TIGHT
     fit_scale: float = 0.88
     target_engine_notes: str | None = None
+    canvas_policy: VideoCanvasPolicy = VideoCanvasPolicy.STRICT
+    safe_frame_margin: float = 0.05
 
     def __post_init__(self) -> None:
         if self.schema_version != 1:
@@ -196,6 +203,14 @@ class VideoSpriteRequest:
         scale = _number(self.fit_scale, "fit_scale")
         if not 0 < scale <= 1:
             raise ValueError("fit_scale must be in (0, 1]")
+        if not isinstance(self.canvas_policy, VideoCanvasPolicy):
+            raise TypeError("canvas_policy must be VideoCanvasPolicy")
+        margin = _number(self.safe_frame_margin, "safe_frame_margin")
+        if not 0 <= margin < 0.5:
+            raise ValueError("safe_frame_margin must be in [0, 0.5)")
+        if self.canvas_policy is VideoCanvasPolicy.STRICT and margin <= 0:
+            raise ValueError("strict canvas_policy requires safe_frame_margin greater than 0")
+        object.__setattr__(self, "safe_frame_margin", margin)
         _optional_string(self.target_engine_notes, "target_engine_notes")
 
     def _validate_references(self) -> None:
@@ -239,6 +254,8 @@ class VideoSpriteRequest:
             "anchor": self.anchor.value,
             "layout_mode": self.layout_mode.value,
             "fit_scale": self.fit_scale,
+            "canvas_policy": self.canvas_policy.value,
+            "safe_frame_margin": self.safe_frame_margin,
             "target_engine_notes": self.target_engine_notes,
         }
 
@@ -277,6 +294,8 @@ class VideoSpriteRequest:
             anchor=VideoAnchor(value.get("anchor", "feet")),
             layout_mode=VideoLayoutMode(value.get("layout_mode", "tight")),
             fit_scale=value.get("fit_scale", 0.88),
+            canvas_policy=VideoCanvasPolicy(value.get("canvas_policy", "strict")),
+            safe_frame_margin=value.get("safe_frame_margin", 0.05),
             target_engine_notes=_optional_string(value.get("target_engine_notes"), "target_engine_notes"),
         )
 

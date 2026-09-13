@@ -21,6 +21,7 @@ from game_visual_forge.processing.background import BackgroundResult, VIDEO_CHRO
 from game_visual_forge.processing.frames import trim_alpha
 from game_visual_forge.processing.images import _load_pillow
 from game_visual_forge.processing.video_probe import sha256_file
+from game_visual_forge.processing.video_review import calculate_safe_frame_bounds, visible_alpha_bounds
 
 
 def _video_background(image: Any, request: VideoSpriteRequest, remover: Callable[[Any, VideoSpriteRequest], Any] | None) -> tuple[Any, str, bool]:
@@ -167,14 +168,25 @@ def process_video_sprite(
             source_images.append(opened.convert("RGBA"))
     cleaned = []
     methods: list[str] = []
+    pretrim_source_bounds: list[tuple[int, int, int, int] | None] = []
+    source_edge_contact_frames: list[int] = []
     needs_attention = False
     reasons: list[str] = []
-    for image in source_images:
+    for source_index, image in enumerate(source_images):
         background, method, attention = _video_background(image, request, remover)
         methods.append(method)
         needs_attention = needs_attention or attention
         if attention and "background-removal-failed" not in reasons:
             reasons.append("background-removal-failed")
+        source_bound = visible_alpha_bounds(background)
+        pretrim_source_bounds.append(source_bound)
+        if source_bound is not None and (
+            source_bound[0] <= 0
+            or source_bound[1] <= 0
+            or source_bound[2] >= background.width
+            or source_bound[3] >= background.height
+        ):
+            source_edge_contact_frames.append(source_index)
         try:
             if request.layout_mode is VideoLayoutMode.REFERENCE_LOCKED:
                 cleaned.append(background.convert("RGBA"))
@@ -231,5 +243,26 @@ def process_video_sprite(
             for index, path in enumerate(frame_paths):
                 all_records.append(VideoFrameRecord(1, index, raw_frames[index].source_timestamp, raw_frames[index].source_frame_index, raw_frames[index].raw_path, None, path.relative_to(root).as_posix(), sha256_file(path)))
     timing_path = staging / "frame-timing.json"
-    dump_json(timing_path, {"schema_version": 1, "loop": request.loop, "layout_mode": request.layout_mode.value, "frames": timing, "scale": scale, "source_bounds": [list(item) for item in bounds], "reference_bounds": reference_delivery_bounds, "reference_source_bounds": list(bounds[0]) if request.layout_mode is VideoLayoutMode.REFERENCE_LOCKED else None, "cleanup_methods": methods})
+    canvas_width = delivery[0].width
+    canvas_height = delivery[0].height
+    safe_bounds = calculate_safe_frame_bounds(canvas_width, canvas_height, request.safe_frame_margin)
+    dump_json(
+        timing_path,
+        {
+            "schema_version": 1,
+            "loop": request.loop,
+            "layout_mode": request.layout_mode.value,
+            "canvas_policy": request.canvas_policy.value,
+            "safe_frame_margin": request.safe_frame_margin,
+            "safe_frame_bounds": list(safe_bounds),
+            "frames": timing,
+            "scale": scale,
+            "source_bounds": [list(item) for item in bounds],
+            "pretrim_source_bounds": [None if item is None else list(item) for item in pretrim_source_bounds],
+            "source_edge_contact_frames": sorted(set(source_edge_contact_frames)),
+            "reference_bounds": reference_delivery_bounds,
+            "reference_source_bounds": list(bounds[0]) if request.layout_mode is VideoLayoutMode.REFERENCE_LOCKED else None,
+            "cleanup_methods": methods,
+        },
+    )
     return VideoProcessingResult(1, request.asset_id, source.request_fingerprint, staging.relative_to(root).as_posix(), tuple(all_records), artifacts, timing_path.relative_to(root).as_posix(), tuple(methods), needs_attention, tuple(dict.fromkeys(reasons)))

@@ -92,6 +92,12 @@ SKILLS = {
             "reference-locked",
             "runtime-owned",
             "inspect-h3",
+            "canvas_policy",
+            "safe_frame_margin",
+            "swept_bounds",
+            "source_edge_contact_frames",
+            "no-canvas-clipping",
+            "equipment-in-safe-frame",
         ),
     },
     "forge-text-audio": {
@@ -189,6 +195,15 @@ class SkillContractTests(unittest.TestCase):
         self.assertIn("binary UTF-8 JSON", provider)
         self.assertIn("every requested density", quality)
         self.assertIn("1.0%", quality)
+
+    def test_video_skill_documents_frame_containment_contract(self) -> None:
+        skill = (ROOT / "skills" / "forge-video-to-sprite" / "SKILL.md").read_text(encoding="utf-8")
+        quality = (ROOT / "skills" / "forge-video-to-sprite" / "references" / "processing-and-quality.md").read_text(encoding="utf-8")
+        profile = (ROOT / "skills" / "forge-video-to-sprite" / "references" / "h3-character-quality-profile.md").read_text(encoding="utf-8")
+        for fragment in ("canvas_policy", "safe_frame_margin", "swept_bounds", "source_edge_contact_frames", "no-canvas-clipping", "equipment-in-safe-frame"):
+            with self.subTest(fragment=fragment):
+                self.assertTrue(any(fragment in content for content in (skill, quality, profile)))
+        self.assertIn("integrated_multimodal_description", profile)
 
     def test_map_launcher_exposes_m2_commands(self) -> None:
         launcher = ROOT / "skills" / "forge-2d-map" / "scripts" / "run.py"
