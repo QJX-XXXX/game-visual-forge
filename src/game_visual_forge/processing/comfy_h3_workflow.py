@@ -11,6 +11,8 @@ from game_visual_forge.contracts.serialization import load_json
 _H3_TYPE = "MiniMaxH3ImageToVideo"
 _NON_LOCAL_MARKERS = ("api", "cloud", "partner")
 _SEED_MODES = {"fixed", "randomize", "increment", "decrement"}
+_H3_MIN_LENGTH = 5
+_H3_MAX_LENGTH = 3600
 
 
 def _node_type(node: Mapping[str, Any]) -> str:
@@ -99,7 +101,11 @@ def _seed_mode(nodes: tuple[Mapping[str, Any], ...]) -> str:
 
 
 def _valid_h3_length(length: int | None) -> bool:
-    return length is not None and length >= 124 and (length - 5) % 17 == 0
+    return (
+        length is not None
+        and _H3_MIN_LENGTH <= length <= _H3_MAX_LENGTH
+        and (length - 5) % 17 == 0
+    )
 
 
 def inspect_comfy_h3_workflow(workflow: Mapping[str, Any], *, workflow_sha256: str | None = None) -> ComfyH3WorkflowReport:

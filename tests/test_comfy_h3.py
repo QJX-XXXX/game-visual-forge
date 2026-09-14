@@ -52,6 +52,16 @@ class ComfyH3WorkflowTests(unittest.TestCase):
         self.assertTrue(report.local_only)
         self.assertEqual(report.errors, ())
 
+    def test_accepts_aligned_length_below_five_second_default(self) -> None:
+        report = inspect_comfy_h3_workflow(workflow(length=107))
+        self.assertTrue(report.ok)
+        self.assertEqual(report.length, 107)
+
+    def test_accepts_minimum_aligned_h3_length(self) -> None:
+        report = inspect_comfy_h3_workflow(workflow(length=5))
+        self.assertTrue(report.ok)
+        self.assertEqual(report.length, 5)
+
     def test_rejects_disconnected_last_frame(self) -> None:
         report = inspect_comfy_h3_workflow(workflow(last_linked=False))
         self.assertFalse(report.ok)
@@ -62,8 +72,13 @@ class ComfyH3WorkflowTests(unittest.TestCase):
         self.assertFalse(report.ok)
         self.assertIn("seed-not-fixed", report.errors)
 
-    def test_rejects_invalid_h3_length(self) -> None:
-        report = inspect_comfy_h3_workflow(workflow(length=73))
+    def test_rejects_unaligned_h3_length(self) -> None:
+        report = inspect_comfy_h3_workflow(workflow(length=108))
+        self.assertFalse(report.ok)
+        self.assertIn("invalid-h3-length", report.errors)
+
+    def test_rejects_aligned_length_above_node_limit(self) -> None:
+        report = inspect_comfy_h3_workflow(workflow(length=3609))
         self.assertFalse(report.ok)
         self.assertIn("invalid-h3-length", report.errors)
 
