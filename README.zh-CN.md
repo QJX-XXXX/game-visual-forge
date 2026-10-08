@@ -50,6 +50,47 @@ python -c "from rembg import new_session; new_session('birefnet-general')"
 可使用 `U2NET_HOME` 指定共享模型目录。CPU 是兼容性默认选项；GPU 需要已验证
 的 CUDA 环境。PyMatting 是可选项，速度更慢。
 
+### 视频转精灵：人物动作
+
+以 `2DTower Defense` 的现有人物素材展示 `forge-video-to-sprite` 的结果。
+原视频对照与 Soldier 动作展示由团结编辑器 `2022.3.62t11` 的 Play Mode
+录制，演示工程与源项目隔离；关卡实录来自项目已有的正式战斗验收录像。
+
+#### 原视频 → v12 行走精灵
+
+左侧为原视频的 `2–4 秒` 区间，右侧为新建空人物预制体播放同一原片
+重新提取的 48 个 `128 × 128` 透明帧，以 `24 FPS`、`2 秒`循环。
+原来的 `Soldier_L1_Walk_PseudoTopDown_128_from2s_v12` 12 帧素材保持不变；
+新展示补足中间动作姿势，同时保持源视频的速度。
+
+![v12 原视频与 Unity 空人物预制体行走动画对照](assets/readme/video-to-sprite-soldier-walk-v12-comparison.gif)
+
+[查看完整原视频](assets/readme/video-to-sprite-soldier-walk-v12-original.mp4) ·
+[查看 MP4 对照](assets/readme/video-to-sprite-soldier-walk-v12-comparison.mp4)
+
+#### Soldier_L1_View
+
+![Soldier_L1_View 在 Unity 中的 Idle、Walk、Attack 动作](assets/readme/video-to-sprite-soldier-l1-unity-actions.gif)
+
+[查看 Soldier 动作 MP4](assets/readme/video-to-sprite-soldier-l1-unity-actions.mp4)
+
+Soldier 的三个动作保留当前预制体的视觉层级、锚点、阴影与 Sprite 动画引用；
+Attack 按原 Clip 时长播放，再短暂停回 Idle 后重复，便于观看。
+当前 Walk 使用 v16 的前 8 帧，与上方独立展示的 v12 不同。
+
+#### 真实游戏录屏：BattleLevel01
+
+![第一关实际战斗中的 Enemy_Basic、Enemy_Fast 与兵营 Soldier](assets/readme/video-to-sprite-tower-defense-gameplay.gif)
+
+[查看 35 秒游戏录屏 MP4](assets/readme/video-to-sprite-tower-defense-gameplay.mp4)
+
+录屏来自 `2026-09-17` 的正式 `ResourceBootstrap → CampaignHome → BattleLevel01`
+验收，包含 `Enemy_Basic_View`、`Enemy_Fast_View` 与兵营部署的 `Soldier_L1_View`。
+可看到敌人沿路线移动，以及士兵阻挡和攻击。
+仅裁出 Simulator 的玩家画面并截取战斗片段，保留地图、HUD、手牌及原始 `12 FPS` 速度；
+GIF 展示其中 12 秒，MP4 展示 35 秒。源项目文件未改动。
+[素材出处与参数](assets/readme/video-to-sprite-showcase-provenance.json)
+
 ### Stable Audio 3 示例
 
 以下音效由 `forge-text-audio` 使用官方

@@ -1,0 +1,231 @@
+{
+  "source_project": "2DTower Defense",
+  "engine": "Tuanjie 2022.3.62t11",
+  "source_video": "runs/comfy/Soldier_L1/Walk-v6/source/9ce740a1_000.mp4",
+  "source_sha256": "005feaede0782efb5acb09b4125f5dff25f10c6dfc010529889f93b89b8848e0",
+  "source_interval_seconds": [
+    2.0,
+    4.0
+  ],
+  "v12_sheet": "Assets/Art/Enemies/AnimationSheets/Soldier_L1_Walk_PseudoTopDown_128_from2s_v12.png",
+  "v12_sheet_sha256": "ff96f9469cce1fa8018168e409d6ec324fbadb75effbccf4b5c28eb45ebe521d",
+  "v12_original_frame_count": 12,
+  "v12_new_processing": "Re-extracted 48 real source frames; original v12 sheet retained unchanged.",
+  "v12_frames": 48,
+  "v12_frame_size": [
+    128,
+    128
+  ],
+  "v12_playback_fps": 24,
+  "v12_loop_seconds": 2.0,
+  "v12_imported_ppu": 170,
+  "rendering": "Native Animator + SpriteRenderer, isolated project, actual Play Mode, NVIDIA RTX 4070 Ti",
+  "layout": "Labels composed around unchanged Unity camera outputs; source segment is synchronized at source speed.",
+  "prefab_visuals": "Original Sprite references, transforms and shadows retained. Gameplay scripts/colliders removed in isolated copies; unlit built-in Sprite material used.",
+  "showcased_actions": [
+    "Idle",
+    "Walk",
+    "Attack"
+  ],
+  "smooth_walk_request": "soldier-l1-walk-v12-source-24fps",
+  "smooth_walk_source_timestamps": [
+    2.0,
+    2.0416666666666665,
+    2.0833333333333335,
+    2.125,
+    2.1666666666666665,
+    2.2083333333333335,
+    2.25,
+    2.2916666666666665,
+    2.3333333333333335,
+    2.375,
+    2.4166666666666665,
+    2.4583333333333335,
+    2.5,
+    2.5416666666666665,
+    2.5833333333333335,
+    2.625,
+    2.6666666666666665,
+    2.7083333333333335,
+    2.75,
+    2.7916666666666665,
+    2.8333333333333335,
+    2.875,
+    2.9166666666666665,
+    2.9583333333333335,
+    3.0,
+    3.041666666666667,
+    3.083333333333333,
+    3.125,
+    3.166666666666667,
+    3.208333333333333,
+    3.25,
+    3.291666666666667,
+    3.333333333333333,
+    3.375,
+    3.416666666666667,
+    3.458333333333333,
+    3.5,
+    3.541666666666667,
+    3.583333333333333,
+    3.625,
+    3.666666666666667,
+    3.708333333333333,
+    3.75,
+    3.791666666666667,
+    3.833333333333333,
+    3.875,
+    3.916666666666667,
+    3.958333333333333
+  ],
+  "smooth_walk_frames_sha256": [
+    "080c45e1d18406eff4f2142b6fcc8ea430f9c4b7a7aa2fb4fb98da6ea7f11844",
+    "90dd93817c0004b6c9a2b80f31425526258d8e30f9dd56fc38acff8576850826",
+    "a9f4175cb81dce59e4db84f961be72eeebb122a262b3f8e04c8ea13a5b4e6bb5",
+    "7149f8f4c6c697e3b776540113e8571fea8988d0d374b6982212ae766ddb2ab0",
+    "6ca008780fd78cfb2e0caa570d1f7ee54ca1c69479e928eadb939536cca55232",
+    "a7cf45a8006355ac10f625d92919e07732c4c8416c7654cd18604423593cb189",
+    "8b4b51b8fa4aa65f9347e1dd146a82a312e60359570a62b3812bdb1d66afc8d5",
+    "bf9a866ab09ef83b8b67c3a483f024216e6136aea50af92b5188e19b7f026dd6",
+    "401b62fda3beb0eead94b939127a1448844685f29776ff4a3b452d4864892a0d",
+    "28e92d44756799e32280a392748d41b21fd1152513071db14803ede8f95a4774",
+    "41f8e8e1dc5bcfd34712b28c2498b0e0ceac980ec9a5d38dc39780cce673e0f9",
+    "91cb9b2fd8ce956f6da029b1dd44e5abef37b9a7a36e64babdbf178ef0c9e393",
+    "57988da70c337261141ef78890d798f7c8b7c45775af12ad6e3ee7ce8799d4a3",
+    "0543223b0e6236fd05aa2152ec0a2de3bfd7083e7f2f78985b5b005362531f15",
+    "31aa7410532776d7b1cd6b843bba1e157e7973590448dc7695b887d9d666847c",
+    "0672f81e37a7ff9d4d96fd62d437bd1b49f2e5159987e66f56f182460cd157ef",
+    "72819e92829620b4d4c02e8058a8c8493e96fdf1cc828784b99bda69bd9f8496",
+    "eec47a6dfa69d9026dd410b47278e8b92f251fc05a262dcca543bca917b01044",
+    "52c24c6cc6ada695d2ef75eab8c2b45da55d4e0dd76ef10c94e257b256251ee2",
+    "11237150671f7f579304571e8628e770b226963dc599cd8e1affd46e53ca3256",
+    "b585df2934777a6777b79cccb8ed0d8c22ea0ed6b428c3b848b06988b3edbc8d",
+    "cd9f038a369e7e5fa654611c3cbcbcdaa0c17dcdb3c55c1bf4a82f45bf8f641f",
+    "182e2e2705b2ef686c262fa751532407396a0122df1d07fbf86c88c9583144c0",
+    "3c55a609b47a84185a954b2d0eb73e01cdad400c4f05c09775a5390b8f90e108",
+    "6d54d363d8affa53b823d486fe79df125c1b5a04b9e48a743880dac3acb02098",
+    "37957dceefe299717ff9fb52a89436687c565ec7626b721d89fdd212ddf21440",
+    "6ab24836088a3c791c4cf7753b31f8a40a6cf5932cf7fe48e14ce4b64c5a7c64",
+    "30676b5295b04e37dbbe95dc952c0c701e464142af1022c6a3cb1e10b0460bae",
+    "5ac34a9fc82c6165987401ea0d2acb933a988e6b83e0f0f3b63ba924f9da8191",
+    "b5636999b669d9e14d30290b67c38c36653369cc11cf413d27bbe3dee014e19c",
+    "b2eb0108934c0a824aa678d4f8ddd0ead267f4114221f021b43097e159cc9b4b",
+    "5c4ec2bb4f45a117f06518b17936640708423ec6fc905e5fec7ba4c02ad5a9e2",
+    "65271e171e2b30de091585cb2a255dd049056a684db5c6ab118e2f3797019a20",
+    "1a38d098093e74c461041d7d8f59f207f93a6e39298d62b6f9ce10d1fda67c05",
+    "899f3db0571d053a6aa5bcd495bb8fbead3bf2cb643dc46de5255d0d99e93f15",
+    "eee24098bc04631c0a954969c4446109ddaacff4ac41c6ae9f3f555ec6ed4592",
+    "a2124e14d8a64cb30a856212985fffcd35b0dfc937ae4354eb44c733ad4a7f8f",
+    "18452ffa6b7765eb94badbc60f20f3af78511ba1f9192366baf538f068fd2ea0",
+    "c295f7695dd3b1e842e65abd861bb10fb96e689e68c6399be17d6d36c22a24ba",
+    "378da10593549b3f6321bc646cfd8976d5e407d08845303be602fb66373abd6d",
+    "892128f78fd4db513aa260f092b98a5013004915333e93cc9bc5e5a6df611889",
+    "3a6cfbf8cb003ed8e96b449dbacb19eb64a10aa98c11d7de06cfd1add532aa51",
+    "f05687289c21ccec901b5d9f346bda79846d4ef2754dc8e39f04963bb6e63de3",
+    "ecd1df1465cdd41330fede0d9b7c7d1e02cc765c8d008f8b18850bc917a74c25",
+    "bbda8a223526e5702a563babaa0cfd6b3f573bda51d20f4222de33d64c968dbf",
+    "3c3208891e7897b997ee2a2e86ce7dc9ccb39d3db914ac44ff2231cec4270cc6",
+    "5dbfdd3c0cfae69773e4e756aa82345e9010176d373c7c99491f5df5e35182dd",
+    "faa1b73b833e253f9919e8aaccc983869c6d3fe4c3991edc67bf0b8274096fc2"
+  ],
+  "one_shot_preview": "Attack retains source clip timing and loop flag, and is retriggered after a 0.6-second Idle pause.",
+  "soldier_walk_sheet": "Soldier_L1_Walk_v16.png",
+  "artifacts": [
+    {
+      "path": "video-to-sprite-soldier-l1-unity-actions.gif",
+      "bytes": 2111382,
+      "sha256": "a1c9736405efbf55c46d1cf84dde1c04a22863358e4bd3d0c7eb7a84392915d0"
+    },
+    {
+      "path": "video-to-sprite-soldier-l1-unity-actions.mp4",
+      "bytes": 470704,
+      "sha256": "91608159c60e98e1ee1c315fadd5fdcb2363602237658ecd68a65321b54990a9"
+    },
+    {
+      "path": "video-to-sprite-soldier-walk-v12-comparison.gif",
+      "bytes": 4455952,
+      "sha256": "62117b348e7e2c7c304da65f33c0529b1c05f0a0418fea8a639127827f5e6288"
+    },
+    {
+      "path": "video-to-sprite-soldier-walk-v12-comparison.mp4",
+      "bytes": 549184,
+      "sha256": "edc3f11aa4497320b3d4231039cdcdb4607c8f16b5d3b255ba625b4cdfd374c0"
+    },
+    {
+      "path": "video-to-sprite-soldier-walk-v12-original.mp4",
+      "bytes": 842253,
+      "sha256": "005feaede0782efb5acb09b4125f5dff25f10c6dfc010529889f93b89b8848e0"
+    },
+    {
+      "path": "video-to-sprite-tower-defense-gameplay.gif",
+      "bytes": 3994601,
+      "sha256": "f3b129585cfcde33f3d401432c1cf3ccaaf017999711a5153015373e36c85f29"
+    },
+    {
+      "path": "video-to-sprite-tower-defense-gameplay.mp4",
+      "bytes": 1701001,
+      "sha256": "4bf1557cf120dd72175043f95b52a8c8a7e6289771a8284b371ea06947fd95a8"
+    }
+  ],
+  "rendering_scope": "rendering, layout, and prefab_visuals describe the isolated source comparison and Soldier panels; gameplay has its own provenance.",
+  "gameplay": {
+    "recorded_on": "2026-09-17",
+    "source_video": "runs/comfy/Soldier_L1/final-review/level01-soldier-runtime-20260917.mp4",
+    "source_sha256": "3bbb30c071eed4cdc2d82f46db84cb9a301c9d124787255fc53147b48c1ee86b",
+    "source_bytes": 10784812,
+    "source_dimensions": [
+      1600,
+      874
+    ],
+    "source_duration_seconds": 45,
+    "source_fps": 12,
+    "route": [
+      "ResourceBootstrap",
+      "CampaignHome",
+      "BattleLevel01"
+    ],
+    "recording_kind": "Existing real game Editor recording, formal natural-runtime acceptance; not newly recorded in this task.",
+    "actors_visually_verified": [
+      "Enemy_Basic_View",
+      "Enemy_Fast_View",
+      "Soldier_L1_View"
+    ],
+    "source_summary": "runs/comfy/Soldier_L1/final-review/summary.json",
+    "source_runtime_document": "docs/art/reviews/level-01-unit-animations/README.md",
+    "visual_review_source_times_seconds": [
+      4,
+      10,
+      18,
+      26,
+      34,
+      42
+    ],
+    "crop_pixels": {
+      "x": 56,
+      "y": 514,
+      "width": 694,
+      "height": 320
+    },
+    "output_dimensions": [
+      694,
+      320
+    ],
+    "mp4_source_interval_seconds": [
+      0,
+      35
+    ],
+    "gif_source_interval_seconds": [
+      6,
+      18
+    ],
+    "playback_fps": 12,
+    "processing": "Only spatial crop, temporal trim, and encoding. Original speed; no generated or interpolated gameplay frames.",
+    "source_project_files_modified": false,
+    "source_summary_runtime_acceptance": {
+      "barracks_built": true,
+      "deployed_soldiers": 2,
+      "attack_sequence_increments_observed": 12,
+      "revive_observed": true
+    }
+  }
+}

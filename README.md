@@ -52,6 +52,52 @@ python -c "from rembg import new_session; new_session('birefnet-general')"
 Use `U2NET_HOME` for a shared model directory. CPU is the compatibility default;
 GPU requires a verified CUDA environment. PyMatting is optional and slower.
 
+### Video to sprite: character animations
+
+These `forge-video-to-sprite` examples use existing character assets from
+`2DTower Defense`. The source comparison and Soldier action panels were captured
+in Tuanjie Editor `2022.3.62t11` Play Mode in an isolated showcase project.
+The gameplay footage comes from the project's existing formal battle acceptance recording.
+
+#### Original video → v12 walk sprites
+
+The left panel shows seconds `2–4` of the original video. The right panel shows
+a newly created empty character prefab playing 48 transparent `128 × 128` frames
+re-extracted from that same source at `24 FPS`, looping every `2 seconds`.
+The original twelve-frame `Soldier_L1_Walk_PseudoTopDown_128_from2s_v12` asset
+remains unchanged; the new preview adds intermediate poses at the source speed.
+
+![Original v12 video beside walk animation on an empty Unity character prefab](assets/readme/video-to-sprite-soldier-walk-v12-comparison.gif)
+
+[Full original video](assets/readme/video-to-sprite-soldier-walk-v12-original.mp4) ·
+[MP4 comparison](assets/readme/video-to-sprite-soldier-walk-v12-comparison.mp4)
+
+#### Soldier_L1_View
+
+![Soldier_L1_View Idle, Walk, and Attack animations in Unity](assets/readme/video-to-sprite-soldier-l1-unity-actions.gif)
+
+[Soldier animation MP4](assets/readme/video-to-sprite-soldier-l1-unity-actions.mp4)
+
+The Soldier preview retains the prefab's visual hierarchy, anchors, shadows,
+and Sprite animation references. Attack retains its clip timing and repeats
+after a short Idle pause. The current Walk uses the first eight v16 frames,
+separate from the v12 example above.
+
+#### Actual gameplay: BattleLevel01
+
+![Enemy_Basic, Enemy_Fast, and barracks Soldiers in actual Level 1 gameplay](assets/readme/video-to-sprite-tower-defense-gameplay.gif)
+
+[35-second gameplay MP4](assets/readme/video-to-sprite-tower-defense-gameplay.mp4)
+
+Recorded during formal acceptance on `2026-09-17`, through
+`ResourceBootstrap → CampaignHome → BattleLevel01`, with `Enemy_Basic_View`,
+`Enemy_Fast_View`, and barracks-deployed `Soldier_L1_View`. It shows enemies
+following the route and soldiers blocking and attacking.
+The footage is cropped to the Simulator's player view and trimmed to the battle,
+retaining the map, HUD, cards, and original `12 FPS` playback speed.
+The GIF shows 12 seconds; the MP4 shows 35 seconds. Source project files were left unchanged.
+[Asset provenance and parameters](assets/readme/video-to-sprite-showcase-provenance.json)
+
 ### Stable Audio 3 examples
 
 Generated with `forge-text-audio` and the official
