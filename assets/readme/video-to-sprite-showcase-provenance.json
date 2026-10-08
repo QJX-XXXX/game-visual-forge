@@ -17,6 +17,45 @@
     "seed": 20260917,
     "prompt_id": "9ce740a1-7eaf-4483-a04a-fb0b8e6a0b90",
     "timing_source": "Persisted comfy-mcp job status for prompt_id and archived ComfyUI prompt execution log",
+    "generation_machine": {
+      "cpu": "13th Gen Intel(R) Core(TM) i7-13700KF",
+      "installed_ram_gib": 32,
+      "gpu": "NVIDIA GeForce RTX 4070 Ti",
+      "vram_gib_nominal": 12,
+      "vram_mib_reported_by_nvidia_smi": 12282,
+      "observed_on": "2026-10-09",
+      "hardware_sources": "Win32_Processor, two Win32_PhysicalMemory modules, nvidia-smi"
+    },
+    "average_generation": {
+      "metric": "elapsed seconds from persisted comfy-mcp job submission to completed status",
+      "selection": "Three completed Soldier Walk FL2VA jobs using the 2D素材专属工作流Turbo + LowVRAM 8 步 profile at 640x640, 124 frames, 24 FPS, 8 steps",
+      "sample_count": 3,
+      "samples": [
+        {
+          "record": "runs/comfy/Soldier_L1/Walk-v3/comfyui-h3-generation.json",
+          "prompt_id": "41da7335-df60-44e1-af0b-676ae67347cd",
+          "submitted_at_utc": "2026-09-13T19:58:00Z",
+          "completed_at_utc": "2026-09-13T19:59:57Z",
+          "elapsed_seconds": 117
+        },
+        {
+          "record": "runs/comfy/Soldier_L1/Walk-v5/comfyui-h3-generation.json",
+          "prompt_id": "6d414a63-011a-442b-9534-614d4cee9f20",
+          "submitted_at_utc": "2026-09-13T20:13:15Z",
+          "completed_at_utc": "2026-09-13T20:15:11Z",
+          "elapsed_seconds": 116
+        },
+        {
+          "record": "runs/comfy/Soldier_L1/Walk-v6/comfyui-h3-generation.json",
+          "prompt_id": "9ce740a1-7eaf-4483-a04a-fb0b8e6a0b90",
+          "submitted_at_utc": "2026-09-13T20:48:23Z",
+          "completed_at_utc": "2026-09-13T20:50:19Z",
+          "elapsed_seconds": 116
+        }
+      ],
+      "mean_seconds": 116.333333,
+      "range_seconds": [116, 117]
+    },
     "submitted_at_utc": "2026-09-13T20:48:23Z",
     "completed_at_utc": "2026-09-13T20:50:19Z",
     "video_duration_seconds": 5.166667,

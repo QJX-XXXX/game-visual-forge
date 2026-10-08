@@ -63,9 +63,13 @@ workflow: `640 × 640`, `24 FPS`, `124 frames` (about `5.17 seconds`),
 Turbo/LowVRAM `8 steps`, fixed seed `20260917`. The [H3 local open weights](https://design.minimax.io/h3)
 are available free under the [Community License](https://huggingface.co/MiniMaxAI/MiniMax-H3/blob/main/LICENSE).
 This run used local compute, with no paid API call or cloud generation credits.
-This run was submitted at `2026-09-14 04:48:23` (UTC+8) and completed at
-`04:50:19`: `1 minute 56 seconds` from submission to completion. The ComfyUI
-log reports `114.58 seconds` of prompt execution.
+Current local hardware: Intel Core i7-13700KF, `32 GB` RAM, and NVIDIA GeForce RTX 4070 Ti
+with `12 GB` VRAM. Three verifiable, parameter-matched Soldier Walk runs (v3, v5, v6;
+each `640 × 640`, `124 frames`, `24 FPS`, `8 steps`) took `117`, `116`, and
+`116 seconds` from submission to completion: `116.3 seconds` on average (about
+`1 minute 56 seconds`). This example was submitted at `04:48:23` and completed
+at `04:50:19` (`116 seconds`); the ComfyUI log reports `114.58 seconds` of
+prompt execution. [Samples and timing sources](assets/readme/video-to-sprite-showcase-provenance.json)
 
 The left panel shows seconds `2–4` of the original video. The right panel shows
 a newly created empty character prefab playing 48 transparent `128 × 128` frames
