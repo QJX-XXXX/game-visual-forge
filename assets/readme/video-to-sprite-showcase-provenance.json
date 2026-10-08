@@ -15,9 +15,14 @@
     "fps": 24,
     "steps": 8,
     "seed": 20260917,
-    "submitted_at_utc": "2026-09-14T04:30:00Z",
+    "prompt_id": "9ce740a1-7eaf-4483-a04a-fb0b8e6a0b90",
+    "timing_source": "Persisted comfy-mcp job status for prompt_id and archived ComfyUI prompt execution log",
+    "submitted_at_utc": "2026-09-13T20:48:23Z",
+    "completed_at_utc": "2026-09-13T20:50:19Z",
     "video_duration_seconds": 5.166667,
-    "generation_wall_time_seconds": null,
+    "generation_wall_time_seconds": 116,
+    "comfyui_prompt_execution_seconds": 114.58,
+    "original_generation_record_submitted_at_disagrees": true,
     "license": "https://huggingface.co/MiniMaxAI/MiniMax-H3/blob/main/LICENSE"
   },
   "source_interval_seconds": [

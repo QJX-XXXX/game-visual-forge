@@ -63,7 +63,9 @@ workflow: `640 × 640`, `24 FPS`, `124 frames` (about `5.17 seconds`),
 Turbo/LowVRAM `8 steps`, fixed seed `20260917`. The [H3 local open weights](https://design.minimax.io/h3)
 are available free under the [Community License](https://huggingface.co/MiniMaxAI/MiniMax-H3/blob/main/LICENSE).
 This run used local compute, with no paid API call or cloud generation credits.
-The recorded submission time is `2026-09-14 12:30` (UTC+8); the actual compute time was not recorded.
+This run was submitted at `2026-09-14 04:48:23` (UTC+8) and completed at
+`04:50:19`: `1 minute 56 seconds` from submission to completion. The ComfyUI
+log reports `114.58 seconds` of prompt execution.
 
 The left panel shows seconds `2–4` of the original video. The right panel shows
 a newly created empty character prefab playing 48 transparent `128 × 128` frames
