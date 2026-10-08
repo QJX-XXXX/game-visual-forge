@@ -64,10 +64,11 @@ Turbo/LowVRAM `8 steps`, fixed seed `20260917`. The [H3 local open weights](http
 are available free under the [Community License](https://huggingface.co/MiniMaxAI/MiniMax-H3/blob/main/LICENSE).
 This run used local compute, with no paid API call or cloud generation credits.
 Current local hardware: Intel Core i7-13700KF, `32 GB` RAM, and NVIDIA GeForce RTX 4070 Ti
-with `12 GB` VRAM. Three verifiable, parameter-matched Soldier Walk runs (v3, v5, v6;
-each `640 × 640`, `124 frames`, `24 FPS`, `8 steps`) took `117`, `116`, and
-`116 seconds` from submission to completion: `116.3 seconds` on average (about
-`1 minute 56 seconds`). This example was submitted at `04:48:23` and completed
+with `12 GB` VRAM. Nine recent, completed runs of the
+`2D素材专属工作流Turbo + LowVRAM 8 步` workflow (all `640 × 640`, `56 frames`, `24 FPS`) averaged
+`67.6 seconds` from submission to completion (about `1 minute 8 seconds`,
+range `64–72 seconds`). This showcase source is a longer `124-frame` run:
+it was submitted at `04:48:23` and completed
 at `04:50:19` (`116 seconds`); the ComfyUI log reports `114.58 seconds` of
 prompt execution. [Samples and timing sources](assets/readme/video-to-sprite-showcase-provenance.json)
 

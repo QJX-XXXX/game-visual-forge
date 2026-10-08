@@ -28,33 +28,82 @@
     },
     "average_generation": {
       "metric": "elapsed seconds from persisted comfy-mcp job submission to completed status",
-      "selection": "Three completed Soldier Walk FL2VA jobs using the 2D素材专属工作流Turbo + LowVRAM 8 步 profile at 640x640, 124 frames, 24 FPS, 8 steps",
-      "sample_count": 3,
+      "selection": "Nine of ten recently listed completed local jobs; each archived workflow uses the 2D素材专属工作流Turbo + LowVRAM 8 步 profile with 640x640, 56 frames, 24 FPS, Turbo LoRA, SageAttention and BasicScheduler at 8 steps. One 12-step job was excluded.",
+      "queue_source": "comfy-mcp job(action=queue), with each prompt checked by job(action=status) against its persisted state file",
+      "sample_frame_count": 56,
+      "sample_count": 9,
       "samples": [
         {
-          "record": "runs/comfy/Soldier_L1/Walk-v3/comfyui-h3-generation.json",
-          "prompt_id": "41da7335-df60-44e1-af0b-676ae67347cd",
-          "submitted_at_utc": "2026-09-13T19:58:00Z",
-          "completed_at_utc": "2026-09-13T19:59:57Z",
-          "elapsed_seconds": 117
+          "candidate": "Enemy_Fast/Master_RightFront_v1",
+          "prompt_id": "adadf089-3747-4381-93dc-ee9aeff0c696",
+          "submitted_at_utc": "2026-09-19T20:22:34Z",
+          "completed_at_utc": "2026-09-19T20:23:44Z",
+          "elapsed_seconds": 70
         },
         {
-          "record": "runs/comfy/Soldier_L1/Walk-v5/comfyui-h3-generation.json",
-          "prompt_id": "6d414a63-011a-442b-9534-614d4cee9f20",
-          "submitted_at_utc": "2026-09-13T20:13:15Z",
-          "completed_at_utc": "2026-09-13T20:15:11Z",
-          "elapsed_seconds": 116
+          "candidate": "Enemy_Shield/Walk_v7_right_diagonal_even_gait",
+          "prompt_id": "390f5be6-f751-4842-8c91-a90b9685453d",
+          "submitted_at_utc": "2026-09-19T19:40:52Z",
+          "completed_at_utc": "2026-09-19T19:41:58Z",
+          "elapsed_seconds": 66
         },
         {
-          "record": "runs/comfy/Soldier_L1/Walk-v6/comfyui-h3-generation.json",
-          "prompt_id": "9ce740a1-7eaf-4483-a04a-fb0b8e6a0b90",
-          "submitted_at_utc": "2026-09-13T20:48:23Z",
-          "completed_at_utc": "2026-09-13T20:50:19Z",
-          "elapsed_seconds": 116
+          "candidate": "Enemy_Shield/Walk_v6_idle_diagonal_right",
+          "prompt_id": "2becfc9a-b30c-4a12-915f-d03cde6b69ce",
+          "submitted_at_utc": "2026-09-19T19:33:34Z",
+          "completed_at_utc": "2026-09-19T19:34:44Z",
+          "elapsed_seconds": 70
+        },
+        {
+          "candidate": "Enemy_Shield/Walk_v5_idle_diagonal_left",
+          "prompt_id": "7bf7e9e5-f84b-482b-bbc2-bf9c9ce16984",
+          "submitted_at_utc": "2026-09-19T19:27:26Z",
+          "completed_at_utc": "2026-09-19T19:28:38Z",
+          "elapsed_seconds": 72
+        },
+        {
+          "candidate": "Enemy_Shield/Walk_v4_fl2va_even_cycle",
+          "prompt_id": "b54c2989-bbb0-4187-a394-ca54e03d2d16",
+          "submitted_at_utc": "2026-09-19T18:42:44Z",
+          "completed_at_utc": "2026-09-19T18:43:54Z",
+          "elapsed_seconds": 70
+        },
+        {
+          "candidate": "Enemy_Shield/Idle_v3_micro_breath",
+          "prompt_id": "bb2ae6e4-deee-424b-b75a-306d6613b735",
+          "submitted_at_utc": "2026-09-16T19:58:44Z",
+          "completed_at_utc": "2026-09-16T19:59:50Z",
+          "elapsed_seconds": 66
+        },
+        {
+          "candidate": "Enemy_Shield/Idle_v2_comfy_h3",
+          "prompt_id": "893ad717-3de6-4b5b-b373-33db7f1c40bb",
+          "submitted_at_utc": "2026-09-16T19:48:05Z",
+          "completed_at_utc": "2026-09-16T19:49:09Z",
+          "elapsed_seconds": 64
+        },
+        {
+          "candidate": "Enemy_Shield/Death_v9_clean_death",
+          "prompt_id": "d8c4fbdf-d933-43a2-a07d-d6a7804c5971",
+          "submitted_at_utc": "2026-09-16T18:18:45Z",
+          "completed_at_utc": "2026-09-16T18:19:51Z",
+          "elapsed_seconds": 66
+        },
+        {
+          "candidate": "Enemy_Shield/Death_v8_fallen_chest_clutch",
+          "prompt_id": "3f264928-35d4-4b2f-83cb-4ecb5e25c486",
+          "submitted_at_utc": "2026-09-16T18:06:40Z",
+          "completed_at_utc": "2026-09-16T18:07:44Z",
+          "elapsed_seconds": 64
         }
       ],
-      "mean_seconds": 116.333333,
-      "range_seconds": [116, 117]
+      "excluded_job": {
+        "candidate": "Enemy_Shield/Idle_v4_micro_breath_locked_legs",
+        "prompt_id": "ce2e4255-cc78-4c07-90f1-096319b0345f",
+        "reason": "BasicScheduler configured for 12 steps"
+      },
+      "mean_seconds": 67.555556,
+      "range_seconds": [64, 72]
     },
     "submitted_at_utc": "2026-09-13T20:48:23Z",
     "completed_at_utc": "2026-09-13T20:50:19Z",

@@ -61,9 +61,10 @@ Soldier 行走原片由本机 ComfyUI 的 MiniMax H3 `FL2VA` 工作流生成：
 按[社区许可](https://huggingface.co/MiniMaxAI/MiniMax-H3/blob/main/LICENSE)免费提供；
 本次本地生成未调用付费 API，也未消耗云端额度，使用的是本机算力。
 当前本机配置：Intel Core i7-13700KF、`32 GB` 内存、NVIDIA GeForce RTX 4070 Ti
-（`12 GB` 显存）。同一工作流参数下，可核验的 3 次 Soldier Walk（v3、v5、v6；
-均为 `640 × 640`、`124 帧`、`24 FPS`、`8 步`）从提交到完成分别耗时
-`117`、`116`、`116 秒`，平均 `116.3 秒`（约 `1 分 56 秒`）。本例
+（`12 GB` 显存）。从较新的本地任务中筛出 9 次已完成的
+「2D素材专属工作流Turbo + LowVRAM 8 步」生成（均为 `640 × 640`、`56 帧`、
+`24 FPS`），从提交到完成平均 `67.6 秒`（约 `1 分 08 秒`，范围
+`64–72 秒`）。展示原片为较长的 `124 帧`任务，
 `04:48:23` 提交、`04:50:19` 完成，耗时 `116 秒`；ComfyUI 日志记录的
 Prompt 执行时间为 `114.58 秒`。[样本与计时依据](assets/readme/video-to-sprite-showcase-provenance.json)
 
