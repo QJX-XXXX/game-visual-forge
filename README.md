@@ -2,9 +2,11 @@
 
 English | [简体中文](README.zh-CN.md)
 
-Game Visual Forge is a repository-local collection of four Codex Skills for
-game-ready 2D visual assets and explicitly requested game audio: maps, sprites,
-video-to-sprite animation, and reviewed sound effects.
+Game Visual Forge brings four Codex Skills into one creative entry point.
+Describe what you need in Codex, and it can use configured local models and
+tools to create, check, and deliver 2D maps, character sprites, video-derived
+animation frames, and game audio at low cost. Models and tools are set up locally
+as needed.
 
 ## Skills
 
@@ -54,12 +56,14 @@ GPU requires a verified CUDA environment. PyMatting is optional and slower.
 
 ### Video to sprite: character animations
 
-These `forge-video-to-sprite` examples use existing character assets from
-`2DTower Defense`. The source comparison and Soldier action panels were captured
-in Tuanjie Editor `2022.3.62t11` Play Mode in an isolated showcase project.
-The gameplay footage comes from the project's existing formal battle acceptance recording.
-
 #### Original video → v12 walk sprites
+
+The Soldier walk source was generated with a local ComfyUI MiniMax H3 `FL2VA`
+workflow: `640 × 640`, `24 FPS`, `124 frames` (about `5.17 seconds`),
+Turbo/LowVRAM `8 steps`, fixed seed `20260917`. The [H3 local open weights](https://design.minimax.io/h3)
+are available free under the [Community License](https://huggingface.co/MiniMaxAI/MiniMax-H3/blob/main/LICENSE).
+This run used local compute, with no paid API call or cloud generation credits.
+The recorded submission time is `2026-09-14 12:30` (UTC+8); the actual compute time was not recorded.
 
 The left panel shows seconds `2–4` of the original video. The right panel shows
 a newly created empty character prefab playing 48 transparent `128 × 128` frames
@@ -78,24 +82,28 @@ remains unchanged; the new preview adds intermediate poses at the source speed.
 
 [Soldier animation MP4](assets/readme/video-to-sprite-soldier-l1-unity-actions.mp4)
 
-The Soldier preview retains the prefab's visual hierarchy, anchors, shadows,
+The Soldier Idle, Walk, and Attack sprites were extracted from locally generated
+H3 videos. The preview retains the prefab's visual hierarchy, anchors, shadows,
 and Sprite animation references. Attack retains its clip timing and repeats
 after a short Idle pause. The current Walk uses the first eight v16 frames,
 separate from the v12 example above.
+Source videos and animation timing: Idle `39 frames / 1.625 seconds` →
+`12 frames / 12 FPS`; Walk `124 frames / about 5.17 seconds` →
+`8 frames / 8 FPS`; Attack `107 frames / about 4.46 seconds` →
+`12 frames / 12 FPS`.
 
-#### Actual gameplay: BattleLevel01
+#### Animation in action
 
-![Enemy_Basic, Enemy_Fast, and barracks Soldiers in actual Level 1 gameplay](assets/readme/video-to-sprite-tower-defense-gameplay.gif)
+![Soldier, Enemy_Basic, and Enemy_Fast animations in action](assets/readme/video-to-sprite-tower-defense-gameplay.gif)
 
-[35-second gameplay MP4](assets/readme/video-to-sprite-tower-defense-gameplay.mp4)
+[35-second animation capture MP4](assets/readme/video-to-sprite-tower-defense-gameplay.mp4)
 
-Recorded during formal acceptance on `2026-09-17`, through
-`ResourceBootstrap → CampaignHome → BattleLevel01`, with `Enemy_Basic_View`,
-`Enemy_Fast_View`, and barracks-deployed `Soldier_L1_View`. It shows enemies
-following the route and soldiers blocking and attacking.
-The footage is cropped to the Simulator's player view and trimmed to the battle,
-retaining the map, HUD, cards, and original `12 FPS` playback speed.
-The GIF shows 12 seconds; the MP4 shows 35 seconds. Source project files were left unchanged.
+The capture shows `Soldier_L1_View`, `Enemy_Basic_View`, and `Enemy_Fast_View`
+playing their animations. Soldier's three actions and Enemy_Basic's Walk were
+made from locally generated H3 videos. The capture itself records actual Tuanjie
+Editor playback; only the viewport and time interval were trimmed, preserving
+the original `12 FPS`. Timing: the GIF uses seconds `6–18` (`12 seconds`) of the
+recording; the MP4 uses seconds `0–35` (`35 seconds`).
 [Asset provenance and parameters](assets/readme/video-to-sprite-showcase-provenance.json)
 
 ### Stable Audio 3 examples

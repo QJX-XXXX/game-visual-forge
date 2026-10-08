@@ -3,6 +3,23 @@
   "engine": "Tuanjie 2022.3.62t11",
   "source_video": "runs/comfy/Soldier_L1/Walk-v6/source/9ce740a1_000.mp4",
   "source_sha256": "005feaede0782efb5acb09b4125f5dff25f10c6dfc010529889f93b89b8848e0",
+  "h3_source_generation": {
+    "record": "runs/comfy/Soldier_L1/Walk-v6/comfyui-h3-generation.json",
+    "backend": "local ComfyUI via comfy-mcp",
+    "workflow": "MiniMax H3 FL2VA Turbo LowVRAM 8-step",
+    "workflow_local_only": true,
+    "hosted_api_used": false,
+    "paid_generation_credits_used": false,
+    "resolution": [640, 640],
+    "frame_count": 124,
+    "fps": 24,
+    "steps": 8,
+    "seed": 20260917,
+    "submitted_at_utc": "2026-09-14T04:30:00Z",
+    "video_duration_seconds": 5.166667,
+    "generation_wall_time_seconds": null,
+    "license": "https://huggingface.co/MiniMaxAI/MiniMax-H3/blob/main/LICENSE"
+  },
   "source_interval_seconds": [
     2.0,
     4.0

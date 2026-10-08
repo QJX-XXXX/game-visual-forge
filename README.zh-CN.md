@@ -2,8 +2,9 @@
 
 [English](README.md) | 简体中文
 
-Game Visual Forge 是一个仓库内使用的四个 Codex Skills 集合，覆盖可游玩的
-2D 地图、2D 精灵、视频转精灵，以及用户明确提出的游戏音效制作。
+Game Visual Forge 将四个 Codex Skills 汇成一个制作入口：只需在 Codex 中
+描述需求，就能调用已配置的本地模型与工具，低成本完成 2D 地图、角色精灵、
+视频转序列帧及游戏音频音效的制作、检查与交付。所需模型和工具按需在本机部署。
 
 ## Skills
 
@@ -52,11 +53,14 @@ python -c "from rembg import new_session; new_session('birefnet-general')"
 
 ### 视频转精灵：人物动作
 
-以 `2DTower Defense` 的现有人物素材展示 `forge-video-to-sprite` 的结果。
-原视频对照与 Soldier 动作展示由团结编辑器 `2022.3.62t11` 的 Play Mode
-录制，演示工程与源项目隔离；关卡实录来自项目已有的正式战斗验收录像。
-
 #### 原视频 → v12 行走精灵
+
+Soldier 行走原片由本机 ComfyUI 的 MiniMax H3 `FL2VA` 工作流生成：
+`640 × 640`、`24 FPS`、`124 帧`（约 `5.17 秒`）、Turbo/LowVRAM `8 步`、
+固定种子 `20260917`。[H3 本地开放权重](https://design.minimax.io/h3)
+按[社区许可](https://huggingface.co/MiniMaxAI/MiniMax-H3/blob/main/LICENSE)免费提供；
+本次本地生成未调用付费 API，也未消耗云端额度，使用的是本机算力。
+生成记录的任务提交时间为 `2026-09-14 12:30`（北京时间）；记录未保存实际计算耗时。
 
 左侧为原视频的 `2–4 秒` 区间，右侧为新建空人物预制体播放同一原片
 重新提取的 48 个 `128 × 128` 透明帧，以 `24 FPS`、`2 秒`循环。
@@ -74,21 +78,25 @@ python -c "from rembg import new_session; new_session('birefnet-general')"
 
 [查看 Soldier 动作 MP4](assets/readme/video-to-sprite-soldier-l1-unity-actions.mp4)
 
-Soldier 的三个动作保留当前预制体的视觉层级、锚点、阴影与 Sprite 动画引用；
+Soldier 的 Idle、Walk、Attack 均由本地 H3 视频抽帧制成。三个动作保留
+当前预制体的视觉层级、锚点、阴影与 Sprite 动画引用；
 Attack 按原 Clip 时长播放，再短暂停回 Idle 后重复，便于观看。
 当前 Walk 使用 v16 的前 8 帧，与上方独立展示的 v12 不同。
+源片与动作时长：Idle `39 帧 / 1.625 秒` → `12 帧 / 12 FPS`；
+Walk `124 帧 / 约 5.17 秒` → `8 帧 / 8 FPS`；
+Attack `107 帧 / 约 4.46 秒` → `12 帧 / 12 FPS`。
 
-#### 真实游戏录屏：BattleLevel01
+#### 动作运行效果
 
-![第一关实际战斗中的 Enemy_Basic、Enemy_Fast 与兵营 Soldier](assets/readme/video-to-sprite-tower-defense-gameplay.gif)
+![Soldier、Enemy_Basic 与 Enemy_Fast 的动作运行效果](assets/readme/video-to-sprite-tower-defense-gameplay.gif)
 
-[查看 35 秒游戏录屏 MP4](assets/readme/video-to-sprite-tower-defense-gameplay.mp4)
+[查看 35 秒运行效果 MP4](assets/readme/video-to-sprite-tower-defense-gameplay.mp4)
 
-录屏来自 `2026-09-17` 的正式 `ResourceBootstrap → CampaignHome → BattleLevel01`
-验收，包含 `Enemy_Basic_View`、`Enemy_Fast_View` 与兵营部署的 `Soldier_L1_View`。
-可看到敌人沿路线移动，以及士兵阻挡和攻击。
-仅裁出 Simulator 的玩家画面并截取战斗片段，保留地图、HUD、手牌及原始 `12 FPS` 速度；
-GIF 展示其中 12 秒，MP4 展示 35 秒。源项目文件未改动。
+录屏展示 `Soldier_L1_View`、`Enemy_Basic_View` 和 `Enemy_Fast_View` 的
+实际动作播放；其中 Soldier 的三个动作与 Enemy_Basic 的 Walk 均取自本地 H3
+生成的视频。录屏本身是团结编辑器的真实运行画面，只做裁切和截取，
+保持原始 `12 FPS`。时间标注：GIF 对应原录屏 `6–18 秒`（`12 秒`），
+MP4 对应 `0–35 秒`（`35 秒`）。
 [素材出处与参数](assets/readme/video-to-sprite-showcase-provenance.json)
 
 ### Stable Audio 3 示例
