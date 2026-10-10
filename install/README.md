@@ -4,7 +4,7 @@
 
 This is the single installation guide for the repository. It supports two
 paths: copy the Agent request below for a step-by-step installation, or follow
-the manual procedure. The repository contains four core Skills; optional
+the manual procedure. The repository contains five core Skills; optional
 providers and runtimes are separate opt-in profiles.
 
 ## Copy this request to an Agent
@@ -17,7 +17,7 @@ destination, Python 3.11+ interpreter, FFmpeg, FFprobe, and the Agent Skill
 discovery directory. Preserve skills/, src/, and pyproject.toml together.
 Ask me to confirm the core installation before cloning, creating links, making
 a virtual environment, or installing packages. Then install/link exactly these
-four Skills: forge-2d-map, forge-2d-sprite, forge-text-audio, and
+five Skills: forge-2d-map, forge-2d-sprite, forge-game-music, forge-text-audio, and
 forge-video-to-sprite. Refuse to overwrite existing Skill targets; verify every
 SKILL.md and run the launcher --help checks. Do not install or probe optional
 Comfy MCP, h3-prompt-writing, provider CLIs, models, nodes, credentials, or
@@ -35,7 +35,7 @@ installation.
 
 ## Core repository and Skill scope
 
-The core package is the intact repository plus these four Skill directories:
+The core package is the intact repository plus these five Skill directories:
 
 - `forge-2d-map`
 - `forge-2d-sprite`
@@ -94,7 +94,7 @@ python3 -m venv .venv
 python -m pip install -e .
 ```
 
-### 3. Link the four Skills
+### 3. Link the five Skills
 
 Codex commonly discovers global Skills under `$HOME/.agents/skills`. Claude
 uses `SKILL.md` as its authority; if the current Claude environment supports
@@ -107,7 +107,7 @@ Windows PowerShell junctions (refuse existing targets):
 ```powershell
 $ForgeRoot = (Resolve-Path -LiteralPath (Get-Location)).Path
 $SkillHome = Join-Path ([Environment]::GetFolderPath("UserProfile")) ".agents\skills"
-$SkillNames = @("forge-2d-map", "forge-2d-sprite", "forge-text-audio", "forge-video-to-sprite")
+$SkillNames = @("forge-2d-map", "forge-2d-sprite", "forge-game-music", "forge-text-audio", "forge-video-to-sprite")
 New-Item -ItemType Directory -Force -Path $SkillHome | Out-Null
 foreach ($SkillName in $SkillNames) {
     $Source = Join-Path $ForgeRoot "skills\$SkillName"
@@ -124,7 +124,7 @@ POSIX symbolic links:
 forge_root="$(pwd -P)"
 skill_home="$HOME/.agents/skills"
 mkdir -p "$skill_home"
-for skill_name in forge-2d-map forge-2d-sprite forge-text-audio forge-video-to-sprite; do
+for skill_name in forge-2d-map forge-2d-sprite forge-game-music forge-text-audio forge-video-to-sprite; do
   source_path="$forge_root/skills/$skill_name"
   target_path="$skill_home/$skill_name"
   test -f "$source_path/SKILL.md" || { echo "Missing Skill source: $source_path" >&2; exit 1; }
@@ -145,7 +145,7 @@ python -m unittest discover -s tests -q
 ```
 
 Restart the Agent session so Skill discovery reloads. To uninstall the core
-links, remove only the four links under `.agents/skills`; do not delete the
+links, remove only the five links under `.agents/skills`; do not delete the
 repository or its `skills/` and `src/` directories.
 
 ## Optional workflow gates
@@ -203,7 +203,7 @@ and offer the API route.
 ## Independent setup links
 
 These are separate runtime or external dependency guides, not part of the
-four core repository Skills:
+five core repository Skills:
 
 - [Stable Audio 3 setup](stable-audio-3/README.md)
 - [Comfy MCP official installation](https://docs.comfy.org/agent-tools/mcp#installation)

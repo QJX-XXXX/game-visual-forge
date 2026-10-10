@@ -2,7 +2,7 @@
 
 [English](README.md)
 
-这是仓库唯一的安装指南，包含两种方式：复制下面的请求给 Agent，让它分步骤执行；或者按手动流程操作。仓库包含四个核心 Skill，可选 Provider 和运行时必须单独主动启用。
+这是仓库唯一的安装指南，包含两种方式：复制下面的请求给 Agent，让它分步骤执行；或者按手动流程操作。仓库包含五个核心 Skill，可选 Provider 和运行时必须单独主动启用。
 
 ## 复制下面这句话给 Agent
 
@@ -12,7 +12,7 @@
 先确认仓库根目录、目标位置、Python 3.11+ 解释器、FFmpeg、FFprobe 和 Agent
 Skill 发现目录；保持 skills/、src/、pyproject.toml 属于同一个完整仓库。请在
 克隆、创建链接、创建虚拟环境或安装包之前先向我确认核心安装。然后只安装或
-链接这四个 Skill：forge-2d-map、forge-2d-sprite、forge-text-audio、
+链接这五个 Skill：forge-2d-map、forge-2d-sprite、forge-game-music、forge-text-audio、
 forge-video-to-sprite。已有 Skill 目标不得覆盖；验证每个 SKILL.md，并运行
 启动器 --help 检查。除非我明确要求启用某个可选配置，不得安装或探测 Comfy
 MCP、h3-prompt-writing、Provider CLI、模型、节点、凭据或付费服务。对于可选
@@ -25,7 +25,7 @@ Agent 不得把这段请求理解为代替用户接受许可证、打印密钥�
 
 ## 核心仓库与 Skill 范围
 
-核心安装是完整仓库加上以下四个 Skill 目录：
+核心安装是完整仓库加上以下五个 Skill 目录：
 
 - `forge-2d-map`
 - `forge-2d-sprite`
@@ -76,7 +76,7 @@ python3 -m venv .venv
 python -m pip install -e .
 ```
 
-### 3. 链接四个 Skill
+### 3. 链接五个 Skill
 
 Codex 通常从 `$HOME/.agents/skills` 发现全局 Skill。Claude 以 `SKILL.md` 为权威；如果当前 Claude 环境支持相同目录，就使用相同链接，否则使用 Claude 文档规定的 Skill 目录，并保持链接指向本仓库。 `agents/openai.yaml` 只是 Codex 兼容元数据，不是执行指令。
 
@@ -85,7 +85,7 @@ Windows PowerShell Junction（已有目标直接拒绝）：
 ```powershell
 $ForgeRoot = (Resolve-Path -LiteralPath (Get-Location)).Path
 $SkillHome = Join-Path ([Environment]::GetFolderPath("UserProfile")) ".agents\\skills"
-$SkillNames = @("forge-2d-map", "forge-2d-sprite", "forge-text-audio", "forge-video-to-sprite")
+$SkillNames = @("forge-2d-map", "forge-2d-sprite", "forge-game-music", "forge-text-audio", "forge-video-to-sprite")
 New-Item -ItemType Directory -Force -Path $SkillHome | Out-Null
 foreach ($SkillName in $SkillNames) {
     $Source = Join-Path $ForgeRoot "skills\\$SkillName"
@@ -102,7 +102,7 @@ POSIX symbolic link：
 forge_root="$(pwd -P)"
 skill_home="$HOME/.agents/skills"
 mkdir -p "$skill_home"
-for skill_name in forge-2d-map forge-2d-sprite forge-text-audio forge-video-to-sprite; do
+for skill_name in forge-2d-map forge-2d-sprite forge-game-music forge-text-audio forge-video-to-sprite; do
   source_path="$forge_root/skills/$skill_name"
   target_path="$skill_home/$skill_name"
   test -f "$source_path/SKILL.md" || { echo "Missing Skill source: $source_path" >&2; exit 1; }
@@ -164,7 +164,7 @@ python -m unittest discover -s tests -q
 
 ## 独立安装链接
 
-以下是独立运行时或外部依赖的安装说明，不属于四个核心仓库 Skill：
+以下是独立运行时或外部依赖的安装说明，不属于五个核心仓库 Skill：
 
 - [Stable Audio 3 安装指南](stable-audio-3/README.zh-CN.md)
 - [Comfy MCP 官方安装说明](https://docs.comfy.org/agent-tools/mcp#installation)

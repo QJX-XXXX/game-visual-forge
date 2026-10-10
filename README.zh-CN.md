@@ -2,7 +2,7 @@
 
 [English](README.md) | 简体中文
 
-Game Visual Forge 将四个 Codex Skills 汇成一个制作入口：只需在 Codex 中
+Game Visual Forge 将五个 Codex Skills 汇成一个制作入口：只需在 Codex 中
 描述需求，就能调用已配置的本地模型与工具，低成本完成 2D 地图、角色精灵、
 视频转序列帧及游戏音频音效的制作、检查与交付。所需模型和工具按需在本机部署。
 
@@ -14,6 +14,7 @@ Game Visual Forge 将四个 Codex Skills 汇成一个制作入口：只需在 Co
 | [`forge-2d-sprite`](skills/forge-2d-sprite/SKILL.md) | 角色、生物、NPC、道具、特效和动画图集 | 透明精灵图集、帧文件、GIF 预览、元数据 |
 | [`forge-video-to-sprite`](skills/forge-video-to-sprite/SKILL.md) | 将现有或由海螺/MiniMax、即梦及可选 ComfyUI MiniMax H3 生成的视频转换为精灵帧。 | 抽帧、精灵条、GIF 预览、元数据 |
 | [`forge-text-audio`](skills/forge-text-audio/SKILL.md) | 明确请求的 SFX、UI 音效、动作音效和环境音 | 审核后的 44,100 Hz 16-bit PCM WAV 与 Unity AudioClip 清单 |
+| [`forge-game-music`](skills/forge-game-music/SKILL.md) | 游戏背景音乐、轻音乐、循环配乐和严格纯音乐 | 审核后的 44,100 Hz 立体声 WAV 与可选 Unity 清单 |
 
 ## 提供的能力
 
@@ -26,6 +27,7 @@ Game Visual Forge 将四个 Codex Skills 汇成一个制作入口：只需在 Co
 - `forge-video-to-sprite` 使用 FFmpeg/FFprobe、本地时间戳抽帧、rembg/Chroma 清理、稳定对齐、图集、GIF 预览和运动质量证据处理现有视频。
 - 视频生成支持明确选择现有、海螺/MiniMax、即梦或可选 ComfyUI MiniMax H3 路线；工具和凭据由用户手动配置，不会自动切换。
 - `forge-text-audio` 使用隔离的官方 Stable Audio 3 `small-sfx` 本地运行时，支持 text-to-audio、redraw、inpaint 和 continue，只交付 WAV，并要求最终试听审核。
+- `forge-game-music` 默认使用 Comfy Desktop MiniMax Music 3；Stable Audio 3 是有官方资料的云端备用，Suno 在官方 API 字段和游戏商用条款核验前保持门禁。
 
 ## 展示
 
@@ -135,6 +137,16 @@ TrackType: SFX, a clean professional studio Foley recording of one natural strik
 
 实现与验证：使用 Stable Audio 3 Small-SFX 在本地生成，经无增益 WAV 处理，并通过格式、削波和持续噪声检查。
 
+### 本地 MiniMax Music 3 背景音乐实测
+
+本地 Comfy Desktop `audio_minimax_music_3` 生成了这条欢快、持续有节奏的游戏背景纯音乐。新生成的种子 `112233` 已试听确认无异响。60 秒交付从稳定节奏开始，按源素材节拍用 30 ms 短过渡衔接重复段，避免在重复点叠入另一段完整旋律，再接入原始素材的器乐自然收尾和短淡出；不宣称无缝循环。仓库中的 WAV 为 60 秒、44,100 Hz、16-bit 立体声，峰值为 −1.57 dBFS；Comfy 原生输出格式是 MP3。
+
+提示词重点：全程中等强度的 4/4 节奏、没有启动段或低潮段、中音域马林巴和闷音拨弦、严格纯音乐、干净的器乐收尾。
+
+- [试听 60 秒 WAV](assets/readme/minimax-music3-game-bgm-60s-clean-ending.wav)
+- [试听 60 秒 MP3](assets/readme/minimax-music3-game-bgm-60s-clean-ending.mp3) · [试听最后 5 秒](assets/readme/minimax-music3-game-bgm-60s-final-5s.wav)
+- [波形图](assets/readme/minimax-music3-game-bgm-60s-waveform.png) · [来源记录](assets/readme/minimax-music3-game-bgm-60s-provenance.json)
+
 ## 安装
 
 - [统一安装指南](install/README.zh-CN.md)
@@ -143,8 +155,7 @@ TrackType: SFX, a clean professional studio Foley recording of one natural strik
 - [Comfy MCP 官方安装说明](https://docs.comfy.org/agent-tools/mcp#installation)
 - [MiniMax H3 Prompt Writing Skill 官方安装说明](https://github.com/MiniMax-AI/MiniMax-H3/blob/main/skills/README.md#installation)
 
-统一指南同时包含可复制给 Agent 的请求和完整手动安装流程。核心流程只安装四个
-Forge Skills。可选工作流必须由用户主动选择启用；Agent 会先询问是否启用，先检查，
+统一指南同时包含可复制给 Agent 的请求和完整手动安装流程。核心流程只安装五个 Forge Skills。可选工作流必须由用户主动选择启用；Agent 会先询问是否启用，先检查，
 再在安装缺失组件前二次确认。
 
 Provider 配置与核心 Skill 安装分开处理。核心安装不会自动安装 Provider、

@@ -127,6 +127,9 @@ from .audio_provider import (
 from .audio_runtime import StableAudioRuntimeConfig, StableAudioRuntimeResolution, stable_audio_child_environment
 from .audio_quality import AudioQualityReport
 from .audio_review import AudioManifest, AudioReview, AudioSourcePlacement, REQUIRED_AUDIO_CHECKS, UnityAudioManifest
+from .music import MusicUsage, MusicVocalPolicy, MusicRequest, MusicProcessingOptions, MusicPromptPackage, MusicRouteDecision, MusicSourceRecord, MusicProcessingResult, MusicLoopEvidence, build_music_prompt_package, generation_fingerprint
+from .music_provider import MusicProvider, MusicProviderCapability, MusicAttemptStatus, MusicGenerationAttempt, MusicPaidConfirmation, MusicProviderReceipt, MusicHttpResponse, MusicDownloadedFile, MusicWorkflowReport, default_music_capabilities
+from .music_review import MusicQualityReport, MusicReview, REQUIRED_MUSIC_CHECKS
 
 __all__ = [
     "ArtifactRecord",
@@ -283,4 +286,28 @@ __all__ = [
     "AudioSourcePlacement",
     "REQUIRED_AUDIO_CHECKS",
     "UnityAudioManifest",
+    "MusicUsage",
+    "MusicVocalPolicy",
+    "MusicRequest",
+    "MusicProcessingOptions",
+    "MusicPromptPackage",
+    "MusicRouteDecision",
+    "MusicSourceRecord",
+    "MusicProcessingResult",
+    "MusicLoopEvidence",
+    "build_music_prompt_package",
+    "generation_fingerprint",
+    "MusicProvider",
+    "MusicProviderCapability",
+    "MusicAttemptStatus",
+    "MusicGenerationAttempt",
+    "MusicPaidConfirmation",
+    "MusicProviderReceipt",
+    "MusicHttpResponse",
+    "MusicDownloadedFile",
+    "MusicWorkflowReport",
+    "default_music_capabilities",
+    "MusicQualityReport",
+    "MusicReview",
+    "REQUIRED_MUSIC_CHECKS",
 ]

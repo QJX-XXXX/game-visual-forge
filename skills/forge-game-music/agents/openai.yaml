@@ -1,0 +1,4 @@
+interface:
+  display_name: "Forge Game Music"
+  short_description: "Create reviewed game BGM and instrumental tracks"
+  default_prompt: "Use $forge-game-music to plan and review a game background track or strict instrumental music."

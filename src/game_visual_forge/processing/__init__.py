@@ -11,5 +11,6 @@ __all__ = ["ProcessingResult", "TileMapProcessingResult", "ProbeMetadata", "Vide
 from .audio_probe import AudioProbeMetadata, AudioToolchain, discover_audio_toolchain, ingest_audio, parse_audio_ffprobe_json
 from .audio import process_audio_candidates
 from .audio_metrics import PcmMetrics, compare_protected_samples, read_pcm16_metrics
+from .music import ingest_music_source, process_music_candidate, build_music_loop_evidence
 
-__all__ = ["AudioProbeMetadata", "AudioToolchain", "discover_audio_toolchain", "ingest_audio", "parse_audio_ffprobe_json", "PcmMetrics", "compare_protected_samples", "read_pcm16_metrics", "process_audio_candidates"]
+__all__ = ["AudioProbeMetadata", "AudioToolchain", "discover_audio_toolchain", "ingest_audio", "parse_audio_ffprobe_json", "PcmMetrics", "compare_protected_samples", "read_pcm16_metrics", "process_audio_candidates", "ingest_music_source", "process_music_candidate", "build_music_loop_evidence"]

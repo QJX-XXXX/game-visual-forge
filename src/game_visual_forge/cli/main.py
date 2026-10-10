@@ -63,6 +63,7 @@ from game_visual_forge.cli.audio import (
     run_audio_route,
     run_audio_validate,
 )
+from game_visual_forge.cli.music import dispatch_music_command, register_music_commands
 from game_visual_forge.contracts import AssetBrief, JobState, JobStatus, load_json
 from game_visual_forge.contracts import MapSourceType
 from game_visual_forge.contracts.serialization import dump_json
@@ -403,6 +404,7 @@ def build_parser() -> argparse.ArgumentParser:
     audio_validate.add_argument("--repo-root", type=Path, required=True)
     audio_validate.add_argument("--final-dir", type=Path, required=True)
     audio_validate.add_argument("--now", required=True)
+    register_music_commands(audio_commands)
     audio_provider = sfx_commands.add_parser("provider")
     audio_provider_commands = audio_provider.add_subparsers(dest="audio_provider_command", required=True)
     configure = audio_provider_commands.add_parser("configure")
@@ -544,6 +546,8 @@ def main(argv: list[str] | None = None) -> int:
             payload = run_audio_provider_configure(args.root, args.python_executable, args.replace)
         elif args.command == "audio" and args.audio_command == "sfx" and args.audio_sfx_command == "provider" and args.audio_provider_command == "show-config":
             payload = run_audio_provider_show_config()
+        elif args.command == "audio" and args.audio_command == "music":
+            payload = dispatch_music_command(args)
         else:
             raise ValueError("unsupported command")
         print(json.dumps(payload, ensure_ascii=False, indent=2, sort_keys=True))

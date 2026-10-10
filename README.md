@@ -2,7 +2,7 @@
 
 English | [简体中文](README.zh-CN.md)
 
-Game Visual Forge brings four Codex Skills into one creative entry point.
+Game Visual Forge brings five Codex Skills into one creative entry point.
 Describe what you need in Codex, and it can use configured local models and
 tools to create, check, and deliver 2D maps, character sprites, video-derived
 animation frames, and game audio at low cost. Models and tools are set up locally
@@ -16,6 +16,7 @@ as needed.
 | [`forge-2d-sprite`](skills/forge-2d-sprite/SKILL.md) | Characters, creatures, NPCs, props, effects, and animation sheets | Clean sprite sheets, frames, GIF previews, metadata |
 | [`forge-video-to-sprite`](skills/forge-video-to-sprite/SKILL.md) | Turn existing, MiniMax Hailuo, Jimeng, or optional ComfyUI MiniMax H3 video into sprite frames. | Extracted frames, sprite strips, GIF previews, metadata |
 | [`forge-text-audio`](skills/forge-text-audio/SKILL.md) | Explicitly requested SFX, UI sounds, action sounds, and ambience | Reviewed 44,100 Hz 16-bit PCM WAV and Unity AudioClip manifest |
+| [`forge-game-music`](skills/forge-game-music/SKILL.md) | Game BGM, light music, looping beds, and strict instrumental tracks | Reviewed 44,100 Hz stereo WAV, music review, and optional Unity manifest |
 
 ## What it provides
 
@@ -28,6 +29,7 @@ as needed.
 - `forge-video-to-sprite` processes existing video locally with FFmpeg/FFprobe, timestamp sampling, rembg/Chroma cleanup, stable alignment, strips, sheets, GIF previews, and motion-quality evidence.
 - Generated video routes support explicit existing, MiniMax Hailuo, Jimeng, or optional ComfyUI MiniMax H3 selection; tools and credentials are configured manually and never switched automatically.
 - `forge-text-audio` uses the official local Stable Audio 3 `small-sfx` model through the isolated `stable-audio-3` runtime. It supports text-to-audio, redraw, inpaint, and continue modes, with WAV-only delivery and a final listening review.
+- `forge-game-music` uses local Comfy Desktop MiniMax Music 3 by default; Stable Audio 3 is a documented cloud fallback and Suno remains gated until its official API schema and game terms are verified.
 
 ## Showcase
 
@@ -145,6 +147,16 @@ TrackType: SFX, a clean professional studio Foley recording of one natural strik
 
 Implementation and validation: generated locally with Stable Audio 3 Small-SFX, exported through no-boost WAV processing, and passed format, clipping, and sustained-noise checks.
 
+### Local MiniMax Music 3 BGM test
+
+The local Comfy Desktop `audio_minimax_music_3` workflow produced this cheerful instrumental game-BGM candidate. A newly generated source with seed `112233` was listened to and confirmed clean, with no audible artifact. The 60-second delivery starts from its stable groove, repeats sections with 30 ms transition blends aligned to the source pulse, then uses the source's natural instrumental ending and a short final fade; no seamless loop is claimed. The checked-in WAV is 60 seconds, 44,100 Hz, 16-bit stereo, with a -1.57 dBFS peak; native Comfy output was MP3.
+
+Prompt focus: continuous medium-energy 4/4 groove, no intro or low-energy section, mid-register marimba and muted pluck, strictly instrumental, clean resolved ending.
+
+- [Listen to the 60-second WAV](assets/readme/minimax-music3-game-bgm-60s-clean-ending.wav)
+- [Listen to the 60-second MP3](assets/readme/minimax-music3-game-bgm-60s-clean-ending.mp3) · [Listen to the final 5 seconds](assets/readme/minimax-music3-game-bgm-60s-final-5s.wav)
+- [Waveform](assets/readme/minimax-music3-game-bgm-60s-waveform.png) · [Provenance](assets/readme/minimax-music3-game-bgm-60s-provenance.json)
+
 ## Install
 
 - [Unified installation guide](install/README.md)
@@ -154,7 +166,7 @@ Implementation and validation: generated locally with Stable Audio 3 Small-SFX, 
 - [MiniMax H3 Prompt Writing Skill official installation](https://github.com/MiniMax-AI/MiniMax-H3/blob/main/skills/README.md#installation)
 
 The unified guide contains both a copyable Agent request and the complete
-manual installation flow. It installs the four core Forge Skills only.
+manual installation flow. It installs the five core Forge Skills only.
 Optional workflows are opt-in. The Agent asks whether to enable them, inspects
 first, then asks again before installing missing components.
 

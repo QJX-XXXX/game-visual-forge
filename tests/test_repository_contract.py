@@ -55,6 +55,7 @@ class RepositoryContractTests(unittest.TestCase):
             "forge-2d-sprite",
             "forge-video-to-sprite",
             "forge-text-audio",
+            "forge-game-music",
             "install/README.md",
             "install/README.zh-CN.md",
             "install/stable-audio-3/README.md",
@@ -97,7 +98,7 @@ class RepositoryContractTests(unittest.TestCase):
         normalized_chinese = " ".join(chinese.split())
 
         self.assertIn("The unified guide contains both a copyable Agent request and the complete manual installation flow.", normalized_english)
-        self.assertIn("It installs the four core Forge Skills only.", normalized_english)
+        self.assertIn("It installs the five core Forge Skills only.", normalized_english)
         self.assertIn("Optional workflows are opt-in.", normalized_english)
         self.assertIn("inspects first", normalized_english)
         self.assertIn("asks again before installing missing components", normalized_english)
@@ -106,7 +107,7 @@ class RepositoryContractTests(unittest.TestCase):
         self.assertNotIn("install/      Agent-executable and provider setup guides", english)
 
         self.assertIn("统一指南同时包含可复制给 Agent 的请求和完整手动安装流程。", normalized_chinese)
-        self.assertIn("核心流程只安装四个 Forge Skills。", normalized_chinese)
+        self.assertIn("核心流程只安装五个 Forge Skills。", normalized_chinese)
         self.assertIn("可选工作流必须由用户主动选择启用", normalized_chinese)
         self.assertIn("先检查", normalized_chinese)
         self.assertIn("二次确认", normalized_chinese)

@@ -2,6 +2,7 @@ from .sprite import apply_visual_review, build_asset_manifest, validate_sprite_o
 from .map import apply_map_visual_review, build_map_asset_manifest, validate_map_outputs
 from .tilemap import apply_tilemap_visual_review, build_tilemap_asset_manifest, validate_tilemap_outputs
 from .video import assess_video_outputs, build_video_asset_manifest, publish_video_outputs, validate_reviewed_video_outputs
+from .music import assess_music_outputs, record_music_review, publish_music_bundle
 
 __all__ = [
     "apply_visual_review",
@@ -17,6 +18,9 @@ __all__ = [
     "build_video_asset_manifest",
     "publish_video_outputs",
     "validate_reviewed_video_outputs",
+    "assess_music_outputs",
+    "record_music_review",
+    "publish_music_bundle",
 ]
 from .audio import assess_audio_outputs, build_audio_manifests, publish_audio_outputs, record_audio_review, validate_reviewed_audio_outputs
 

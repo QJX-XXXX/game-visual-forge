@@ -122,6 +122,24 @@ SKILLS = {
             "AudioSource",
         ),
     },
+    "forge-game-music": {
+        "description": 'description: "Create, process, review, and deliver game background music, light music, and strict instrumental tracks with local MiniMax Music 3 plus explicitly selected Stable Audio 3 or discovery-gated Suno fallback."',
+        "required_body_fragments": (
+            "audio_minimax_music_3",
+            "Stable Audio 3",
+            "Suno disabled",
+            "needs_user_action",
+            "Instrumental, no vocals",
+            "[instrumental]",
+            "never resubmit automatically",
+            "44,100 Hz",
+            "six music checks",
+            "music",
+            "AudioClip",
+            "AudioSource",
+            "Do not install models or nodes",
+        ),
+    },
 }
 
 
@@ -140,7 +158,7 @@ class SkillContractTests(unittest.TestCase):
             for path in sorted(skills_root.iterdir())
             if path.is_dir() and (path / "SKILL.md").is_file()
         )
-        self.assertEqual(skill_names, ("forge-2d-map", "forge-2d-sprite", "forge-text-audio", "forge-video-to-sprite"))
+        self.assertEqual(skill_names, ("forge-2d-map", "forge-2d-sprite", "forge-game-music", "forge-text-audio", "forge-video-to-sprite"))
         for skill_name in skill_names:
             with self.subTest(skill=skill_name):
                 self.assert_skill_tree_is_english(skill_name)

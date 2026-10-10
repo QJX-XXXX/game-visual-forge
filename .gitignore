@@ -8,6 +8,7 @@ dist/
 *.egg-info/
 .env
 game-visual-forge.local.json
+game-visual-forge.music.local.json
 outputs/
 .superpowers/
 docs/
