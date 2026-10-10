@@ -139,7 +139,7 @@ TrackType: SFX, a clean professional studio Foley recording of one natural strik
 
 ### 本地 MiniMax Music 3 背景音乐实测
 
-本地 Comfy Desktop `audio_minimax_music_3` 生成了这条欢快、持续有节奏的游戏背景纯音乐。新生成的种子 `112233` 已试听确认无异响。60 秒交付从稳定节奏开始，按源素材节拍用 30 ms 短过渡衔接重复段，避免在重复点叠入另一段完整旋律，再接入原始素材的器乐自然收尾和短淡出；不宣称无缝循环。仓库中的 WAV 为 60 秒、44,100 Hz、16-bit 立体声，峰值为 −1.57 dBFS；Comfy 原生输出格式是 MP3。
+本地 Comfy Desktop `audio_minimax_music_3` 生成了这条欢快、持续有节奏的游戏背景纯音乐。仓库中的 WAV 为 60 秒、44,100 Hz、16-bit 立体声，峰值为 −1.57 dBFS；Comfy 原生输出格式是 MP3。
 
 提示词重点：全程中等强度的 4/4 节奏、没有启动段或低潮段、中音域马林巴和闷音拨弦、严格纯音乐、干净的器乐收尾。
 

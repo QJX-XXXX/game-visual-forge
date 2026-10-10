@@ -149,7 +149,7 @@ Implementation and validation: generated locally with Stable Audio 3 Small-SFX, 
 
 ### Local MiniMax Music 3 BGM test
 
-The local Comfy Desktop `audio_minimax_music_3` workflow produced this cheerful instrumental game-BGM candidate. A newly generated source with seed `112233` was listened to and confirmed clean, with no audible artifact. The 60-second delivery starts from its stable groove, repeats sections with 30 ms transition blends aligned to the source pulse, then uses the source's natural instrumental ending and a short final fade; no seamless loop is claimed. The checked-in WAV is 60 seconds, 44,100 Hz, 16-bit stereo, with a -1.57 dBFS peak; native Comfy output was MP3.
+The local Comfy Desktop `audio_minimax_music_3` workflow produced this cheerful instrumental game-BGM candidate. The checked-in WAV is 60 seconds, 44,100 Hz, 16-bit stereo, with a -1.57 dBFS peak; native Comfy output was MP3.
 
 Prompt focus: continuous medium-energy 4/4 groove, no intro or low-energy section, mid-register marimba and muted pluck, strictly instrumental, clean resolved ending.
 
