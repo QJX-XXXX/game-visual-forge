@@ -1,0 +1,245 @@
+# Game Visual Forge
+
+English | [简体中文](README.zh-CN.md)
+
+Game Visual Forge brings five Codex Skills into one creative entry point.
+Describe what you need in Codex, and it can use configured local models and
+tools to create, check, and deliver 2D maps, character sprites, video-derived
+animation frames, and game audio at low cost. Models and tools are set up locally
+as needed.
+
+## Skills
+
+| Skill | Use it for | Typical output |
+| --- | --- | --- |
+| [`forge-2d-map`](skills/forge-2d-map/SKILL.md) | Playable 2D maps, Tilemaps, terrain, props, collision, and Unity handoff | Map bundle, preview, placement data, quality evidence |
+| [`forge-2d-sprite`](skills/forge-2d-sprite/SKILL.md) | Characters, creatures, NPCs, props, effects, and animation sheets | Clean sprite sheets, frames, GIF previews, metadata |
+| [`forge-video-to-sprite`](skills/forge-video-to-sprite/SKILL.md) | Turn existing, MiniMax Hailuo, Jimeng, or optional ComfyUI MiniMax H3 video into sprite frames. | Extracted frames, sprite strips, GIF previews, metadata |
+| [`forge-text-audio`](skills/forge-text-audio/SKILL.md) | Explicitly requested SFX, UI sounds, action sounds, and ambience | Reviewed 44,100 Hz 16-bit PCM WAV and Unity AudioClip manifest |
+| [`forge-game-music`](skills/forge-game-music/SKILL.md) | Game BGM, light music, looping beds, and strict instrumental tracks | Reviewed 44,100 Hz stereo WAV, music review, and optional Unity manifest |
+
+## What it provides
+
+- Natural-language intake with explicit choices for style, layout, runtime, and delivery format.
+- Built-in image generation when a new visual asset is needed, plus support for user-provided source media.
+- Deterministic local processing, validation reports, and reproducible output manifests.
+- Playable map handoff with walkability, collision, objects, entrances, and Unity Tilemap support.
+- Native map atlases are normalized to the declared grid, tile size, margins, and spacing before validation. This standardizes atlas geometry only; it does not repair artwork, seams, or map topology.
+- Provider, cost, and submission confirmation gates for paid or external work.
+- `forge-video-to-sprite` processes existing video locally with FFmpeg/FFprobe, timestamp sampling, rembg/Chroma cleanup, stable alignment, strips, sheets, GIF previews, and motion-quality evidence.
+- Generated video routes support explicit existing, MiniMax Hailuo, Jimeng, or optional ComfyUI MiniMax H3 selection; tools and credentials are configured manually and never switched automatically.
+- `forge-text-audio` uses the official local Stable Audio 3 `small-sfx` model through the isolated `stable-audio-3` runtime. It supports text-to-audio, redraw, inpaint, and continue modes, with WAV-only delivery and a final listening review.
+- `forge-game-music` uses local Comfy Desktop MiniMax Music 3 by default; Stable Audio 3 is a documented cloud fallback and Suno remains gated until its official API schema and game terms are verified.
+
+## Showcase
+
+![Adaptive river crossing map in Unity](assets/readme/adaptive-river-crossing-map-unity-game-view.png)
+
+![HD background removal comparison](assets/readme/rembg-production-comparison-on-gray.jpg)
+
+HD cleanup uses Pillow for image conversion, NumPy/SciPy for masks, rembg with
+the `birefnet-general` model for semantic separation, known-magenta spill
+reconstruction, and optional PyMatting refinement. If CUDA fails, the processor
+tries CPU and reports a deterministic Chroma fallback when needed.
+
+Install optional cleanup tools manually:
+
+```powershell
+python -m pip install -e ".[image]"
+python -m pip install -e ".[background]"
+python -m pip install "rembg[cpu]"
+python -m pip install "rembg[gpu]"
+python -m pip install -e ".[matting]"
+python -c "from rembg import new_session; new_session('birefnet-general')"
+```
+
+Use `U2NET_HOME` for a shared model directory. CPU is the compatibility default;
+GPU requires a verified CUDA environment. PyMatting is optional and slower.
+
+### Video to sprite: character animations
+
+#### Original video → v12 walk sprites
+
+The Soldier walk source was generated with a local ComfyUI MiniMax H3 `FL2VA`
+workflow: `640 × 640`, `24 FPS`, `124 frames` (about `5.17 seconds`),
+Turbo/LowVRAM `8 steps`, fixed seed `20260917`. The [H3 local open weights](https://design.minimax.io/h3)
+are available free under the [Community License](https://huggingface.co/MiniMaxAI/MiniMax-H3/blob/main/LICENSE).
+This run used local compute, with no paid API call or cloud generation credits.
+Current local hardware: Intel Core i7-13700KF, `32 GB` RAM, and NVIDIA GeForce RTX 4070 Ti
+with `12 GB` VRAM. From newer local tasks, nine completed generations were
+selected; submission to completion averaged `67.6 seconds` (about `1 minute 8 seconds`,
+range `64–72 seconds`). This showcase source is a longer `124-frame` run:
+it was submitted at `04:48:23` and completed
+at `04:50:19` (`116 seconds`); the ComfyUI log reports `114.58 seconds` of
+prompt execution. [Samples and timing sources](assets/readme/video-to-sprite-showcase-provenance.json)
+
+The left panel shows seconds `2–4` of the original video. The right panel shows
+a newly created empty character prefab playing 48 transparent `128 × 128` frames
+re-extracted from that same source at `24 FPS`, looping every `2 seconds`.
+The original twelve-frame `Soldier_L1_Walk_PseudoTopDown_128_from2s_v12` asset
+remains unchanged; the new preview adds intermediate poses at the source speed.
+
+![Original v12 video beside walk animation on an empty Unity character prefab](assets/readme/video-to-sprite-soldier-walk-v12-comparison.gif)
+
+[Full original video](assets/readme/video-to-sprite-soldier-walk-v12-original.mp4) ·
+[MP4 comparison](assets/readme/video-to-sprite-soldier-walk-v12-comparison.mp4)
+
+#### Soldier_L1_View
+
+![Soldier_L1_View Idle, Walk, and Attack animations in Unity](assets/readme/video-to-sprite-soldier-l1-unity-actions.gif)
+
+[Soldier animation MP4](assets/readme/video-to-sprite-soldier-l1-unity-actions.mp4)
+
+The Soldier Idle, Walk, and Attack sprites were extracted from locally generated
+H3 videos. The preview retains the prefab's visual hierarchy, anchors, shadows,
+and Sprite animation references. Attack retains its clip timing and repeats
+after a short Idle pause. The current Walk uses the first eight v16 frames,
+separate from the v12 example above.
+Source videos and animation timing: Idle `39 frames / 1.625 seconds` →
+`12 frames / 12 FPS`; Walk `124 frames / about 5.17 seconds` →
+`8 frames / 8 FPS`; Attack `107 frames / about 4.46 seconds` →
+`12 frames / 12 FPS`.
+
+#### Animation in action
+
+![Soldier, Enemy_Basic, and Enemy_Fast animations in action](assets/readme/video-to-sprite-tower-defense-gameplay.gif)
+
+[35-second animation capture MP4](assets/readme/video-to-sprite-tower-defense-gameplay.mp4)
+
+The capture shows `Soldier_L1_View`, `Enemy_Basic_View`, and `Enemy_Fast_View`
+playing their animations. Soldier's three actions and Enemy_Basic's Walk were
+made from locally generated H3 videos. The capture itself records actual Tuanjie
+Editor playback; only the viewport and time interval were trimmed, preserving
+the original `12 FPS`. Timing: the GIF uses seconds `6–18` (`12 seconds`) of the
+recording; the MP4 uses seconds `0–35` (`35 seconds`).
+[Asset provenance and parameters](assets/readme/video-to-sprite-showcase-provenance.json)
+
+### Stable Audio 3 examples
+
+Generated with `forge-text-audio` and the official
+`stabilityai/stable-audio-3-small-sfx` model.
+
+#### Wooden UI click
+
+Prompt:
+
+```text
+Dry wooden UI click, short transient, no music, no voice
+```
+
+[Listen to the wooden UI click](assets/readme/stable-audio-3-small-sfx-wooden-ui-click.wav)
+
+![Stable Audio 3 wooden UI click waveform](assets/readme/stable-audio-3-small-sfx-wooden-ui-click-waveform.png)
+
+![Stable Audio 3 wooden UI click spectrum](assets/readme/stable-audio-3-small-sfx-wooden-ui-click-spectrum.png)
+
+#### Blacksmith hammer sound
+
+Prompt:
+
+```text
+TrackType: SFX, a clean professional studio Foley recording of one natural strike of a small steel blacksmith hammer against a red-hot iron billet on a solid anvil, an isolated metallic impact with a fast attack and a short clean natural decay, recorded with a dry close microphone in a quiet room.
+```
+
+- [Listen to blacksmith hammer candidate 1](assets/readme/stable-audio-3-small-sfx-blacksmith-hammer-01.wav)
+- [Listen to blacksmith hammer candidate 2](assets/readme/stable-audio-3-small-sfx-blacksmith-hammer-02.wav)
+- [Listen to blacksmith hammer candidate 3](assets/readme/stable-audio-3-small-sfx-blacksmith-hammer-03.wav)
+
+Implementation and validation: generated locally with Stable Audio 3 Small-SFX, exported through no-boost WAV processing, and passed format, clipping, and sustained-noise checks.
+
+### Local MiniMax Music 3 BGM test
+
+The local Comfy Desktop `audio_minimax_music_3` workflow produced this cheerful instrumental game-BGM candidate. The checked-in WAV is 60 seconds, 44,100 Hz, 16-bit stereo, with a -1.57 dBFS peak; native Comfy output was MP3.
+
+Prompt focus: continuous medium-energy 4/4 groove, no intro or low-energy section, mid-register marimba and muted pluck, strictly instrumental, clean resolved ending.
+
+- [Listen to the 60-second WAV](assets/readme/minimax-music3-game-bgm-60s-clean-ending.wav)
+- [Listen to the 60-second MP3](assets/readme/minimax-music3-game-bgm-60s-clean-ending.mp3) · [Listen to the final 5 seconds](assets/readme/minimax-music3-game-bgm-60s-final-5s.wav)
+- [Waveform](assets/readme/minimax-music3-game-bgm-60s-waveform.png) · [Provenance](assets/readme/minimax-music3-game-bgm-60s-provenance.json)
+
+## Install
+
+- [Unified installation guide](install/README.md)
+- [统一安装指南（中文）](install/README.zh-CN.md)
+- [Stable Audio 3 setup](install/stable-audio-3/README.md)
+- [Comfy MCP official installation](https://docs.comfy.org/agent-tools/mcp#installation)
+- [MiniMax H3 Prompt Writing Skill official installation](https://github.com/MiniMax-AI/MiniMax-H3/blob/main/skills/README.md#installation)
+
+The unified guide contains both a copyable Agent request and the complete
+manual installation flow. It installs the five core Forge Skills only.
+Optional workflows are opt-in. The Agent asks whether to enable them, inspects
+first, then asks again before installing missing components.
+
+Provider setup stays separate from core Skill installation. Core installation
+does not auto-install providers, FFmpeg, credentials, model weights, or
+optional workflow dependencies.
+
+To delegate the optional audio runtime setup to an Agent, copy this request:
+
+> Install and configure the official stable-audio-3 runtime for forge-text-audio: ask me to choose the installation directory, keep the isolated Python environment, model weights, and all caches under that directory, require me to accept all licenses personally, never use a hosted API, run the repository's provider configure command without changing user environment variables or PATH, and finish by running and reporting the local offline preflight.
+
+Detailed instructions are in [Stable Audio 3 setup](install/stable-audio-3/README.md). The ignored `game-visual-forge.local.json` stores only local paths; `provider configure` creates it. License acceptance remains a user action.
+
+## Example requests
+
+```text
+Use forge-2d-map to create a top-down village with a north-south creek,
+one walkable wooden bridge, building entrances, collision, and a Unity Tilemap.
+```
+
+```text
+Use forge-2d-sprite to create a modern pixel-art player walk sheet with
+transparent output and a preview GIF.
+```
+
+```text
+Use forge-video-to-sprite with my existing MP4 and export a feet-aligned
+24-frame sprite strip plus a preview GIF.
+```
+
+```text
+Use forge-video-to-sprite with local ComfyUI MiniMax H3, optimize an I2VA
+prompt from my first frame, then export aligned 16- and 32-frame sprite sheets.
+```
+
+```text
+Use forge-text-audio to create three dry iron-sword impacts against a steel
+shield, no music or voice, review the candidates, and prepare a Unity AudioClip.
+```
+
+For local video processing, install FFmpeg and FFprobe yourself. MiniMax Hailuo
+API uses `MINIMAX_API_KEY`; Jimeng API uses `JIMENG_ACCESS_KEY` and
+`JIMENG_SECRET_KEY`. The official `mmx` and `dreamina` CLIs are optional.
+
+## Unity integration
+
+The Tilemap package lives at
+[`integrations/unity/com.game-visual-forge.tilemap`](integrations/unity/com.game-visual-forge.tilemap)
+and imports validated Tilemap bundles into textures, Tiles, Palettes, and
+Tilemap Prefabs. The independent audio package lives at
+[`integrations/unity/com.game-visual-forge.audio`](integrations/unity/com.game-visual-forge.audio)
+and imports reviewed WAV bundles as configured AudioClip assets without changing
+scenes. Scene placement is performed through Unity MCP only after an explicit request.
+
+## Repository layout
+
+```text
+skills/       Codex Skill instructions and launchers
+src/          Shared contracts, routing, processing, and reports
+integrations/ Unity Tilemap and audio packages plus tests
+assets/       Small checked-in examples and showcase artifacts
+install/      Unified installation and independent runtime guides
+```
+
+## Development check
+
+Run the test suite from the repository root (the directory that contains `tests/`):
+
+```powershell
+Set-Location "game-visual-forge项目路径"
+python -m unittest discover -s tests -q
+```
+
+## License
+
+[MIT](LICENSE)

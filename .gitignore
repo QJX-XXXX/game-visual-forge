@@ -1,0 +1,21 @@
+__pycache__/
+*.py[cod]
+.coverage
+.pytest_cache/
+.venv/
+build/
+dist/
+*.egg-info/
+.env
+game-visual-forge.local.json
+game-visual-forge.music.local.json
+outputs/
+.superpowers/
+docs/
+
+# Local showcase-generation evidence; keep only README-linked final images tracked.
+assets/readme/adaptive-river-crossing-map-*
+!assets/readme/adaptive-river-crossing-map-unity-game-view.png
+assets/readme/autumn-creek-*
+assets/readme/standard-simple-map-*
+assets/readme/tree-canopy-replacement.prompt.txt

@@ -1,0 +1,14 @@
+{
+  "name": "com.game-visual-forge.tilemap",
+  "version": "0.1.0",
+  "displayName": "Game Visual Forge Tilemap Importer",
+  "description": "Imports Game Visual Forge tile bundles as sliced Sprites, Tile assets, Tile Palettes, and layered Tilemap prefabs.",
+  "unity": "2022.3",
+  "author": {
+    "name": "Game Visual Forge contributors"
+  },
+  "dependencies": {
+    "com.unity.2d.sprite": "1.0.0",
+    "com.unity.2d.tilemap": "1.0.0"
+  }
+}

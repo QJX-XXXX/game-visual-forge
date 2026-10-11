@@ -1,0 +1,226 @@
+# Game Visual Forge
+
+[English](README.md) | 简体中文
+
+Game Visual Forge 将五个 Codex Skills 汇成一个制作入口：只需在 Codex 中
+描述需求，就能调用已配置的本地模型与工具，低成本完成 2D 地图、角色精灵、
+视频转序列帧及游戏音频音效的制作、检查与交付。所需模型和工具按需在本机部署。
+
+## Skills
+
+| Skill | 用于 | 常见输出 |
+| --- | --- | --- |
+| [`forge-2d-map`](skills/forge-2d-map/SKILL.md) | 可行走的 2D 地图、Tilemap、地形、道具、碰撞和 Unity 交付 | 地图包、预览、放置数据、质量证据 |
+| [`forge-2d-sprite`](skills/forge-2d-sprite/SKILL.md) | 角色、生物、NPC、道具、特效和动画图集 | 透明精灵图集、帧文件、GIF 预览、元数据 |
+| [`forge-video-to-sprite`](skills/forge-video-to-sprite/SKILL.md) | 将现有或由海螺/MiniMax、即梦及可选 ComfyUI MiniMax H3 生成的视频转换为精灵帧。 | 抽帧、精灵条、GIF 预览、元数据 |
+| [`forge-text-audio`](skills/forge-text-audio/SKILL.md) | 明确请求的 SFX、UI 音效、动作音效和环境音 | 审核后的 44,100 Hz 16-bit PCM WAV 与 Unity AudioClip 清单 |
+| [`forge-game-music`](skills/forge-game-music/SKILL.md) | 游戏背景音乐、轻音乐、循环配乐和严格纯音乐 | 审核后的 44,100 Hz 立体声 WAV 与可选 Unity 清单 |
+
+## 提供的能力
+
+- 通过自然语言收集风格、布局、运行时和交付格式等关键选择。
+- 需要新视觉素材时使用内置生图，也支持用户提供已有素材。
+- 使用确定性的本地处理、验证报告和可复现输出清单。
+- 地图交付包含可行走区域、碰撞、对象、入口和 Unity Tilemap 支持。
+- 原生图集会在验证前按声明的网格、Tile 尺寸、边距和间距标准化；这只统一图集几何，不修复画面、接缝或地图拓扑。
+- 对付费或外部操作提供 Provider、费用和提交确认门槛。
+- `forge-video-to-sprite` 使用 FFmpeg/FFprobe、本地时间戳抽帧、rembg/Chroma 清理、稳定对齐、图集、GIF 预览和运动质量证据处理现有视频。
+- 视频生成支持明确选择现有、海螺/MiniMax、即梦或可选 ComfyUI MiniMax H3 路线；工具和凭据由用户手动配置，不会自动切换。
+- `forge-text-audio` 使用隔离的官方 Stable Audio 3 `small-sfx` 本地运行时，支持 text-to-audio、redraw、inpaint 和 continue，只交付 WAV，并要求最终试听审核。
+- `forge-game-music` 默认使用 Comfy Desktop MiniMax Music 3；Stable Audio 3 是有官方资料的云端备用，Suno 在官方 API 字段和游戏商用条款核验前保持门禁。
+
+## 展示
+
+![Unity 中的自适应河流地图](assets/readme/adaptive-river-crossing-map-unity-game-view.png)
+
+![HD 背景清理对比](assets/readme/rembg-production-comparison-on-gray.jpg)
+
+HD 清理使用 Pillow 进行图像转换，使用 NumPy/SciPy 生成遮罩，使用带有
+`birefnet-general` 模型的 rembg 进行语义分离，处理已知洋红色溢出，并可选用
+PyMatting 做细化。CUDA 失败时会尝试 CPU，并在需要时报告确定性的 Chroma 回退。
+
+手动安装可选清理工具：
+
+```powershell
+python -m pip install -e ".[image]"
+python -m pip install -e ".[background]"
+python -m pip install "rembg[cpu]"
+python -m pip install "rembg[gpu]"
+python -m pip install -e ".[matting]"
+python -c "from rembg import new_session; new_session('birefnet-general')"
+```
+
+可使用 `U2NET_HOME` 指定共享模型目录。CPU 是兼容性默认选项；GPU 需要已验证
+的 CUDA 环境。PyMatting 是可选项，速度更慢。
+
+### 视频转精灵：人物动作
+
+#### 原视频 → v12 行走精灵
+
+Soldier 行走原片由本机 ComfyUI 的 MiniMax H3 `FL2VA` 工作流生成：
+`640 × 640`、`24 FPS`、`124 帧`（约 `5.17 秒`）、Turbo/LowVRAM `8 步`、
+固定种子 `20260917`。[H3 本地开放权重](https://design.minimax.io/h3)
+按[社区许可](https://huggingface.co/MiniMaxAI/MiniMax-H3/blob/main/LICENSE)免费提供；
+本次本地生成未调用付费 API，也未消耗云端额度，使用的是本机算力。
+当前本机配置：Intel Core i7-13700KF、`32 GB` 内存、NVIDIA GeForce RTX 4070 Ti
+（`12 GB` 显存）。从较新的本地任务中筛出 9 次已完成的生成，从提交到完成平均 `67.6 秒`（约 `1 分 08 秒`，范围`64–72 秒`）。展示原片为较长的 `124 帧`任务，
+`04:48:23` 提交、`04:50:19` 完成，耗时 `116 秒`；ComfyUI 日志记录的
+Prompt 执行时间为 `114.58 秒`。[样本与计时依据](assets/readme/video-to-sprite-showcase-provenance.json)
+
+左侧为原视频的 `2–4 秒` 区间，右侧为新建空人物预制体播放同一原片
+重新提取的 48 个 `128 × 128` 透明帧，以 `24 FPS`、`2 秒`循环。
+原来的 `Soldier_L1_Walk_PseudoTopDown_128_from2s_v12` 12 帧素材保持不变；
+新展示补足中间动作姿势，同时保持源视频的速度。
+
+![v12 原视频与 Unity 空人物预制体行走动画对照](assets/readme/video-to-sprite-soldier-walk-v12-comparison.gif)
+
+[查看完整原视频](assets/readme/video-to-sprite-soldier-walk-v12-original.mp4) ·
+[查看 MP4 对照](assets/readme/video-to-sprite-soldier-walk-v12-comparison.mp4)
+
+#### Soldier_L1_View
+
+![Soldier_L1_View 在 Unity 中的 Idle、Walk、Attack 动作](assets/readme/video-to-sprite-soldier-l1-unity-actions.gif)
+
+[查看 Soldier 动作 MP4](assets/readme/video-to-sprite-soldier-l1-unity-actions.mp4)
+
+Soldier 的 Idle、Walk、Attack 均由本地 H3 视频抽帧制成。三个动作保留
+当前预制体的视觉层级、锚点、阴影与 Sprite 动画引用；
+Attack 按原 Clip 时长播放，再短暂停回 Idle 后重复，便于观看。
+当前 Walk 使用 v16 的前 8 帧，与上方独立展示的 v12 不同。
+源片与动作时长：Idle `39 帧 / 1.625 秒` → `12 帧 / 12 FPS`；
+Walk `124 帧 / 约 5.17 秒` → `8 帧 / 8 FPS`；
+Attack `107 帧 / 约 4.46 秒` → `12 帧 / 12 FPS`。
+
+#### 动作运行效果
+
+![Soldier、Enemy_Basic 与 Enemy_Fast 的动作运行效果](assets/readme/video-to-sprite-tower-defense-gameplay.gif)
+
+[查看 35 秒运行效果 MP4](assets/readme/video-to-sprite-tower-defense-gameplay.mp4)
+
+录屏展示 `Soldier_L1_View`、`Enemy_Basic_View` 和 `Enemy_Fast_View` 的
+实际动作播放；其中 Soldier 的三个动作与 Enemy_Basic 的 Walk 均取自本地 H3
+生成的视频。录屏本身是团结编辑器的真实运行画面，只做裁切和截取，
+保持原始 `12 FPS`。时间标注：GIF 对应原录屏 `6–18 秒`（`12 秒`），
+MP4 对应 `0–35 秒`（`35 秒`）。
+[素材出处与参数](assets/readme/video-to-sprite-showcase-provenance.json)
+
+### Stable Audio 3 示例
+
+以下音效由 `forge-text-audio` 使用官方
+`stabilityai/stable-audio-3-small-sfx` 模型生成。
+
+#### 木质 UI 点击
+
+提示词：
+
+```text
+Dry wooden UI click, short transient, no music, no voice
+```
+
+[试听木质 UI 点击音效](assets/readme/stable-audio-3-small-sfx-wooden-ui-click.wav)
+
+![Stable Audio 3 木质 UI 点击音效波形](assets/readme/stable-audio-3-small-sfx-wooden-ui-click-waveform.png)
+
+![Stable Audio 3 木质 UI 点击音效频谱](assets/readme/stable-audio-3-small-sfx-wooden-ui-click-spectrum.png)
+
+#### 生成打铁音效
+
+提示词：
+
+```text
+TrackType: SFX, a clean professional studio Foley recording of one natural strike of a small steel blacksmith hammer against a red-hot iron billet on a solid anvil, an isolated metallic impact with a fast attack and a short clean natural decay, recorded with a dry close microphone in a quiet room.
+```
+
+- [试听打铁候选 1](assets/readme/stable-audio-3-small-sfx-blacksmith-hammer-01.wav)
+- [试听打铁候选 2](assets/readme/stable-audio-3-small-sfx-blacksmith-hammer-02.wav)
+- [试听打铁候选 3](assets/readme/stable-audio-3-small-sfx-blacksmith-hammer-03.wav)
+
+实现与验证：使用 Stable Audio 3 Small-SFX 在本地生成，经无增益 WAV 处理，并通过格式、削波和持续噪声检查。
+
+### 本地 MiniMax Music 3 背景音乐实测
+
+本地 Comfy Desktop `audio_minimax_music_3` 生成了这条欢快、持续有节奏的游戏背景纯音乐。仓库中的 WAV 为 60 秒、44,100 Hz、16-bit 立体声，峰值为 −1.57 dBFS；Comfy 原生输出格式是 MP3。
+
+提示词重点：全程中等强度的 4/4 节奏、没有启动段或低潮段、中音域马林巴和闷音拨弦、严格纯音乐、干净的器乐收尾。
+
+- [试听 60 秒 WAV](assets/readme/minimax-music3-game-bgm-60s-clean-ending.wav)
+- [试听 60 秒 MP3](assets/readme/minimax-music3-game-bgm-60s-clean-ending.mp3) · [试听最后 5 秒](assets/readme/minimax-music3-game-bgm-60s-final-5s.wav)
+- [波形图](assets/readme/minimax-music3-game-bgm-60s-waveform.png) · [来源记录](assets/readme/minimax-music3-game-bgm-60s-provenance.json)
+
+## 安装
+
+- [统一安装指南](install/README.zh-CN.md)
+- [统一安装指南英文版](install/README.md)
+- [Stable Audio 3 安装指南](install/stable-audio-3/README.zh-CN.md)
+- [Comfy MCP 官方安装说明](https://docs.comfy.org/agent-tools/mcp#installation)
+- [MiniMax H3 Prompt Writing Skill 官方安装说明](https://github.com/MiniMax-AI/MiniMax-H3/blob/main/skills/README.md#installation)
+
+统一指南同时包含可复制给 Agent 的请求和完整手动安装流程。核心流程只安装五个 Forge Skills。可选工作流必须由用户主动选择启用；Agent 会先询问是否启用，先检查，
+再在安装缺失组件前二次确认。
+
+Provider 配置与核心 Skill 安装分开处理。核心安装不会自动安装 Provider、
+FFmpeg、凭据、模型权重或可选工作流依赖。
+
+需要 Agent 安装音效运行时时，复制下面这句话：
+
+> 请为 forge-text-audio 安装并配置官方 stable-audio-3：先询问我安装目录，将独立 Python 环境、模型和全部缓存放入该目录；许可证必须由我本人确认，禁止调用托管 API；安装完成后在 game-visual-forge 仓库中运行 provider configure 命令创建本地配置，不修改用户环境变量或 PATH，最后运行离线预检并报告结果。
+
+详细说明见 [Stable Audio 3 安装指南](install/stable-audio-3/README.zh-CN.md)。`provider configure` 会创建只保存本地路径的 `game-visual-forge.local.json`。
+
+## 请求示例
+
+```text
+使用 forge-2d-map 制作俯视角村落：南北向小溪、一座可通行木桥、建筑入口、碰撞和 Unity Tilemap。
+```
+
+```text
+使用 forge-2d-sprite 制作现代像素风玩家行走图，输出透明图集和 GIF 预览。
+```
+
+```text
+使用 forge-video-to-sprite 处理我提供的 MP4，导出脚部对齐的 24 帧精灵条和 GIF 预览。
+```
+
+```text
+使用 forge-video-to-sprite 和本地 ComfyUI MiniMax H3，从我的首帧图优化 I2VA
+提示词，然后导出对齐的 16 帧与 32 帧精灵图集。
+```
+
+```text
+使用 forge-text-audio 制作三组干燥的铁剑击中钢盾音效，不要音乐或人声，审核候选并准备 Unity AudioClip。
+```
+
+本地视频处理需要手动安装 FFmpeg 和 FFprobe。海螺/MiniMax API 使用
+`MINIMAX_API_KEY`；即梦 API 使用 `JIMENG_ACCESS_KEY` 和
+`JIMENG_SECRET_KEY`；官方 `mmx` 与 `dreamina` CLI 是可选项。
+
+## Unity 集成
+
+Tilemap 包位于
+[`integrations/unity/com.game-visual-forge.tilemap`](integrations/unity/com.game-visual-forge.tilemap)，
+负责将已验证地图包导入纹理、Tiles、Palette 和 Tilemap Prefab。独立的音频包位于
+[`integrations/unity/com.game-visual-forge.audio`](integrations/unity/com.game-visual-forge.audio)，
+负责导入审核后的 WAV 和配置 AudioClip，不修改场景。只有用户明确要求时，才通过 Unity MCP 放置场景对象。
+
+## 仓库结构
+
+```text
+skills/       Codex Skill 说明和启动器
+src/          共享合同、路由、处理和报告
+integrations/ Unity Tilemap 与音频包及测试
+assets/       小型示例和展示素材
+install/      统一安装与独立运行时指南
+```
+
+## 开发检查
+
+请在包含 `tests/` 的仓库根目录运行：
+
+```powershell
+Set-Location "game-visual-forge项目路径"
+python -m unittest discover -s tests -q
+```
+
+## 许可证
+
+[MIT](LICENSE)

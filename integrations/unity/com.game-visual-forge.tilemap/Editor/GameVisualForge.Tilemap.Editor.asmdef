@@ -1,0 +1,12 @@
+{
+  "name": "GameVisualForge.Tilemap.Editor",
+  "rootNamespace": "GameVisualForge.Unity",
+  "references": [
+    "Unity.2D.Sprite.Editor",
+    "Unity.2D.Tilemap.Editor"
+  ],
+  "includePlatforms": [
+    "Editor"
+  ],
+  "autoReferenced": true
+}

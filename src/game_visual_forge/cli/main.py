@@ -1,0 +1,560 @@
+from __future__ import annotations
+
+import argparse
+import json
+import sys
+from pathlib import Path
+from pathlib import PurePosixPath
+from typing import Any
+
+from game_visual_forge.cli.planning import build_execution_plan
+from game_visual_forge.cli.map import (
+    run_map_ingest,
+    run_map_plan,
+    run_map_process,
+    run_map_route,
+    run_map_validate,
+)
+from game_visual_forge.cli.tilemap import (
+    run_tilemap_ingest,
+    run_tilemap_normalize_atlases,
+    run_tilemap_record_approval,
+    run_tilemap_plan,
+    run_tilemap_preflight_assets,
+    run_tilemap_record_asset_review,
+    run_tilemap_process,
+    run_tilemap_reject,
+    run_tilemap_route,
+    run_tilemap_validate,
+)
+from game_visual_forge.cli.sprite import (
+    run_sprite_ingest,
+    run_sprite_plan,
+    run_sprite_process,
+    run_sprite_route,
+    run_sprite_validate,
+)
+from game_visual_forge.cli.video import (
+    run_video_assess,
+    run_video_ingest,
+    run_video_inspect_h3,
+    run_video_plan,
+    run_video_process,
+    run_video_provider_download,
+    run_video_provider_estimate,
+    run_video_provider_models,
+    run_video_provider_preflight,
+    run_video_provider_query,
+    run_video_provider_submit,
+    run_video_record_review,
+    run_video_route,
+    run_video_validate,
+)
+from game_visual_forge.cli.audio import (
+    run_audio_generate,
+    run_audio_ingest,
+    run_audio_plan,
+    run_audio_process,
+    run_audio_provider_configure,
+    run_audio_provider_models_command,
+    run_audio_provider_preflight_command,
+    run_audio_provider_show_config,
+    run_audio_record_review,
+    run_audio_route,
+    run_audio_validate,
+)
+from game_visual_forge.cli.music import dispatch_music_command, register_music_commands
+from game_visual_forge.contracts import AssetBrief, JobState, JobStatus, load_json
+from game_visual_forge.contracts import MapSourceType
+from game_visual_forge.contracts.serialization import dump_json
+from game_visual_forge.contracts.sprite import SourceType
+from game_visual_forge.errors import ForgeError
+from game_visual_forge.jobs import fingerprint_request, load_job, save_job
+from game_visual_forge.routing import NativeAttemptOutcome
+
+
+def build_parser() -> argparse.ArgumentParser:
+    parser = argparse.ArgumentParser(prog="game-visual-forge")
+    commands = parser.add_subparsers(dest="command", required=True)
+
+    dry_run = commands.add_parser("dry-run")
+    dry_run.add_argument("--brief", type=Path, required=True)
+    dry_run.add_argument("--out-dir", type=Path, required=True)
+    dry_run.add_argument("--now", required=True)
+
+    map_parser = commands.add_parser("map")
+    map_commands = map_parser.add_subparsers(dest="map_command", required=True)
+
+    map_plan = map_commands.add_parser("plan")
+    map_plan.add_argument("--request", type=Path, required=True)
+    map_plan.add_argument("--out-dir", type=Path, required=True)
+    map_plan.add_argument("--now", required=True)
+
+    map_route = map_commands.add_parser("route")
+    map_route.add_argument("--request", type=Path, required=True)
+    map_route.add_argument("--capabilities", type=Path, required=True)
+    map_route.add_argument("--selection", choices=[item.value for item in MapSourceType])
+    map_route.add_argument("--preflight", type=Path)
+    map_route.add_argument("--out", type=Path, required=True)
+    map_route.add_argument("--state", type=Path, required=True)
+    map_route.add_argument("--now", required=True)
+
+    map_ingest = map_commands.add_parser("ingest")
+    map_ingest.add_argument("--request", type=Path, required=True)
+    map_ingest.add_argument("--decision", type=Path, required=True)
+    map_ingest.add_argument("--image", type=Path, required=True)
+    map_ingest.add_argument("--repo-root", type=Path, required=True)
+    map_ingest.add_argument("--out", type=Path, required=True)
+    map_ingest.add_argument("--state", type=Path, required=True)
+    map_ingest.add_argument("--now", required=True)
+
+    map_process = map_commands.add_parser("process")
+    map_process.add_argument("--request", type=Path, required=True)
+    map_process.add_argument("--raw-image", type=Path, required=True)
+    map_process.add_argument("--repo-root", type=Path, required=True)
+    map_process.add_argument("--out-dir", type=Path, required=True)
+    map_process.add_argument("--state", type=Path, required=True)
+    map_process.add_argument("--now", required=True)
+
+    map_validate = map_commands.add_parser("validate")
+    map_validate.add_argument("--request", type=Path, required=True)
+    map_validate.add_argument("--raw-image", type=Path, required=True)
+    map_validate.add_argument("--processing-result", type=Path, required=True)
+    map_validate.add_argument("--repo-root", type=Path, required=True)
+    map_validate.add_argument("--staging-dir", type=Path, required=True)
+    map_validate.add_argument("--final-dir", type=Path, required=True)
+    map_validate.add_argument("--visual-review", type=Path)
+    map_validate.add_argument("--state", type=Path, required=True)
+    map_validate.add_argument("--now", required=True)
+
+    tilemap = map_commands.add_parser("tile")
+    tilemap_commands = tilemap.add_subparsers(dest="tilemap_command", required=True)
+
+    tilemap_plan = tilemap_commands.add_parser("plan")
+    tilemap_plan.add_argument("--request", type=Path, required=True)
+    tilemap_plan.add_argument("--out-dir", type=Path, required=True)
+    tilemap_plan.add_argument("--now", required=True)
+
+    tilemap_route = tilemap_commands.add_parser("route")
+    tilemap_route.add_argument("--request", type=Path, required=True)
+    tilemap_route.add_argument("--capabilities", type=Path, required=True)
+    tilemap_route.add_argument("--selection", choices=[item.value for item in MapSourceType])
+    tilemap_route.add_argument("--preflight", type=Path)
+    tilemap_route.add_argument("--out", type=Path, required=True)
+    tilemap_route.add_argument("--state", type=Path, required=True)
+    tilemap_route.add_argument("--now", required=True)
+
+    tilemap_ingest = tilemap_commands.add_parser("ingest")
+    tilemap_ingest.add_argument("--request", type=Path, required=True)
+    tilemap_ingest.add_argument("--decision", type=Path, required=True)
+    tilemap_ingest.add_argument("--image", type=Path)
+    tilemap_ingest.add_argument("--atlas-page", action="append", default=[])
+    tilemap_ingest.add_argument("--object-asset", action="append", default=[])
+    tilemap_ingest.add_argument("--style-approval", type=Path)
+    tilemap_ingest.add_argument("--preassembly-review", type=Path)
+    tilemap_ingest.add_argument("--critical-assets-report", type=Path)
+    tilemap_ingest.add_argument("--repo-root", type=Path, required=True)
+    tilemap_ingest.add_argument("--out", type=Path, required=True)
+    tilemap_ingest.add_argument("--state", type=Path, required=True)
+    tilemap_ingest.add_argument("--now", required=True)
+
+    tilemap_normalize = tilemap_commands.add_parser("normalize-atlases")
+    tilemap_normalize.add_argument("--request", type=Path, required=True)
+    tilemap_normalize.add_argument("--decision", type=Path, required=True)
+    tilemap_normalize.add_argument("--atlas-page", action="append", default=[])
+    tilemap_normalize.add_argument("--repo-root", type=Path, required=True)
+    tilemap_normalize.add_argument("--out-dir", type=Path, required=True)
+    tilemap_normalize.add_argument("--allow-non-native", action="store_true")
+
+    tilemap_process = tilemap_commands.add_parser("process")
+    tilemap_process.add_argument("--request", type=Path, required=True)
+    tilemap_process.add_argument("--raw-image", type=Path, required=True)
+    tilemap_process.add_argument("--repo-root", type=Path, required=True)
+    tilemap_process.add_argument("--out-dir", type=Path, required=True)
+    tilemap_process.add_argument("--state", type=Path, required=True)
+    tilemap_process.add_argument("--now", required=True)
+
+    tilemap_validate = tilemap_commands.add_parser("validate")
+    tilemap_validate.add_argument("--request", type=Path, required=True)
+    tilemap_validate.add_argument("--raw-image", type=Path, required=True)
+    tilemap_validate.add_argument("--processing-result", type=Path, required=True)
+    tilemap_validate.add_argument("--repo-root", type=Path, required=True)
+    tilemap_validate.add_argument("--staging-dir", type=Path, required=True)
+    tilemap_validate.add_argument("--final-dir", type=Path, required=True)
+    tilemap_validate.add_argument("--visual-review", type=Path)
+    tilemap_validate.add_argument("--style-approval", type=Path)
+    tilemap_validate.add_argument("--assembled-approval", type=Path)
+    tilemap_validate.add_argument("--state", type=Path, required=True)
+    tilemap_validate.add_argument("--now", required=True)
+
+    tilemap_reject_parser = tilemap_commands.add_parser("reject")
+    tilemap_reject_parser.add_argument("--state", type=Path, required=True)
+    tilemap_reject_parser.add_argument("--run-root", type=Path, required=True)
+    tilemap_reject_parser.add_argument("--out", type=Path, required=True)
+    tilemap_reject_parser.add_argument("--reason-code", required=True)
+    tilemap_reject_parser.add_argument("--reason", required=True)
+    tilemap_reject_parser.add_argument("--now", required=True)
+
+    tilemap_approval = tilemap_commands.add_parser("record-approval")
+    tilemap_approval.add_argument("--gate", choices=["style-sample", "assembled-map"], required=True)
+    tilemap_approval.add_argument("--artifact", action="append", default=[])
+    tilemap_approval.add_argument("--out", type=Path, required=True)
+    tilemap_approval.add_argument("--repo-root", type=Path, default=Path.cwd())
+    tilemap_approval.add_argument("--now", required=True)
+
+    tilemap_preflight = tilemap_commands.add_parser("preflight-assets")
+    tilemap_preflight.add_argument("--request", type=Path, required=True)
+    tilemap_preflight.add_argument("--architecture", type=Path, required=True)
+    tilemap_preflight.add_argument("--atlas-page", action="append", default=[])
+    tilemap_preflight.add_argument("--object-asset", action="append", default=[])
+    tilemap_preflight.add_argument("--decision", type=Path)
+    tilemap_preflight.add_argument("--normalization-report", type=Path)
+    tilemap_preflight.add_argument("--repo-root", type=Path, required=True)
+    tilemap_preflight.add_argument("--out-dir", type=Path, required=True)
+
+    tilemap_review = tilemap_commands.add_parser("record-asset-review")
+    tilemap_review.add_argument("--report", type=Path, required=True)
+    tilemap_review.add_argument("--decisions", type=Path, required=True)
+    tilemap_review.add_argument("--out", type=Path, required=True)
+    tilemap_review.add_argument("--now", required=True)
+
+    show_state = commands.add_parser("show-state")
+    show_state.add_argument("--state", type=Path, required=True)
+
+    sprite = commands.add_parser("sprite")
+    sprite_commands = sprite.add_subparsers(dest="sprite_command", required=True)
+
+    plan = sprite_commands.add_parser("plan")
+    plan.add_argument("--request", type=Path, required=True)
+    plan.add_argument("--out-dir", type=Path, required=True)
+    plan.add_argument("--now", required=True)
+
+    route = sprite_commands.add_parser("route")
+    route.add_argument("--request", type=Path, required=True)
+    route.add_argument("--capabilities", type=Path, required=True)
+    route.add_argument("--native-outcome", choices=[item.value for item in NativeAttemptOutcome], default=NativeAttemptOutcome.NOT_ATTEMPTED.value)
+    route.add_argument("--selection", choices=[item.value for item in SourceType])
+    route.add_argument("--preflight", type=Path)
+    route.add_argument("--out", type=Path, required=True)
+    route.add_argument("--state", type=Path, required=True)
+    route.add_argument("--now", required=True)
+
+    ingest = sprite_commands.add_parser("ingest")
+    ingest.add_argument("--request", type=Path, required=True)
+    ingest.add_argument("--decision", type=Path, required=True)
+    ingest.add_argument("--image", type=Path, required=True)
+    ingest.add_argument("--repo-root", type=Path, required=True)
+    ingest.add_argument("--out", type=Path, required=True)
+    ingest.add_argument("--state", type=Path, required=True)
+    ingest.add_argument("--now", required=True)
+
+    process = sprite_commands.add_parser("process")
+    process.add_argument("--request", type=Path, required=True)
+    process.add_argument("--raw-image", type=Path, required=True)
+    process.add_argument("--repo-root", type=Path, required=True)
+    process.add_argument("--out-dir", type=Path, required=True)
+    process.add_argument("--state", type=Path, required=True)
+    process.add_argument("--now", required=True)
+
+    validate = sprite_commands.add_parser("validate")
+    validate.add_argument("--request", type=Path, required=True)
+    validate.add_argument("--raw-image", type=Path, required=True)
+    validate.add_argument("--processing-result", type=Path, required=True)
+    validate.add_argument("--repo-root", type=Path, required=True)
+    validate.add_argument("--staging-dir", type=Path, required=True)
+    validate.add_argument("--final-dir", type=Path, required=True)
+    validate.add_argument("--visual-review", type=Path)
+    validate.add_argument("--state", type=Path, required=True)
+    validate.add_argument("--now", required=True)
+
+    video = commands.add_parser("video")
+    video_commands = video.add_subparsers(dest="video_command", required=True)
+    video_sprite = video_commands.add_parser("sprite")
+    video_sprite_commands = video_sprite.add_subparsers(dest="video_sprite_command", required=True)
+    video_plan = video_sprite_commands.add_parser("plan")
+    video_plan.add_argument("--request", type=Path, required=True)
+    video_plan.add_argument("--out-dir", type=Path, required=True)
+    video_plan.add_argument("--now", required=True)
+    video_route = video_sprite_commands.add_parser("route")
+    video_route.add_argument("--request", type=Path, required=True)
+    video_route.add_argument("--selection")
+    video_route.add_argument("--backend")
+    video_route.add_argument("--available", type=Path)
+    video_route.add_argument("--out", type=Path, required=True)
+    video_route.add_argument("--state", type=Path, required=True)
+    video_route.add_argument("--now", required=True)
+    video_ingest = video_sprite_commands.add_parser("ingest")
+    video_ingest.add_argument("--request", type=Path, required=True)
+    video_ingest.add_argument("--video", type=Path, required=True)
+    video_ingest.add_argument("--repo-root", type=Path, required=True)
+    video_ingest.add_argument("--ffprobe", type=Path)
+    video_ingest.add_argument("--out", type=Path, required=True)
+    video_ingest.add_argument("--state", type=Path, required=True)
+    video_ingest.add_argument("--now", required=True)
+    video_process = video_sprite_commands.add_parser("process")
+    video_process.add_argument("--request", type=Path, required=True)
+    video_process.add_argument("--source", type=Path, required=True)
+    video_process.add_argument("--raw-frames", type=Path)
+    video_process.add_argument("--ffmpeg", type=Path)
+    video_process.add_argument("--repo-root", type=Path, required=True)
+    video_process.add_argument("--out-dir", type=Path, required=True)
+    video_process.add_argument("--state", type=Path, required=True)
+    video_process.add_argument("--now", required=True)
+    video_inspect_h3 = video_sprite_commands.add_parser("inspect-h3")
+    video_inspect_h3.add_argument("--workflow", type=Path, required=True)
+    video_inspect_h3.add_argument("--out", type=Path, required=True)
+    video_review = video_sprite_commands.add_parser("record-review")
+    video_review.add_argument("--request", type=Path, required=True)
+    video_review.add_argument("--source", type=Path, required=True)
+    video_review.add_argument("--processing-result", type=Path, required=True)
+    video_review.add_argument("--repo-root", type=Path, required=True)
+    video_review.add_argument("--quality-report", type=Path, required=True)
+    video_review.add_argument("--out", type=Path, required=True)
+    video_review.add_argument("--checks", type=Path, required=True)
+    video_review.add_argument("--now", required=True)
+    video_validate = video_sprite_commands.add_parser("validate")
+    video_validate.add_argument("--request", type=Path, required=True)
+    video_validate.add_argument("--source", type=Path, required=True)
+    video_validate.add_argument("--processing-result", type=Path, required=True)
+    video_validate.add_argument("--review", type=Path, required=True)
+    video_validate.add_argument("--quality-report", type=Path, required=True)
+    video_validate.add_argument("--repo-root", type=Path, required=True)
+    video_validate.add_argument("--final-dir", type=Path, required=True)
+    video_validate.add_argument("--now", required=True)
+
+    provider = video_commands.add_parser("provider")
+    provider_commands = provider.add_subparsers(dest="video_provider_command", required=True)
+    for command in ("models", "preflight", "estimate"):
+        item = provider_commands.add_parser(command)
+        item.add_argument("--executable", type=Path, required=True)
+        item.add_argument("--payload", type=Path, required=True)
+        item.add_argument("--out", type=Path, required=True)
+    submit = provider_commands.add_parser("submit")
+    submit.add_argument("--attempt", type=Path, required=True)
+    submit.add_argument("--confirmation", type=Path, required=True)
+    submit.add_argument("--executable", type=Path, required=True)
+    submit.add_argument("--now", required=True)
+    query = provider_commands.add_parser("query")
+    query.add_argument("--attempt", type=Path, required=True)
+    query.add_argument("--executable", type=Path, required=True)
+    query.add_argument("--now", required=True)
+    download = provider_commands.add_parser("download")
+    download.add_argument("--attempt", type=Path, required=True)
+    download.add_argument("--executable", type=Path, required=True)
+    download.add_argument("--output-dir", type=Path, required=True)
+    download.add_argument("--now", required=True)
+
+    audio = commands.add_parser("audio")
+    audio_commands = audio.add_subparsers(dest="audio_command", required=True)
+    sfx = audio_commands.add_parser("sfx")
+    sfx_commands = sfx.add_subparsers(dest="audio_sfx_command", required=True)
+    audio_plan = sfx_commands.add_parser("plan")
+    audio_plan.add_argument("--request", type=Path, required=True)
+    audio_plan.add_argument("--out-dir", type=Path, required=True)
+    audio_plan.add_argument("--now", required=True)
+    audio_route = sfx_commands.add_parser("route")
+    audio_route.add_argument("--request", type=Path, required=True)
+    audio_route.add_argument("--preflight", type=Path)
+    audio_route.add_argument("--out", type=Path, required=True)
+    audio_route.add_argument("--state", type=Path, required=True)
+    audio_route.add_argument("--now", required=True)
+    audio_ingest = sfx_commands.add_parser("ingest")
+    audio_ingest.add_argument("--request", type=Path, required=True)
+    audio_ingest.add_argument("--source", type=Path, required=True)
+    audio_ingest.add_argument("--repo-root", type=Path, required=True)
+    audio_ingest.add_argument("--out", type=Path, required=True)
+    audio_ingest.add_argument("--state", type=Path, required=True)
+    audio_ingest.add_argument("--now", required=True)
+    audio_ingest.add_argument("--ffprobe", type=Path)
+    audio_generate = sfx_commands.add_parser("generate")
+    audio_generate.add_argument("--request", type=Path, required=True)
+    audio_generate.add_argument("--decision", type=Path)
+    audio_generate.add_argument("--source", type=Path)
+    audio_generate.add_argument("--executable", type=Path)
+    audio_generate.add_argument("--repo-root", type=Path, required=True)
+    audio_generate.add_argument("--out-dir", type=Path, required=True)
+    audio_generate.add_argument("--state", type=Path, required=True)
+    audio_generate.add_argument("--now", required=True)
+    audio_process = sfx_commands.add_parser("process")
+    audio_process.add_argument("--request", type=Path, required=True)
+    audio_process.add_argument("--generation", type=Path, required=True)
+    audio_process.add_argument("--source", type=Path)
+    audio_process.add_argument("--repo-root", type=Path, required=True)
+    audio_process.add_argument("--out-dir", type=Path, required=True)
+    audio_process.add_argument("--state", type=Path, required=True)
+    audio_process.add_argument("--now", required=True)
+    audio_process.add_argument("--ffmpeg", type=Path)
+    audio_process.add_argument("--ffprobe", type=Path)
+    audio_review = sfx_commands.add_parser("record-review")
+    audio_review.add_argument("--request", type=Path, required=True)
+    audio_review.add_argument("--generation", type=Path, required=True)
+    audio_review.add_argument("--processing", type=Path, required=True)
+    audio_review.add_argument("--quality-report", type=Path, required=True)
+    audio_review.add_argument("--checks", type=Path, required=True)
+    audio_review.add_argument("--selected-candidate", required=True)
+    audio_review.add_argument("--repo-root", type=Path, required=True)
+    audio_review.add_argument("--out", type=Path, required=True)
+    audio_review.add_argument("--now", required=True)
+    audio_validate = sfx_commands.add_parser("validate")
+    audio_validate.add_argument("--request", type=Path, required=True)
+    audio_validate.add_argument("--generation", type=Path, required=True)
+    audio_validate.add_argument("--processing", type=Path, required=True)
+    audio_validate.add_argument("--review", type=Path, required=True)
+    audio_validate.add_argument("--quality-report", type=Path, required=True)
+    audio_validate.add_argument("--repo-root", type=Path, required=True)
+    audio_validate.add_argument("--final-dir", type=Path, required=True)
+    audio_validate.add_argument("--now", required=True)
+    register_music_commands(audio_commands)
+    audio_provider = sfx_commands.add_parser("provider")
+    audio_provider_commands = audio_provider.add_subparsers(dest="audio_provider_command", required=True)
+    configure = audio_provider_commands.add_parser("configure")
+    configure.add_argument("--root", type=Path, required=True)
+    configure.add_argument("--python-executable", type=Path)
+    configure.add_argument("--replace", action="store_true")
+    audio_provider_commands.add_parser("show-config")
+    for command in ("models", "preflight"):
+        item = audio_provider_commands.add_parser(command)
+        item.add_argument("--executable", type=Path)
+        item.add_argument("--payload", type=Path)
+        item.add_argument("--out", type=Path)
+    return parser
+
+
+def _relative_posix_path(path: Path, *, root: Path) -> str:
+    return PurePosixPath(path.resolve().relative_to(root.resolve()).as_posix()).as_posix()
+
+
+def run_dry_run(brief_path: Path, out_dir: Path, now: str) -> dict[str, Any]:
+    brief = AssetBrief.from_dict(load_json(brief_path))
+    plan = build_execution_plan(brief)
+    fingerprint = fingerprint_request(brief.to_dict())
+    out_dir = out_dir.resolve()
+    plan_path = out_dir / "execution-plan.json"
+    state_path = out_dir / "job-state.json"
+    state = JobState(
+        schema_version=1,
+        job_id=f"job-{brief.asset_id}",
+        asset_id=brief.asset_id,
+        status=JobStatus.PLANNED,
+        created_at=now,
+        updated_at=now,
+        request_fingerprint=fingerprint,
+    )
+    dump_json(plan_path, plan.to_dict())
+    save_job(state_path, state)
+    return {
+        "schema_version": 1,
+        "status": state.status.value,
+        "dry_run": True,
+        "plan_path": _relative_posix_path(plan_path, root=out_dir),
+        "state_path": _relative_posix_path(state_path, root=out_dir),
+    }
+
+
+def main(argv: list[str] | None = None) -> int:
+    args = build_parser().parse_args(argv)
+    try:
+        if args.command == "dry-run":
+            payload = run_dry_run(args.brief, args.out_dir, args.now)
+        elif args.command == "show-state":
+            payload = load_job(args.state).to_dict()
+        elif args.command == "map" and args.map_command == "plan":
+            payload = run_map_plan(args.request, args.out_dir, args.now)
+        elif args.command == "map" and args.map_command == "route":
+            payload = run_map_route(args.request, args.capabilities, args.selection, args.preflight, args.out, args.state, args.now)
+        elif args.command == "map" and args.map_command == "ingest":
+            payload = run_map_ingest(args.request, args.decision, args.image, args.repo_root, args.out, args.state, args.now)
+        elif args.command == "map" and args.map_command == "process":
+            payload = run_map_process(args.request, args.raw_image, args.repo_root, args.out_dir, args.state, args.now)
+        elif args.command == "map" and args.map_command == "validate":
+            payload = run_map_validate(args.request, args.raw_image, args.processing_result, args.repo_root, args.staging_dir, args.final_dir, args.visual_review, args.state, args.now)
+        elif args.command == "map" and args.map_command == "tile" and args.tilemap_command == "plan":
+            payload = run_tilemap_plan(args.request, args.out_dir, args.now)
+        elif args.command == "map" and args.map_command == "tile" and args.tilemap_command == "route":
+            payload = run_tilemap_route(args.request, args.capabilities, args.selection, args.preflight, args.out, args.state, args.now)
+        elif args.command == "map" and args.map_command == "tile" and args.tilemap_command == "ingest":
+            payload = run_tilemap_ingest(args.request, args.decision, args.image, args.atlas_page, args.repo_root, args.out, args.state, args.now, args.object_asset, args.style_approval, args.preassembly_review, args.critical_assets_report)
+        elif args.command == "map" and args.map_command == "tile" and args.tilemap_command == "normalize-atlases":
+            payload = run_tilemap_normalize_atlases(args.request, args.decision, args.atlas_page, args.repo_root, args.out_dir, args.allow_non_native)
+        elif args.command == "map" and args.map_command == "tile" and args.tilemap_command == "process":
+            payload = run_tilemap_process(args.request, args.raw_image, args.repo_root, args.out_dir, args.state, args.now)
+        elif args.command == "map" and args.map_command == "tile" and args.tilemap_command == "validate":
+            payload = run_tilemap_validate(args.request, args.raw_image, args.processing_result, args.repo_root, args.staging_dir, args.final_dir, args.visual_review, args.state, args.now, args.style_approval, args.assembled_approval)
+        elif args.command == "map" and args.map_command == "tile" and args.tilemap_command == "reject":
+            payload = run_tilemap_reject(args.state, args.run_root, args.out, args.reason_code, args.reason, args.now)
+        elif args.command == "map" and args.map_command == "tile" and args.tilemap_command == "record-approval":
+            payload = run_tilemap_record_approval(args.gate, args.artifact, args.out, args.now, args.repo_root)
+        elif args.command == "map" and args.map_command == "tile" and args.tilemap_command == "preflight-assets":
+            payload = run_tilemap_preflight_assets(args.request, args.architecture, args.atlas_page, args.object_asset, args.repo_root, args.out_dir, args.decision, args.normalization_report)
+        elif args.command == "map" and args.map_command == "tile" and args.tilemap_command == "record-asset-review":
+            payload = run_tilemap_record_asset_review(args.report, args.decisions, args.out, args.now)
+        elif args.command == "sprite" and args.sprite_command == "plan":
+            payload = run_sprite_plan(args.request, args.out_dir, args.now)
+        elif args.command == "sprite" and args.sprite_command == "route":
+            payload = run_sprite_route(args.request, args.capabilities, args.native_outcome, args.selection, args.preflight, args.out, args.state, args.now)
+        elif args.command == "sprite" and args.sprite_command == "ingest":
+            payload = run_sprite_ingest(args.request, args.decision, args.image, args.repo_root, args.out, args.state, args.now)
+        elif args.command == "sprite" and args.sprite_command == "process":
+            payload = run_sprite_process(args.request, args.raw_image, args.repo_root, args.out_dir, args.state, args.now)
+        elif args.command == "sprite" and args.sprite_command == "validate":
+            payload = run_sprite_validate(args.request, args.raw_image, args.processing_result, args.repo_root, args.staging_dir, args.final_dir, args.visual_review, args.state, args.now)
+        elif args.command == "video" and args.video_command == "sprite" and args.video_sprite_command == "plan":
+            payload = run_video_plan(args.request, args.out_dir, args.now)
+        elif args.command == "video" and args.video_command == "sprite" and args.video_sprite_command == "route":
+            payload = run_video_route(args.request, args.selection, args.backend, args.available, args.out, args.state, args.now)
+        elif args.command == "video" and args.video_command == "sprite" and args.video_sprite_command == "ingest":
+            payload = run_video_ingest(args.request, args.video, args.repo_root, args.out, args.state, args.now, args.ffprobe)
+        elif args.command == "video" and args.video_command == "sprite" and args.video_sprite_command == "process":
+            payload = run_video_process(args.request, args.source, args.raw_frames, args.repo_root, args.out_dir, args.state, args.now, args.ffmpeg)
+        elif args.command == "video" and args.video_command == "sprite" and args.video_sprite_command == "inspect-h3":
+            payload = run_video_inspect_h3(args.workflow, args.out)
+        elif args.command == "video" and args.video_command == "sprite" and args.video_sprite_command == "record-review":
+            payload = run_video_record_review(args.request, args.source, args.processing_result, args.repo_root, args.quality_report, args.out, args.checks, args.now)
+        elif args.command == "video" and args.video_command == "sprite" and args.video_sprite_command == "validate":
+            payload = run_video_validate(args.request, args.source, args.processing_result, args.review, args.quality_report, args.repo_root, args.final_dir, args.now)
+        elif args.command == "video" and args.video_command == "provider" and args.video_provider_command == "models":
+            payload = run_video_provider_models(args.executable, args.payload, args.out)
+        elif args.command == "video" and args.video_command == "provider" and args.video_provider_command == "preflight":
+            payload = run_video_provider_preflight(args.executable, args.payload, args.out)
+        elif args.command == "video" and args.video_command == "provider" and args.video_provider_command == "estimate":
+            payload = run_video_provider_estimate(args.executable, args.payload, args.out)
+        elif args.command == "video" and args.video_command == "provider" and args.video_provider_command == "submit":
+            payload = run_video_provider_submit(args.attempt, args.confirmation, args.executable, args.now)
+        elif args.command == "video" and args.video_command == "provider" and args.video_provider_command == "query":
+            payload = run_video_provider_query(args.attempt, args.executable, args.now)
+        elif args.command == "video" and args.video_command == "provider" and args.video_provider_command == "download":
+            payload = run_video_provider_download(args.attempt, args.executable, args.output_dir, args.now)
+        elif args.command == "audio" and args.audio_command == "sfx" and args.audio_sfx_command == "plan":
+            payload = run_audio_plan(args.request, args.out_dir, args.now)
+        elif args.command == "audio" and args.audio_command == "sfx" and args.audio_sfx_command == "route":
+            payload = run_audio_route(args.request, args.preflight, args.out, args.state, args.now)
+        elif args.command == "audio" and args.audio_command == "sfx" and args.audio_sfx_command == "ingest":
+            payload = run_audio_ingest(args.request, args.source, args.repo_root, args.out, args.state, args.now, args.ffprobe)
+        elif args.command == "audio" and args.audio_command == "sfx" and args.audio_sfx_command == "generate":
+            payload = run_audio_generate(args.request, args.decision, args.source, args.executable, args.repo_root, args.out_dir, args.state, args.now)
+        elif args.command == "audio" and args.audio_command == "sfx" and args.audio_sfx_command == "process":
+            payload = run_audio_process(args.request, args.generation, args.source, args.repo_root, args.out_dir, args.state, args.now, args.ffmpeg, args.ffprobe)
+        elif args.command == "audio" and args.audio_command == "sfx" and args.audio_sfx_command == "record-review":
+            payload = run_audio_record_review(args.request, args.generation, args.processing, args.quality_report, args.checks, args.selected_candidate, args.repo_root, args.out, args.now)
+        elif args.command == "audio" and args.audio_command == "sfx" and args.audio_sfx_command == "validate":
+            payload = run_audio_validate(args.request, args.generation, args.processing, args.review, args.quality_report, args.repo_root, args.final_dir, args.now)
+        elif args.command == "audio" and args.audio_command == "sfx" and args.audio_sfx_command == "provider" and args.audio_provider_command == "models":
+            payload = run_audio_provider_models_command(args.executable, args.payload, args.out)
+        elif args.command == "audio" and args.audio_command == "sfx" and args.audio_sfx_command == "provider" and args.audio_provider_command == "preflight":
+            payload = run_audio_provider_preflight_command(args.executable, args.payload, args.out)
+        elif args.command == "audio" and args.audio_command == "sfx" and args.audio_sfx_command == "provider" and args.audio_provider_command == "configure":
+            payload = run_audio_provider_configure(args.root, args.python_executable, args.replace)
+        elif args.command == "audio" and args.audio_command == "sfx" and args.audio_sfx_command == "provider" and args.audio_provider_command == "show-config":
+            payload = run_audio_provider_show_config()
+        elif args.command == "audio" and args.audio_command == "music":
+            payload = dispatch_music_command(args)
+        else:
+            raise ValueError("unsupported command")
+        print(json.dumps(payload, ensure_ascii=False, indent=2, sort_keys=True))
+        return 0
+    except ForgeError as error:
+        print(json.dumps(error.to_dict(), ensure_ascii=False, sort_keys=True), file=sys.stderr)
+        return 1
+    except (OSError, ValueError, TypeError, KeyError, json.JSONDecodeError) as error:
+        print(json.dumps({"schema_version": 1, "error": {"code": "invalid_request", "message": str(error), "recoverable": True, "context": {}}}, ensure_ascii=False, sort_keys=True), file=sys.stderr)
+        return 1

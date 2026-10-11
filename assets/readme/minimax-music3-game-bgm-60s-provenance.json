@@ -1,0 +1,59 @@
+{
+  "schema_version": 1,
+  "provider": "Comfy Desktop local MiniMax Music 3",
+  "template": "audio_minimax_music_3",
+  "prompt_id": "dfe8be64-9c7f-4086-b0bb-c8672dfa5dd1",
+  "seed": 112233,
+  "native_source_codec": "mp3",
+  "delivery": "60-second instrumental BGM compiled from a newly generated, user-confirmed clean source. The stable groove is repeated with 30 ms transition blends aligned to the source pulse, so no second melodic phrase is overlaid at each repeat boundary. The source natural instrumental tail follows the final partial groove and receives a 350 ms final fade. No seamless loop is claimed.",
+  "prompt_summary": "Cheerful arcade puzzle BGM, 124 BPM, continuous medium-energy 4/4 groove, strictly instrumental, clean musical tones, no sound effects or voice-like textures",
+  "source_native_file": "outputs/music-acceptance/music3_clean_new_seed_game_bgm_test/dfe8be64_000.mp3",
+  "source_wav_file": "outputs/music-acceptance/music3_clean_new_seed_game_bgm_test/music3_clean_new_seed_game_bgm_test.wav",
+  "user_listening_confirmed_clean_source": true,
+  "arrangement": {
+    "stable_source_start_seconds": 2.3,
+    "stable_source_end_seconds": 16.3,
+    "stable_segment_seconds": 14.0,
+    "full_segment_repeats": 4,
+    "partial_segment_seconds": 2.145895691609977,
+    "natural_tail_seconds": 1.9741043083900227,
+    "crossfade_seconds": 0.03,
+    "final_fade_seconds": 0.35,
+    "target_duration_seconds": 60.0,
+    "loop_mode": "normal instrumental ending; no seamless loop claim",
+    "repeat_join_times_seconds": [
+      13.97,
+      27.94,
+      41.91,
+      55.88
+    ]
+  },
+  "sample_rate_hz": 44100,
+  "channels": 2,
+  "duration_seconds": 60.0,
+  "peak_dbfs": -1.566676838232786,
+  "rms_dbfs": -20.636083560567133,
+  "files": {
+    "minimax-music3-game-bgm-60s-clean-ending.wav": {
+      "sha256": "16E9909C05A76F4A794E7BDB7855BCE17147FAD89B33A596A70655DF32F3F39E",
+      "bytes": 10584044
+    },
+    "minimax-music3-game-bgm-60s-clean-ending.mp3": {
+      "sha256": "60B2C739BE1543D0C98360062814E8B82FA12E6867EEA70F0035848ED6505E25",
+      "bytes": 1441375
+    },
+    "minimax-music3-game-bgm-60s-final-5s.wav": {
+      "sha256": "50E6B844A001603A51B12C73D3799041E926C190B642640F9C8BFD89E825E804",
+      "bytes": 882078
+    },
+    "minimax-music3-game-bgm-60s-waveform.png": {
+      "sha256": "58755D04C0419184E73A6D10C96FE9C0316552A29483E7B86BA871FBD58A92A8",
+      "bytes": 22040
+    },
+    "minimax-music3-game-bgm-60s-final-5s-waveform.png": {
+      "sha256": "31E7DB9FB049018F0FC29105DE31845E74D3D5029AC1EF729DE213F6AC562FFC",
+      "bytes": 7093
+    }
+  },
+  "quality_note": "The previous 750 ms crossfade was removed after listening identified melodic overlap at the 13-14 second join and corresponding later joins."
+}

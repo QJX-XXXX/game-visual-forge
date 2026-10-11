@@ -1,0 +1,14 @@
+{
+  "name": "GameVisualForge.Audio.Tests.Editor",
+  "rootNamespace": "GameVisualForge.Unity.Tests",
+  "references": [
+    "GameVisualForge.Audio.Editor"
+  ],
+  "includePlatforms": [
+    "Editor"
+  ],
+  "optionalUnityReferences": [
+    "TestAssemblies"
+  ],
+  "autoReferenced": false
+}

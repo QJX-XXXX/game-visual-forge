@@ -1,0 +1,13 @@
+{
+  "name": "com.game-visual-forge.audio",
+  "version": "0.1.0",
+  "displayName": "Game Visual Forge Audio Importer",
+  "description": "Imports reviewed Game Visual Forge PCM WAV bundles as configured Unity AudioClip assets without changing scenes.",
+  "unity": "2022.3",
+  "author": {
+    "name": "Game Visual Forge contributors"
+  },
+  "dependencies": {
+    "com.unity.modules.audio": "1.0.0"
+  }
+}
