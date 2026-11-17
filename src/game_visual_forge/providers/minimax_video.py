@@ -37,6 +37,12 @@ _H3_DURATIONS = tuple(range(4, 16))
 _H3_RESOLUTIONS = ("768P", "2K")
 _H3_RATIOS = ("adaptive", "21:9", "16:9", "4:3", "1:1", "3:4", "9:16")
 _H3_CONCRETE_RATIOS = _H3_RATIOS[1:]
+_H3_MODEL_SPECS = {
+    "MiniMax-H3": {"durations": _H3_DURATIONS, "resolutions": _H3_RESOLUTIONS, "adaptive_reference_ratio": True},
+    "MiniMax-H3-Highspeed": {"durations": _H3_DURATIONS, "resolutions": ("480P", "768P"), "adaptive_reference_ratio": True},
+    "MiniMax-H3-Lite": {"durations": _H3_DURATIONS, "resolutions": ("480P", "768P"), "adaptive_reference_ratio": False},
+    "MiniMax-H3-Max": {"durations": tuple(range(5, 16)), "resolutions": ("480P", "768P"), "adaptive_reference_ratio": True},
+}
 
 
 def _http_rejection(error: urllib.error.HTTPError) -> dict[str, Any]:
@@ -114,13 +120,14 @@ def _verified_png_data_uri(path_value: str, expected_sha256: str, *, root: Path 
     return "data:image/png;base64," + base64.b64encode(data).decode("ascii")
 
 
-def _h3_profile() -> VideoModelProfile:
+def _h3_profile(model: str = "MiniMax-H3") -> VideoModelProfile:
+    spec = _H3_MODEL_SPECS[model]
     return VideoModelProfile(
-        1, ExternalProvider.MINIMAX, "MiniMax-H3", "v2", "/v2/video_generation",
+        1, ExternalProvider.MINIMAX, model, "v2", "/v2/video_generation",
         (VideoGenerationMode.T2V, VideoGenerationMode.I2V_FIRST, VideoGenerationMode.I2V_FIRST_TAIL, VideoGenerationMode.REFERENCE_TO_VIDEO),
         ("first_frame", "last_frame", "reference_image", "reference_video", "reference_audio"),
-        _H3_DURATIONS, _H3_RESOLUTIONS, _H3_RATIOS, True,
-        (VideoProviderBackend.API, VideoProviderBackend.CLI), "2026-08-09",
+        spec["durations"], spec["resolutions"], _H3_RATIOS, True,
+        (VideoProviderBackend.API, VideoProviderBackend.CLI), "2026-11-17",
     )
 
 
@@ -138,8 +145,9 @@ def build_minimax_submit_request(
     resolution: str = "768P",
     ratio: str | None = None,
     aigc_watermark: bool = False,
+    extra: dict[str, Any] | None = None,
 ) -> MiniMaxSubmitRequest:
-    if model != "MiniMax-H3":
+    if model not in _H3_MODEL_SPECS:
         content: list[dict[str, Any]] = [{"type": "text", "text": prompt}]
         if first_frame_url is not None:
             content.append({"type": "image_url", "image_url": {"url": first_frame_url, "role": "first_frame"}})
@@ -147,16 +155,23 @@ def build_minimax_submit_request(
             content.append({"type": "image_url", "image_url": {"url": last_frame_url, "role": "last_frame"}})
         return MiniMaxSubmitRequest("/v1/video_generation", {"model": model, "prompt": prompt, "duration": duration, "content": content, "mode": mode.value})
 
+    spec = _H3_MODEL_SPECS[model]
     if not isinstance(prompt, str) or not prompt.strip():
-        raise ValueError("MiniMax-H3 prompt must not be empty")
+        raise ValueError(f"{model} prompt must not be empty")
     if len(prompt) > 7000:
-        raise ValueError("MiniMax-H3 prompt must not exceed 7000 characters")
-    if isinstance(duration, bool) or duration not in _H3_DURATIONS:
-        raise ValueError("MiniMax-H3 duration must be an integer from 4 through 15")
-    if resolution not in _H3_RESOLUTIONS:
-        raise ValueError("MiniMax-H3 resolution must be 768P or 2K")
+        raise ValueError(f"{model} prompt must not exceed 7000 characters")
+    if isinstance(duration, bool) or duration not in spec["durations"]:
+        minimum = spec["durations"][0]
+        raise ValueError(f"{model} duration must be an integer from {minimum} through 15")
+    if resolution not in spec["resolutions"]:
+        raise ValueError(f"{model} resolution must be one of {', '.join(spec['resolutions'])}")
     if not isinstance(aigc_watermark, bool):
         raise TypeError("aigc_watermark must be a boolean")
+    if extra is not None:
+        if model != "MiniMax-H3-Max":
+            raise ValueError("extra is only supported by MiniMax-H3-Max")
+        if not isinstance(extra, dict) or set(extra) != {"prompt_expansion_mode"} or not isinstance(extra["prompt_expansion_mode"], str) or not extra["prompt_expansion_mode"].strip():
+            raise ValueError("MiniMax-H3-Max extra must contain prompt_expansion_mode")
 
     references = reference_image_urls + reference_video_urls + reference_audio_urls
     if (first_frame_url is not None or last_frame_url is not None) and references:
@@ -195,8 +210,10 @@ def build_minimax_submit_request(
         content.extend(_media_item("video_url", url, "reference_video") for url in reference_video_urls)
         content.extend(_media_item("audio_url", url, "reference_audio") for url in reference_audio_urls)
         resolved_ratio = ratio or "adaptive"
-        if resolved_ratio not in _H3_RATIOS:
-            raise ValueError("MiniMax-H3 ratio is not supported")
+        if not spec["adaptive_reference_ratio"] and ratio is None:
+            raise ValueError(f"{model} reference mode requires a concrete ratio")
+        if resolved_ratio not in _H3_RATIOS or (not spec["adaptive_reference_ratio"] and resolved_ratio == "adaptive"):
+            raise ValueError(f"{model} ratio is not supported")
     else:
         raise ValueError(f"MiniMax-H3 mode is not supported: {mode.value}")
 
@@ -208,6 +225,8 @@ def build_minimax_submit_request(
         "ratio": resolved_ratio,
         "aigc_watermark": aigc_watermark,
     }
+    if extra is not None:
+        body["extra"] = dict(extra)
     return MiniMaxSubmitRequest("/v2/video_generation", body)
 
 
@@ -231,6 +250,7 @@ def _prepared_submit_request(model: str, mode: VideoGenerationMode, parameters: 
         resolution=str(parameters.get("resolution", "768P")),
         ratio=parameters.get("ratio"),
         aigc_watermark=parameters.get("aigc_watermark", False),
+        extra=parameters.get("extra"),
     )
 
 
@@ -258,17 +278,24 @@ class MiniMaxAdapter:
         return {"schema_version": 1, "provider": "minimax", "backend": "api", "available": True, "authenticated": True, "region": self.region}
 
     def models(self) -> VideoModelCatalogSnapshot:
-        payload = self.transport.request("GET", "/v1/models", headers=self._headers())
-        discovered = payload.get("data", payload.get("models", []))
+        discovered: list[Any] = []
+        try:
+            payload = self.transport.request("GET", "/v1/models", headers=self._headers())
+            discovered = payload.get("data", payload.get("models", []))
+        except (OSError, RuntimeError, ValueError, urllib.error.HTTPError):
+            # The current video API publishes its H3 family in the V2 schema.
+            # Keep the static official profiles usable when the legacy model
+            # listing endpoint is absent or unavailable.
+            discovered = []
         model_ids = [item.get("id", item.get("model")) if isinstance(item, dict) else str(item) for item in discovered]
-        profiles: list[VideoModelProfile | dict[str, Any]] = [_h3_profile()]
+        profiles: list[VideoModelProfile | dict[str, Any]] = [_h3_profile(model_id) for model_id in _H3_MODEL_SPECS]
         for model_id in model_ids:
-            if model_id == "MiniMax-H3":
+            if model_id in _H3_MODEL_SPECS:
                 continue
             elif model_id:
                 profiles.append({"model": str(model_id)})
         refreshed_at = datetime.now(timezone.utc).replace(microsecond=0).isoformat().replace("+00:00", "Z")
-        return VideoModelCatalogSnapshot.create(provider=self.provider, backend=VideoProviderBackend.API, region=self.region, refreshed_at=refreshed_at, adapter_version="1.1", models=tuple(profiles), source="minimax:/v1/models")
+        return VideoModelCatalogSnapshot.create(provider=self.provider, backend=VideoProviderBackend.API, region=self.region, refreshed_at=refreshed_at, adapter_version="1.2", models=tuple(profiles), source="minimax:/v2/video_generation")
 
     def prepare(self, snapshot: VideoModelCatalogSnapshot, model: str, mode: VideoGenerationMode, parameters: dict[str, Any]) -> dict[str, Any]:
         profile = snapshot.model(model)
@@ -276,7 +303,7 @@ class MiniMaxAdapter:
             raise ValueError("model is discovered-unprofiled and cannot be submitted through the API")
         if mode not in profile.supported_modes:
             raise ValueError("model does not support requested generation mode")
-        if model == "MiniMax-H3":
+        if model in _H3_MODEL_SPECS:
             _prepared_submit_request(model, mode, parameters)
         return {"schema_version": 1, "provider": "minimax", "backend": "api", "region": self.region, "model": model, "mode": mode.value, "parameters": dict(parameters), "endpoint": profile.endpoint}
 
@@ -353,7 +380,7 @@ class MiniMaxAdapter:
 
 def run_command(command: str, payload: dict[str, Any]) -> dict[str, Any]:
     region = str(payload.get("region", "global"))
-    default_base_url = "https://api.minimaxi.com" if region == "cn" else "https://api.minimax.io"
+    default_base_url = "https://api.minimax.cn" if region == "cn" else "https://api.minimax.io"
     transport = _UrllibTransport(str(payload.get("base_url") or default_base_url))
     adapter = MiniMaxAdapter(region=region, transport=transport)
     if command == "capabilities":

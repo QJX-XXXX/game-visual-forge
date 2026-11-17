@@ -54,6 +54,13 @@ class MusicOrchestrationTests(unittest.TestCase):
         dump_json(self.path, attempt(False).to_dict())
         self.assertEqual(begin_music_submission(self.path, None, now=NOW).status, "submitting")
 
+    def test_stability_credential_cannot_enter_persisted_attempt(self):
+        cap = default_music_capabilities(local_ready=True)[MusicProvider.STABLE_AUDIO_API]
+        request = music_request()
+        prompt = build_music_prompt_package(request, cap.provider, request.brief)
+        with self.assertRaisesRegex(ValueError, "secret field"):
+            prepare_music_attempt(request, prompt, cap, {"credential": "should-not-persist"}, now=NOW)
+
     def test_unknown_receipt_never_resubmits(self):
         self.authorize()
         begin_music_submission(self.path, self.confirmation, now=NOW)

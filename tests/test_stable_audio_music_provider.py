@@ -2,6 +2,7 @@ import hashlib
 import json
 import tempfile
 import unittest
+from unittest.mock import patch
 from pathlib import Path
 from tests._bootstrap import ROOT  # noqa: F401
 from game_visual_forge.contracts.music_provider import MusicProviderCapability, MusicHttpResponse
@@ -37,17 +38,21 @@ class StableAudioProviderTests(unittest.TestCase):
     def test_query_202_does_not_post_and_download_hashes_audio(self):
         transport = Transport([response(202, {"id": "task-1"}), response(200, b"RIFFaudio")])
         cap = MusicProviderCapability.from_dict({"provider": "stable-audio-api", "model": "stable-audio-3", "official_source": "x", "verified_at": "2026-10-10", "is_paid": True, "available": True, "schema_verified": True, "auth_verified": True, "rights_status": "ok", "duration_bounds": [1, 380], "vocal_modes": ["instrumental"], "output_formats": ["wav"], "submission_mode": "async", "id_recovery": True, "pricing_status": "dated"})
-        self.assertEqual(query("task-1", cap, transport).status, "running")
-        with tempfile.TemporaryDirectory() as temp:
-            files = download("task-1", cap, Path(temp), transport)
-            self.assertEqual(files[0].sha256, hashlib.sha256(b"RIFFaudio").hexdigest())
-            self.assertTrue(Path(files[0].path).exists())
+        with patch.dict("os.environ", {"STABILITY_API_KEY": "test-token"}, clear=False):
+            self.assertEqual(query("task-1", cap, transport).status, "running")
+            with tempfile.TemporaryDirectory() as temp:
+                files = download("task-1", cap, Path(temp), transport)
+                self.assertEqual(files[0].sha256, hashlib.sha256(b"RIFFaudio").hexdigest())
+                self.assertTrue(Path(files[0].path).exists())
+        self.assertEqual(transport.calls[0][2]["Authorization"], "Bearer test-token")
+        self.assertEqual(transport.calls[1][2]["Authorization"], "Bearer test-token")
         self.assertEqual([call[0] for call in transport.calls], ["GET", "GET"])
 
     def test_404_is_expired_and_does_not_retry(self):
         transport = Transport([response(404, {"error": "expired"})])
-        with self.assertRaisesRegex(RuntimeError, "expired"):
-            query("task-1", None, transport)
+        with patch.dict("os.environ", {"STABILITY_API_KEY": "test-token"}, clear=False):
+            with self.assertRaisesRegex(RuntimeError, "expired"):
+                query("task-1", None, transport)
         self.assertEqual(len(transport.calls), 1)
 
 

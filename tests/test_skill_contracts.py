@@ -17,8 +17,10 @@ SKILLS = {
         "required_body_fragments": (
             "Prefer an existing image",
             "native image tool",
-            "If native generation is unavailable, ask the user to choose",
-            "ask the user to choose Jimeng or Wanxiang every time",
+            "Use native image tools first",
+            "MiniMax is the recommended API",
+            "image provider",
+            "references/image-api.md",
             "provider, model, non-sensitive parameters, quantity, cost, currency, and request fingerprint",
             "Never install",
             "Never resubmit",
@@ -57,7 +59,10 @@ SKILLS = {
             "native Agent tools",
             "Jimeng",
             "Wanxiang",
-            "Ask the user to choose the provider, model, and parameters every time",
+            "Use native image tools first",
+            "MiniMax is the recommended API",
+            "image provider",
+            "image-api.md",
             "explicit paid confirmation",
             "Never install tools automatically",
             "Never resubmit",
@@ -144,6 +149,13 @@ SKILLS = {
 
 
 class SkillContractTests(unittest.TestCase):
+    def test_each_skill_links_shared_environment_assistance(self) -> None:
+        guide = ROOT / "install/python-environment.md"
+        self.assertTrue(guide.is_file())
+        for skill in SKILLS:
+            content = (ROOT / "skills" / skill / "SKILL.md").read_text(encoding="utf-8")
+            self.assertIn("../../install/python-environment.md", content, skill)
+
     def assert_skill_tree_is_english(self, skill_name: str) -> None:
         skill_root = ROOT / "skills" / skill_name
         for path in sorted(item for item in skill_root.rglob("*") if item.is_file() and item.suffix.lower() in {".md", ".yaml", ".yml", ".py"}):

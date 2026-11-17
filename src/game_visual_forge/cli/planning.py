@@ -8,14 +8,26 @@ from game_visual_forge.contracts.tilemap import TileMapRequest
 from game_visual_forge.contracts.video import VideoSourcePreference, VideoSpriteRequest
 
 
+MINIMAX_SEQUENCE = (
+    ("preflight-provider", "provider-api", False),
+    ("confirm-paid-submit", "agent", True),
+    ("generate-provider-media", "provider-api", False),
+    ("inspect-generated-media", "agent", False),
+    ("postprocess-local", "local-runtime", False),
+    ("validate-delivery", "agent", False),
+)
+
+
 SEQUENCES: dict[SourcePreference, tuple[tuple[str, str, bool], ...]] = {
     SourcePreference.AUTO: (
         ("check-agent-native", "agent", False),
-        ("generate-agent-native", "agent", False),
+        ("route-image-source", "agent", False),
+        ("obtain-local-image", "agent", False),
         ("inspect-generated-media", "agent", False),
         ("postprocess-local", "local-runtime", False),
         ("validate-delivery", "agent", False),
     ),
+    SourcePreference.MINIMAX: MINIMAX_SEQUENCE,
     SourcePreference.AGENT_NATIVE: (
         ("generate-agent-native", "agent", False),
         ("inspect-generated-media", "agent", False),
@@ -99,15 +111,18 @@ def build_sprite_execution_plan(
     decision: SourceDecision | None = None,
 ) -> ExecutionPlan:
     source = decision.source_type if decision else None
-    if source in {SourceType.DREAMINA, SourceType.WANXIANG}:
+    if source is None:
+        preference = request.source_preference.value
+        source = None if preference == "auto" else SourceType(preference)
+    if source in {SourceType.MINIMAX, SourceType.JIMENG, SourceType.DREAMINA, SourceType.WANXIANG}:
         actions = (
-            ("preflight-provider", "provider-cli", False),
-            ("estimate-provider-cost", "provider-cli", False),
-            ("prepare-provider-request", "provider-cli", False),
+            ("preflight-provider", "provider-api", False),
+            ("estimate-provider-cost", "agent", False),
+            ("prepare-provider-request", "provider-api", False),
             ("confirm-paid-submit", "agent", True),
-            ("submit-provider-request", "provider-cli", False),
-            ("query-provider-task", "provider-cli", False),
-            ("download-provider-media", "provider-cli", False),
+            ("submit-provider-request", "provider-api", False),
+            *((("query-provider-task", "provider-api", False),) if source is not SourceType.MINIMAX else ()),
+            ("download-provider-media", "provider-api", False),
             ("ingest-local-image", "local-runtime", False),
             ("process-local-sprite", "local-runtime", False),
             ("validate-local-artifacts", "local-runtime", False),
@@ -124,13 +139,13 @@ def build_sprite_execution_plan(
 
 
 def build_map_execution_plan(request: MapRequest) -> ExecutionPlan:
-    if request.source_preference in {SourcePreference.JIMENG, SourcePreference.WANXIANG}:
+    if request.source_preference in {SourcePreference.MINIMAX, SourcePreference.JIMENG, SourcePreference.WANXIANG}:
         actions = (
             ("route-map-source", "agent", False),
-            ("preflight-provider", "provider-cli", False),
-            ("estimate-provider-cost", "provider-cli", False),
+            ("preflight-provider", "provider-api", False),
+            ("estimate-provider-cost", "agent", False),
             ("confirm-paid-submit", "agent", True),
-            ("obtain-local-map", "provider-cli", False),
+            ("obtain-local-map", "provider-api", False),
             ("ingest-local-map", "local-runtime", False),
             ("process-map-runtime-data", "local-runtime", False),
             ("validate-map-artifacts", "local-runtime", False),
@@ -151,13 +166,13 @@ def build_tilemap_execution_plan(request: TileMapRequest, architecture=None) -> 
         from game_visual_forge.routing.tilemap_architecture import select_tilemap_architecture
         from game_visual_forge.jobs import fingerprint_request
         architecture = select_tilemap_architecture(request, fingerprint_request(request.to_dict()))
-    if request.source_preference in {SourcePreference.JIMENG, SourcePreference.WANXIANG}:
+    if request.source_preference in {SourcePreference.MINIMAX, SourcePreference.JIMENG, SourcePreference.WANXIANG}:
         source_actions = (
             ("route-tileset-source", "agent", False),
-            ("preflight-provider", "provider-cli", False),
-            ("estimate-provider-cost", "provider-cli", False),
+            ("preflight-provider", "provider-api", False),
+            ("estimate-provider-cost", "agent", False),
             ("confirm-paid-submit", "agent", True),
-            ("obtain-local-tileset", "provider-cli", False),
+            ("obtain-local-tileset", "provider-api", False),
         )
     else:
         source_actions = (

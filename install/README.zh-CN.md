@@ -126,7 +126,21 @@ python -m unittest discover -s tests -q
 
 ## 可选工作流门禁
 
-核心安装不会安装可选工作流。每个配置都必须遵循：
+优先使用 Agent 自带且具备所需能力的生图工具；没有能力时让用户选择 API，
+其中推荐 MiniMax，即梦和万相保留为可选来源。图像 API 通过共享 Python
+运行时工作。选定 MiniMax 后配置 `MINIMAX_API_KEY`。
+[图像 API 使用说明](../skills/forge-2d-sprite/references/image-api.md) 包含
+Pillow 要求、离线预检、模型、费用确认和恢复步骤。启用 API 不代表授权付费生成。
+
+Python 未安装、版本过低、虚拟环境选错或缺少依赖时，按
+[环境检查与配置指引](python-environment.md) 先识别实际系统和解释器，
+再提供对应命令。用户已授权 Agent 配置时，可在该范围内协助创建隔离环境、
+安装当前任务需要的包并复查，不重复索要同一授权；未授权时提供手动步骤或协助选项。
+环境诊断命令：`<已核实的Python> <Forge仓库绝对路径>/install/check_environment.py --profile image`。
+有效原生透明 PNG 不必安装 rembg；模型权重、缓存路径和个人许可仍单独处理。
+
+核心安装不会安装可选工作流。以下检查点仅适用于额外的 Provider/运行时/模型
+工作流配置，不适用于用户已经授权的当前任务 Python/依赖配置协助：
 
 1. 询问是否启用。
 2. 拒绝时跳过，不探测、不修改环境。

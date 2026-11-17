@@ -2,9 +2,10 @@
 
 [English](README.md) | 简体中文
 
-Game Visual Forge 将五个 Codex Skills 汇成一个制作入口：只需在 Codex 中
-描述需求，就能调用已配置的本地模型与工具，低成本完成 2D 地图、角色精灵、
-视频转序列帧及游戏音频音效的制作、检查与交付。所需模型和工具按需在本机部署。
+Game Visual Forge 将五个 Agent Skills 汇成一个制作入口，完成 2D 地图、
+角色精灵、动画序列帧、音效与游戏音乐的制作、检查和交付。
+用自然语言描述需求，即可结合 Agent 原生工具、已配置的 API 和本地处理，
+准备适合游戏引擎使用的素材。
 
 ## Skills
 
@@ -19,7 +20,8 @@ Game Visual Forge 将五个 Codex Skills 汇成一个制作入口：只需在 Co
 ## 提供的能力
 
 - 通过自然语言收集风格、布局、运行时和交付格式等关键选择。
-- 需要新视觉素材时使用内置生图，也支持用户提供已有素材。
+- 优先使用 Agent 原生生图工具。不可用时由用户选择图像 API，推荐 MiniMax，也可选择即梦或万相。[图像 API 流程](skills/forge-2d-sprite/references/image-api.md)
+- 检查 Python 环境并提供适合当前系统的配置指引，Agent 可在用户授权范围内协助配置。[环境配置](install/python-environment.md)
 - 使用确定性的本地处理、验证报告和可复现输出清单。
 - 地图交付包含可行走区域、碰撞、对象、入口和 Unity Tilemap 支持。
 - 原生图集会在验证前按声明的网格、Tile 尺寸、边距和间距标准化；这只统一图集几何，不修复画面、接缝或地图拓扑。
@@ -205,7 +207,7 @@ Tilemap 包位于
 ## 仓库结构
 
 ```text
-skills/       Codex Skill 说明和启动器
+skills/       Agent Skill 说明和启动器
 src/          共享合同、路由、处理和报告
 integrations/ Unity Tilemap 与音频包及测试
 assets/       小型示例和展示素材

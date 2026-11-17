@@ -39,10 +39,15 @@ def preflight(payload):
     return {"status": "ready", "model": "stable-audio-3", "duration_bounds": [1, 380], "vocal_policy": "instrumental"}
 
 
-def _headers(payload, boundary):
-    credential = payload.get("credential")
-    if not credential:
+def _credential(payload: Mapping[str, Any] | None = None, credential: str | None = None) -> str:
+    value = credential or (payload or {}).get("credential") or os.environ.get("STABILITY_API_KEY")
+    if not value:
         raise RuntimeError("Stable Audio credential is required at execution time")
+    return str(value)
+
+
+def _headers(payload, boundary):
+    credential = _credential(payload)
     return {"Authorization": "Bearer " + str(credential), "Accept": "application/json", "Content-Type": "multipart/form-data; boundary=" + boundary}
 
 
@@ -71,10 +76,10 @@ def submit(payload: Mapping[str, Any], transport: MusicHttpTransport) -> MusicPr
     return MusicProviderReceipt("submitted", task_id)
 
 
-def query(task_id: str, capability, transport: MusicHttpTransport) -> MusicProviderReceipt:
+def query(task_id: str, capability, transport: MusicHttpTransport, *, credential: str | None = None) -> MusicProviderReceipt:
     if not isinstance(task_id, str) or not task_id:
         raise ValueError("task_id is required")
-    headers = {"Accept": "application/json"}
+    headers = {"Authorization": "Bearer " + _credential(credential=credential), "Accept": "application/json"}
     response = transport("GET", STABLE_AUDIO_3_RESULTS.format(task_id), headers, None)
     if response.status_code == 404:
         raise RuntimeError("Stable Audio task is missing or expired")
@@ -87,8 +92,8 @@ def query(task_id: str, capability, transport: MusicHttpTransport) -> MusicProvi
     return MusicProviderReceipt("completed" if status in {"completed", "succeeded", "success"} else "running", task_id)
 
 
-def download(task_id: str, capability, output_dir: Path, transport: MusicHttpTransport) -> tuple[MusicDownloadedFile, ...]:
-    response = transport("GET", STABLE_AUDIO_3_RESULTS.format(task_id), {"Accept": "audio/wav, audio/mpeg"}, None)
+def download(task_id: str, capability, output_dir: Path, transport: MusicHttpTransport, *, credential: str | None = None) -> tuple[MusicDownloadedFile, ...]:
+    response = transport("GET", STABLE_AUDIO_3_RESULTS.format(task_id), {"Authorization": "Bearer " + _credential(credential=credential), "Accept": "audio/*"}, None)
     if response.status_code == 404:
         raise RuntimeError("Stable Audio task is missing or expired")
     if response.status_code != 200:

@@ -40,14 +40,14 @@ from game_visual_forge.contracts import (
     TileMapIntakeStatus,
 )
 from game_visual_forge.contracts.serialization import dump_json
-from game_visual_forge.jobs import fingerprint_request, load_job, save_job, transition_job
+from game_visual_forge.jobs import fingerprint_request, load_job, save_job, select_image_source, transition_job
 from game_visual_forge.processing.images import ingest_image, sha256_file
 from game_visual_forge.processing.sprite import publish_verified_outputs
 from game_visual_forge.processing.tilemap import TileMapProcessingResult, process_tilemap
 from game_visual_forge.processing.tilemap_atlas_normalization import normalize_tilemap_atlases, validate_atlas_normalization_report
 from game_visual_forge.processing.tilemap_asset_preflight import preflight_tilemap_assets
 from game_visual_forge.quality.tilemap import apply_tilemap_visual_review, build_tilemap_asset_manifest, validate_tilemap_outputs
-from game_visual_forge.routing import route_map, select_tilemap_architecture, TileMapArchitectureDecision
+from game_visual_forge.routing import NativeAttemptOutcome, route_map, select_tilemap_architecture, TileMapArchitectureDecision
 
 
 def run_tilemap_reject(
@@ -224,24 +224,22 @@ def run_tilemap_route(
     out_path: Path,
     state_path: Path,
     now: str,
+    native_outcome: str = "not-attempted",
 ) -> dict[str, Any]:
     request, fingerprint = _request(request_path)
     capabilities_payload = load_json(capabilities_path)
     capabilities = MapSourceCapabilities(bool(capabilities_payload["supported"]), tuple(capabilities_payload["operations"]))
     preflight = None if preflight_path is None else ProviderPreflight.from_dict(load_json(preflight_path))
-    decision = route_map(request, capabilities, selected_source=None if selection is None else MapSourceType(selection), provider_preflight=preflight)
-    dump_json(out_path, decision.to_dict())
+    decision = route_map(request, capabilities, selected_source=None if selection is None else MapSourceType(selection), provider_preflight=preflight, native_outcome=NativeAttemptOutcome(native_outcome))
     state = load_job(state_path)
     if state.request_fingerprint != fingerprint:
         raise ValueError("source decision does not match tilemap request")
     if not decision.requires_user_selection:
-        if decision.selected_provider is not None:
-            state = replace(state, provider=decision.selected_provider.value)
-            state = transition_job(state, JobStatus.AWAITING_CONFIRMATION, now=now)
-        else:
-            state = transition_job(state, JobStatus.READY, now=now)
+        state = select_image_source(state, None if decision.selected_provider is None else decision.selected_provider.value, now=now)
+    dump_json(out_path, decision.to_dict())
+    if not decision.requires_user_selection:
         save_job(state_path, state)
-    return {"schema_version": 1, "status": state.status.value, "decision_path": str(out_path.name), "source_type": None if decision.source_type is None else decision.source_type.value, "requires_user_selection": decision.requires_user_selection, "requires_paid_confirmation": decision.requires_paid_confirmation}
+    return {"schema_version": 1, "status": state.status.value, "decision_path": str(out_path.name), "source_type": None if decision.source_type is None else decision.source_type.value, "requires_user_selection": decision.requires_user_selection, "requires_paid_confirmation": decision.requires_paid_confirmation, "recommended_provider": None if decision.recommended_provider is None else decision.recommended_provider.value}
 
 
 def run_tilemap_ingest(
@@ -282,19 +280,19 @@ def run_tilemap_ingest(
     if image_path is not None:
         if request.object_assets:
             raise ValueError("hybrid tilemap ingest requires atlas pages and --object-asset arguments")
-        record = ingest_image(repo_root, image_path, SourceType.EXISTING_FILE, fingerprint, provider=decision.selected_provider)
+        record = ingest_image(repo_root, image_path, SourceType(decision.source_type.value), fingerprint, provider=decision.selected_provider)
         dump_json(out_path, record.to_dict())
         output_path = str(out_path.name)
     else:
         pages = []
         for argument in atlas_page_arguments:
             atlas_id, page_path = parse_atlas_page_argument(argument)
-            pages.append(TileAtlasSourceRecord(atlas_id, ingest_image(repo_root, page_path, SourceType.EXISTING_FILE, fingerprint, provider=decision.selected_provider)))
+            pages.append(TileAtlasSourceRecord(atlas_id, ingest_image(repo_root, page_path, SourceType(decision.source_type.value), fingerprint, provider=decision.selected_provider)))
         object_asset_arguments = object_asset_arguments or []
         objects = []
         for argument in object_asset_arguments:
             asset_id, object_path = parse_object_asset_argument(argument)
-            objects.append(TileObjectSourceRecord(asset_id, ingest_image(repo_root, object_path, SourceType.EXISTING_FILE, fingerprint, provider=decision.selected_provider)))
+            objects.append(TileObjectSourceRecord(asset_id, ingest_image(repo_root, object_path, SourceType(decision.source_type.value), fingerprint, provider=decision.selected_provider)))
         expected_object_ids = tuple(item.asset_id for item in request.object_assets)
         if tuple(item.asset_id for item in objects) != expected_object_ids:
             raise ValueError(f"object asset arguments must match request object assets: expected {expected_object_ids}")

@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import unittest
+from dataclasses import replace
 
 from tests._bootstrap import ROOT  # noqa: F401
 from game_visual_forge.cli.planning import build_execution_plan
@@ -88,11 +89,30 @@ class ExecutionPlanTests(unittest.TestCase):
             steps=steps if steps is not None else (self.make_step(),),
         )
 
-    def test_auto_source_starts_with_agent_native_capability_check(self) -> None:
+    def test_auto_source_starts_with_native_capability_check(self) -> None:
         plan = build_execution_plan(brief(SourcePreference.AUTO))
         self.assertEqual(plan.steps[0].action, "check-agent-native")
         self.assertFalse(plan.steps[0].requires_confirmation)
-        self.assertEqual(plan.steps[1].action, "generate-agent-native")
+        self.assertNotIn("confirm-paid-submit", [step.action for step in plan.steps])
+
+    def test_explicit_minimax_brief_has_a_reloadable_plan(self) -> None:
+        plan = build_execution_plan(brief(SourcePreference.MINIMAX))
+        self.assertEqual(ExecutionPlan.from_dict(plan.to_dict()), plan)
+        self.assertIn("confirm-paid-submit", [step.action for step in plan.steps])
+
+    def test_plans_reserve_paid_gate_for_explicit_api_policy(self) -> None:
+        from game_visual_forge.cli.planning import build_map_execution_plan, build_sprite_execution_plan, build_tilemap_execution_plan
+        from game_visual_forge.contracts import SpriteSourcePreference
+        from tests.test_sprite_contract import make_request
+        from tests.test_map_contract import make_map_request
+        from tests.test_tilemap_contract import make_tilemap_request
+        for preference in ("auto", "minimax"):
+            sprite = replace(make_request(), source_preference=SpriteSourcePreference(preference))
+            plans = (build_sprite_execution_plan(sprite), build_map_execution_plan(replace(make_map_request(), source_preference=SourcePreference(preference))), build_tilemap_execution_plan(replace(make_tilemap_request(), source_preference=SourcePreference(preference))))
+            for plan in plans:
+                with self.subTest(preference=preference, plan=plan.asset_id):
+                    self.assertEqual(any(step.action == "confirm-paid-submit" and step.requires_confirmation for step in plan.steps), preference == "minimax")
+            self.assertNotIn("query-provider-task", [step.action for step in plans[0].steps])
 
     def test_explicit_third_party_requires_provider_and_paid_confirmation(self) -> None:
         plan = build_execution_plan(brief(SourcePreference.JIMENG))

@@ -1,6 +1,5 @@
 from __future__ import annotations
 
-from dataclasses import replace
 from pathlib import Path, PurePosixPath
 from typing import Any
 
@@ -17,8 +16,9 @@ from game_visual_forge.contracts import (
     load_json,
 )
 from game_visual_forge.contracts.serialization import dump_json
-from game_visual_forge.jobs import fingerprint_request, load_job, save_job, transition_job
+from game_visual_forge.jobs import fingerprint_request, load_job, save_job, select_image_source, transition_job
 from game_visual_forge.processing.images import ingest_image
+from game_visual_forge.providers.image import verified_image_model
 from game_visual_forge.processing.sprite import ProcessingResult, process_sprite, publish_verified_outputs
 from game_visual_forge.quality import apply_visual_review, build_asset_manifest, validate_sprite_outputs
 from game_visual_forge.routing import AgentImageCapabilities, NativeAttemptOutcome, route_sprite
@@ -63,18 +63,15 @@ def run_sprite_route(
         selected_source=None if selection is None else SourceType(selection),
         provider_preflight=preflight,
     )
-    dump_json(out_path, decision.to_dict())
     state = load_job(state_path)
     if state.request_fingerprint != fingerprint:
         raise ValueError("request fingerprint does not match job state")
     if not decision.requires_user_selection:
-        if decision.selected_provider is not None:
-            state = replace(state, provider=decision.selected_provider.value)
-            state = transition_job(state, JobStatus.AWAITING_CONFIRMATION, now=now)
-        else:
-            state = transition_job(state, JobStatus.READY, now=now)
+        state = select_image_source(state, None if decision.selected_provider is None else decision.selected_provider.value, now=now)
+    dump_json(out_path, decision.to_dict())
+    if not decision.requires_user_selection:
         save_job(state_path, state)
-    return {"schema_version": 1, "status": state.status.value, "decision_path": str(out_path.name), "source_type": decision.source_type.value if decision.source_type else None, "requires_user_selection": decision.requires_user_selection, "requires_paid_confirmation": decision.requires_paid_confirmation}
+    return {"schema_version": 1, "status": state.status.value, "decision_path": str(out_path.name), "source_type": decision.source_type.value if decision.source_type else None, "requires_user_selection": decision.requires_user_selection, "requires_paid_confirmation": decision.requires_paid_confirmation, "recommended_provider": None if decision.recommended_provider is None else decision.recommended_provider.value}
 
 
 def run_sprite_ingest(
@@ -85,12 +82,14 @@ def run_sprite_ingest(
     out_path: Path,
     state_path: Path,
     now: str,
+    image_attempt_path: Path | None = None,
 ) -> dict[str, Any]:
     request, fingerprint = _request(request_path)
     decision = SourceDecision.from_dict(load_json(decision_path))
     if decision.request_fingerprint != fingerprint or decision.source_type is None:
         raise ValueError("source decision does not match request or has no source")
-    record = ingest_image(repo_root, image_path, decision.source_type, fingerprint, provider=decision.selected_provider)
+    model = None if image_attempt_path is None else verified_image_model(image_attempt_path, image_path, repo_root, fingerprint, decision.selected_provider)
+    record = ingest_image(repo_root, image_path, decision.source_type, fingerprint, provider=decision.selected_provider, model=model)
     dump_json(out_path, record.to_dict())
     state = load_job(state_path)
     state = transition_job(state, JobStatus.RUNNING, now=now)

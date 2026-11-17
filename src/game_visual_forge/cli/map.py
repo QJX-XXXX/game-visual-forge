@@ -1,6 +1,5 @@
 from __future__ import annotations
 
-from dataclasses import replace
 from pathlib import Path, PurePosixPath
 from typing import Any
 
@@ -18,12 +17,12 @@ from game_visual_forge.contracts import (
     load_json,
 )
 from game_visual_forge.contracts.serialization import dump_json
-from game_visual_forge.jobs import fingerprint_request, load_job, save_job, transition_job
+from game_visual_forge.jobs import fingerprint_request, load_job, save_job, select_image_source, transition_job
 from game_visual_forge.processing.images import ingest_image
 from game_visual_forge.processing.map import MapProcessingResult, process_map
 from game_visual_forge.processing.sprite import publish_verified_outputs
 from game_visual_forge.quality.map import apply_map_visual_review, build_map_asset_manifest, validate_map_outputs
-from game_visual_forge.routing import MapSourceCapabilities, route_map
+from game_visual_forge.routing import MapSourceCapabilities, NativeAttemptOutcome, route_map
 
 
 def _request(path: Path) -> tuple[MapRequest, str]:
@@ -48,24 +47,22 @@ def run_map_route(
     out_path: Path,
     state_path: Path,
     now: str,
+    native_outcome: str = "not-attempted",
 ) -> dict[str, Any]:
     request, fingerprint = _request(request_path)
     capabilities_payload = load_json(capabilities_path)
     capabilities = MapSourceCapabilities(bool(capabilities_payload["supported"]), tuple(capabilities_payload["operations"]))
     preflight = None if preflight_path is None else ProviderPreflight.from_dict(load_json(preflight_path))
-    decision = route_map(request, capabilities, selected_source=None if selection is None else MapSourceType(selection), provider_preflight=preflight)
-    dump_json(out_path, decision.to_dict())
+    decision = route_map(request, capabilities, selected_source=None if selection is None else MapSourceType(selection), provider_preflight=preflight, native_outcome=NativeAttemptOutcome(native_outcome))
     state = load_job(state_path)
     if state.request_fingerprint != fingerprint:
         raise ValueError("source decision does not match map request")
     if not decision.requires_user_selection:
-        if decision.selected_provider is not None:
-            state = replace(state, provider=decision.selected_provider.value)
-            state = transition_job(state, JobStatus.AWAITING_CONFIRMATION, now=now)
-        else:
-            state = transition_job(state, JobStatus.READY, now=now)
+        state = select_image_source(state, None if decision.selected_provider is None else decision.selected_provider.value, now=now)
+    dump_json(out_path, decision.to_dict())
+    if not decision.requires_user_selection:
         save_job(state_path, state)
-    return {"schema_version": 1, "status": state.status.value, "decision_path": str(out_path.name), "source_type": None if decision.source_type is None else decision.source_type.value, "requires_user_selection": decision.requires_user_selection, "requires_paid_confirmation": decision.requires_paid_confirmation}
+    return {"schema_version": 1, "status": state.status.value, "decision_path": str(out_path.name), "source_type": None if decision.source_type is None else decision.source_type.value, "requires_user_selection": decision.requires_user_selection, "requires_paid_confirmation": decision.requires_paid_confirmation, "recommended_provider": None if decision.recommended_provider is None else decision.recommended_provider.value}
 
 
 def run_map_ingest(
@@ -81,7 +78,7 @@ def run_map_ingest(
     decision = MapSourceDecision.from_dict(load_json(decision_path))
     if decision.request_fingerprint != fingerprint or decision.source_type is None:
         raise ValueError("source decision does not match map request or has no source")
-    record = ingest_image(repo_root, image_path, SourceType.EXISTING_FILE, fingerprint, provider=decision.selected_provider)
+    record = ingest_image(repo_root, image_path, SourceType(decision.source_type.value), fingerprint, provider=decision.selected_provider)
     dump_json(out_path, record.to_dict())
     state = transition_job(load_job(state_path), JobStatus.RUNNING, now=now)
     save_job(state_path, state)

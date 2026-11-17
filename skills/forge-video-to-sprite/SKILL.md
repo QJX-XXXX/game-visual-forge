@@ -10,6 +10,12 @@ motion clip that must become game-ready Sprite frames. Keep the repository root
 and shared `src/` package available; the launcher is
 `skills/forge-video-to-sprite/scripts/run.py`.
 
+For missing Python or local processing packages, follow the
+[Python environment guide](../../install/python-environment.md). Inspect the
+actual OS/interpreter, explain missing prerequisites, and offer manual steps or
+assist within the user's existing setup authorization. Keep provider, ComfyUI,
+model, and license installation gates below separate from Python package setup.
+
 ## Standard interaction
 
 1. Extract the character, action, view, camera, loop, start/end pose,
@@ -41,9 +47,10 @@ and shared `src/` package available; the launcher is
    backend, region, model, mode, references and hashes, duration, resolution,
    billing context, estimate status, and request fingerprint. Ask for one
    paid-submit confirmation. An unverified estimate is labelled unverified and
-   must be acknowledged explicitly. The current MiniMax-H3 V2 profile and its
-   exact duration, resolution, ratio, and reference limits are visible; a
-   discovered-unprofiled model is shown but cannot be submitted through API.
+   must be acknowledged explicitly. The current MiniMax H3 family profiles and
+   each model's exact duration, resolution, ratio, and reference limits are
+   visible; a discovered-unprofiled model is shown but cannot be submitted
+   through API.
 7. Submit exactly once after the confirmation is persisted. Query or download
    an existing task when recovering; never resubmit `submission_unknown`.
 8. Ingest the immutable video, sample by presentation timestamp, clean and
@@ -174,7 +181,9 @@ through Comfy MCP rather than the hosted-provider command surface.
 ## Safety rules
 
 - Never install FFmpeg, `mmx`, `dreamina`, Comfy MCP, the H3 Prompt Writing
-  Skill, Python extras, models, or credentials.
+  Skill, Python extras, models, or credentials without authorization. Authorized
+  Python setup may use the environment guide; optional providers/models still
+  follow their specific installation and license requirements.
 - Never write credentials, authorization headers, Base64 media, signed URLs, or
   raw provider responses to repository artifacts.
 - Bind a local first-frame PNG by repository-relative path and SHA-256; create

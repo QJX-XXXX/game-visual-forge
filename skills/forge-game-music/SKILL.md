@@ -9,6 +9,12 @@ Use this Skill for game BGM, light music, menu or exploration tracks, combat bed
 
 ## Provider routing
 
+Before local CLI work, use the [Python environment guide](../../install/python-environment.md).
+Explain missing interpreter/packages for the actual OS and offer manual setup
+or assist within the user's existing setup authorization. Verify the selected
+interpreter afterward. Keep ComfyUI, model, node, provider, and license setup
+subject to their own gates; Python assistance does not authorize generation.
+
 - Use the local Comfy Desktop `audio_minimax_music_3` workflow by default. Inspect the live workflow and models before running it.
 - Use Stable Audio 3 only when the user explicitly selects it and a current credential, rights confirmation, and dated capability snapshot are available.
 - Keep Suno disabled with `needs_user_action` until the official account exposes its API schema and API-specific commercial game terms. Never copy fields from an unofficial client.

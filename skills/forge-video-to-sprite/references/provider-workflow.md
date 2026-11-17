@@ -138,9 +138,11 @@ standard ingest, timestamp sampling, cleanup, review, and validation stages.
 ## MiniMax Hailuo
 
 Set `MINIMAX_API_KEY` only in the current process when using the API. The adapter
-refreshes the official model list and stores a sanitized timestamped snapshot.
-The compatible profile is `MiniMax-H3`. China-region API calls default to
-`https://api.minimaxi.com`; global calls default to
+builds a sanitized timestamped snapshot from the official V2 H3 model profiles
+and retains any optional legacy model-list discoveries as unprofiled entries.
+The compatible profiles are `MiniMax-H3`, `MiniMax-H3-Highspeed`,
+`MiniMax-H3-Lite`, and `MiniMax-H3-Max`. China-region API calls default to
+`https://api.minimax.cn`; global calls default to
 `https://api.minimax.io`. A discovered model without a compatible profile is
 shown as `discovered-unprofiled` and cannot be submitted through the API. It is
 not silently hidden.
@@ -150,13 +152,16 @@ Official references: [H3 workflow](https://platform.minimaxi.com/docs/guides/vid
 and [V2 query](https://platform.minimaxi.com/docs/api-reference/video-generation-v2-query).
 
 H3 creates tasks with `POST /v2/video_generation` and the official multimodal
-`content[]` request. It supports 4–15 whole seconds, `768P` or `2K`, and
+`content[]` request. H3 supports 4–15 whole seconds at `768P` or `2K`.
+Highspeed and Lite support 4–15 whole seconds at `480P` or `768P`. Max supports
+5–15 whole seconds at `480P` or `768P` and accepts the optional
+`extra.prompt_expansion_mode` field. All models support
 `adaptive`, `21:9`, `16:9`, `4:3`, `1:1`, `3:4`, or `9:16`. Text-to-video
 requires a concrete ratio. First/last-frame generation is always adaptive.
 Reference generation accepts up to 9 images, 3 videos, and 3 audio files, with
 12 total reference files; its roles are `reference_image`, `reference_video`,
 and `reference_audio`. First/last-frame roles and reference roles cannot be
-mixed in one request.
+mixed in one request. Lite reference generation requires a concrete ratio.
 
 For a generated or local first-frame PNG, persist a repository-relative
 `first_frame_path` and its `first_frame_sha256`; include the same digest in the
@@ -178,9 +183,19 @@ check when the installed CLI supports that check; it never updates the CLI.
 ## Jimeng
 
 Set `JIMENG_ACCESS_KEY` and `JIMENG_SECRET_KEY` only in the current process when
-using the API. The adapter canonicalizes the request body, signs it locally with
-HMAC, and discards transient authorization material after transport. Provider
-task IDs and download calls remain API-specific.
+using the API. The adapter uses the official Volcengine V4 HMAC-SHA256
+signature with `Region=cn-north-1`, `Service=cv`, and the
+`CVSync2AsyncSubmitTask` / `CVSync2AsyncGetResult` actions. The current profiles
+cover Jimeng 3.0 Pro text-to-video and first-frame image-to-video, plus the
+documented 3.0 1080P text-to-video profile. The 3.0 1080P first/last-frame
+profile is retained as historical metadata and is blocked from new submits
+while its official documentation is marked for retirement. Provider task IDs
+and one-hour video URLs remain API-specific.
+
+The current API body uses `req_key`, `prompt`, `image_urls`, `seed`, and
+`frames`. Persisted provider payloads reject inline base64 media. The adapter
+reports `in_queue` and `generating` as running, `done` with a video URL as
+completed, and `not_found` or `expired` as failed.
 
 The official `dreamina` compatibility path checks version/help and uses its
 existing account state. It does not read API secrets and cannot query an API

@@ -102,7 +102,7 @@ def query_video_attempt(attempt_path: Path, executable: Path, *, now: str) -> Vi
     attempt = VideoGenerationAttempt.from_dict(load_json(attempt_path))
     if attempt.external_task_id is None:
         raise ValueError("query requires an existing external task id")
-    payload = {"schema_version": 1, "provider": attempt.provider.value, "backend": attempt.backend.value, "region": attempt.region, "external_task_id": attempt.external_task_id}
+    payload = {"schema_version": 1, "provider": attempt.provider.value, "backend": attempt.backend.value, "region": attempt.region, "model": attempt.model, "external_task_id": attempt.external_task_id}
     receipt = _run(executable, ProviderCommand.QUERY, payload)
     provider_status = str(receipt.get("status", "unknown"))
     if provider_status in {"completed", "succeeded", "success"}:
@@ -125,7 +125,7 @@ def download_video_attempt(attempt_path: Path, executable: Path, output_dir: Pat
     output_dir.mkdir(parents=True, exist_ok=True)
     temporary = output_dir / ".video-download.tmp"
     target = output_dir / "video.mp4"
-    payload = {"schema_version": 1, "provider": attempt.provider.value, "backend": attempt.backend.value, "region": attempt.region, "external_task_id": attempt.external_task_id, "output_path": str(temporary)}
+    payload = {"schema_version": 1, "provider": attempt.provider.value, "backend": attempt.backend.value, "region": attempt.region, "model": attempt.model, "external_task_id": attempt.external_task_id, "output_path": str(temporary)}
     receipt = _run(executable, ProviderCommand.DOWNLOAD, payload)
     provider_path = Path(str(receipt.get("path", temporary)))
     if not provider_path.is_file() or provider_path.stat().st_size == 0:

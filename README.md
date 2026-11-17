@@ -2,11 +2,10 @@
 
 English | [简体中文](README.zh-CN.md)
 
-Game Visual Forge brings five Codex Skills into one creative entry point.
-Describe what you need in Codex, and it can use configured local models and
-tools to create, check, and deliver 2D maps, character sprites, video-derived
-animation frames, and game audio at low cost. Models and tools are set up locally
-as needed.
+Game Visual Forge brings five Agent Skills together to create, check, and deliver
+2D maps, character sprites, animation frames, sound effects, and game music.
+Describe what you need in natural language and use native Agent tools,
+configured APIs, and local processing to prepare assets for your game engine.
 
 ## Skills
 
@@ -21,7 +20,8 @@ as needed.
 ## What it provides
 
 - Natural-language intake with explicit choices for style, layout, runtime, and delivery format.
-- Built-in image generation when a new visual asset is needed, plus support for user-provided source media.
+- Native Agent image tools take priority. When unavailable, choose an image API, with MiniMax recommended and Jimeng or Wanxiang available. [Image API workflow](skills/forge-2d-sprite/references/image-api.md)
+- Python environment checks provide setup instructions for the current system and Agent assistance within the user's authorization. [Environment setup](install/python-environment.md)
 - Deterministic local processing, validation reports, and reproducible output manifests.
 - Playable map handoff with walkability, collision, objects, entrances, and Unity Tilemap support.
 - Native map atlases are normalized to the declared grid, tile size, margins, and spacing before validation. This standardizes atlas geometry only; it does not repair artwork, seams, or map topology.
@@ -224,7 +224,7 @@ scenes. Scene placement is performed through Unity MCP only after an explicit re
 ## Repository layout
 
 ```text
-skills/       Codex Skill instructions and launchers
+skills/       Agent Skill instructions and launchers
 src/          Shared contracts, routing, processing, and reports
 integrations/ Unity Tilemap and audio packages plus tests
 assets/       Small checked-in examples and showcase artifacts

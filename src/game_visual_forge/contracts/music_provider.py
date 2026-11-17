@@ -16,7 +16,7 @@ def scan_safe(value: Any):
     if isinstance(value, dict):
         for key, item in value.items():
             normalized = str(key).lower().replace("-", "_")
-            if any(word in normalized for word in ("token", "cookie", "authorization", "api_key", "secret", "base64")):
+            if any(word in normalized for word in ("token", "cookie", "authorization", "api_key", "secret", "credential", "base64")):
                 raise ValueError("secret field cannot be persisted")
             scan_safe(item)
     elif isinstance(value, (tuple, list)):
@@ -199,6 +199,6 @@ class MusicWorkflowReport:
 
 def default_music_capabilities(*, local_ready=False):
     local = MusicProviderCapability(MusicProvider.COMFYUI_MUSIC3, "minimax-music3", "https://github.com/MiniMax-AI/MiniMax-Music3", "2026-10-10", False, local_ready, True, True, "model-license-required", (0.04, 360), ("instrumental", "vocals-allowed", "vocals-required"), ("wav",), "comfy-mcp", True, "local-no-api-charge", reason="local workflow report required")
-    stable = MusicProviderCapability(MusicProvider.STABLE_AUDIO_API, "stable-audio-3", "https://platform.stability.ai/docs/api-reference", "2026-10-10", True, True, True, False, "documented-game-use", (1, 380), ("instrumental",), ("wav", "mp3"), "async", True, "dated-estimate", 26, 1, "credential and account verification required")
-    suno = MusicProviderCapability(MusicProvider.SUNO_API, None, "https://platform.suno.com/", "2026-10-10", True, False, False, False, "unknown", None, (), (), "unknown", False, "unknown", None, None, "official API schema, account terms and pricing are not yet verified")
+    stable = MusicProviderCapability(MusicProvider.STABLE_AUDIO_API, "stable-audio-3", "https://docs.stability.ai/api-reference", "2026-11-17", True, True, True, False, "documented-game-use", (1, 380), ("instrumental",), ("wav", "mp3"), "async", True, "dated-estimate", 8, 1, "credential and account verification required")
+    suno = MusicProviderCapability(MusicProvider.SUNO_API, None, "https://platform.suno.com/", "2026-11-17", True, False, False, False, "unknown", None, (), (), "unknown", False, "unknown", None, None, "official REST API schema, account terms and pricing are not yet verified; Suno MCP Beta is not wired into this provider")
     return {c.provider: c for c in (local, suno, stable)}

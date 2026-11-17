@@ -19,6 +19,7 @@ class AssetKind(StrEnum):
 
 class SourcePreference(StrEnum):
     AUTO = "auto"
+    MINIMAX = "minimax"
     AGENT_NATIVE = "agent-native"
     JIMENG = "jimeng"
     WANXIANG = "wanxiang"

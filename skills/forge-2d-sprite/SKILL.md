@@ -11,6 +11,13 @@ tool when selected, and obtain every required user choice. Leave deterministic
 media processing to the local runtime. Never duplicate processing code or
 credentials in this Skill.
 
+Before local CLI work, follow the [Python environment guide](../../install/python-environment.md).
+Check the actual interpreter and task-specific dependencies. If Python or
+packages are missing, explain the detected system and offer precise setup
+steps or Agent assistance. Reuse existing setup authorization and verify the
+chosen interpreter after configuration. Native image tools remain independent
+of Python; report local processing as pending until its prerequisites are ready.
+
 ## Standard interaction
 
 Submit one grouped intake card that collects asset type and identity, action,
@@ -41,7 +48,12 @@ the operation in the processing result. For engine delivery, use the existing
 delivery normalizer so every frame receives the same shared scale and anchor,
 and inspect the generated sheet or GIF before approval.
 
-Use the built-in imagegen as the default native source when it is available.
+Use native image tools first when their advertised operations meet the request.
+MiniMax is the recommended API when native capability is unavailable and the
+user chooses an API. Follow the
+[shared image API workflow](references/image-api.md) using `image provider`.
+It works from Python with any Agent. The built-in imagegen
+is one native tool option when advertised by the host Agent.
 Treat reference-image editing, native transparency, whole-strip generation, and
 fast targeted iteration as capabilities rather than model-name assumptions.
 The capability declaration may expose operation tokens such as
@@ -74,15 +86,21 @@ strict temporal consistency.
 ## Source order
 
 1. Prefer an existing image. Select `existing-file` and run `sprite ingest`.
-2. When no image exists, check whether the Agent exposes a suitable native image tool.
-3. When native generation is available and selected, build the prompt package,
+2. When no image exists and source policy is `auto`, check the Agent's actual
+   native operations and route to a suitable tool. Reference inputs require
+   `reference-image`; text-only generation requires `text-to-image`.
+3. When native generation is available, build the prompt package,
    generate the image, and return its local path to the `RawImageRecord` flow.
-4. If native generation is unavailable, ask the user to choose Jimeng,
-   Wanxiang, a configured local image tool, or an existing image.
+4. If native capability is unavailable, ask the user to choose an API,
+   configured local image tool, or existing image. Recommend MiniMax among the
+   APIs, with Jimeng and Wanxiang available. Credentials and preflight never
+   count as source selection. Preflight only the provider the user selects.
 5. If native generation fails or its quality is rejected, ask the user to retry
    native generation, switch the source, accept the current image, or stop.
-6. After entering a third-party route, ask the user to choose Jimeng or Wanxiang every time.
-   Never infer the provider from credentials, login state, or history.
+6. For native failure or rejection, record `--native-outcome failed` or
+   `quality-rejected` when routing again. Obtain an explicit source choice
+   before API fallback and a verified quote/paid confirmation before submission.
+   Explicit user source selections override the default order.
 
 ## Transparent PNG policy
 
@@ -97,6 +115,11 @@ verbatim background-extraction instruction. Append it unchanged to the native
 transparent-generation prompt. If the first native PNG fails Alpha inspection
 and the same native tool supports image editing, reuse that exact instruction
 for at most one background-extraction edit before the local rembg fallback.
+
+Before invoking processing that needs rembg, verify the background package
+profile and selected model cache through the environment guide. If either is
+missing, offer setup or help within the user's authorization before starting
+that fallback. Do not create a rembg session just to discover an uncached model.
 
 After native generation, ingest the unmodified PNG and run `sprite process` with
 `background_removal=auto`. The processor inspects the original Alpha channel
@@ -120,9 +143,14 @@ and paid confirmation required above.
 
 Before a third-party submission, display and confirm the provider, model, non-sensitive parameters, quantity, cost, currency, and request fingerprint.
 One confirmation authorizes one submission and must be consumed and persisted
-before invoking the external CLI.
+before making the generation POST. The direct image API uses the shared
+`image provider prepare`, `confirm`, `submit`, and `download` commands in the
+[API reference](references/image-api.md).
 
-Never install dependencies, CLIs, models, or credentials automatically.
+Never install dependencies, CLIs, models, or credentials without authorization.
+When the user authorizes Python setup, assist within that scope through the
+[environment guide](../../install/python-environment.md); preserve existing
+environments and separate package setup from model/cache downloads.
 Never resubmit a failed or `submission_unknown` task; recover an unknown submission
 only through query or manual provider verification.
 

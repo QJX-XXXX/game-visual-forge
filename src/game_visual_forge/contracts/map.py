@@ -40,6 +40,7 @@ class MapShapeType(StrEnum):
 
 class MapSourceType(StrEnum):
     AGENT_NATIVE = "agent-native"
+    MINIMAX = "minimax"
     JIMENG = "jimeng"
     WANXIANG = "wanxiang"
     LOCAL_TOOL = "local-tool"
@@ -262,6 +263,7 @@ class MapSourceDecision:
     reason: str
     request_fingerprint: str
     selected_provider: ExternalProvider | None = None
+    recommended_provider: ExternalProvider | None = None
 
     def to_dict(self) -> dict[str, Any]:
         return {
@@ -272,6 +274,7 @@ class MapSourceDecision:
             "reason": self.reason,
             "request_fingerprint": self.request_fingerprint,
             "selected_provider": None if self.selected_provider is None else self.selected_provider.value,
+            "recommended_provider": None if self.recommended_provider is None else self.recommended_provider.value,
         }
 
     @classmethod
@@ -284,4 +287,5 @@ class MapSourceDecision:
             reason=value["reason"],
             request_fingerprint=value["request_fingerprint"],
             selected_provider=None if value.get("selected_provider") is None else ExternalProvider(value["selected_provider"]),
+            recommended_provider=None if value.get("recommended_provider") is None else ExternalProvider(value["recommended_provider"]),
         )

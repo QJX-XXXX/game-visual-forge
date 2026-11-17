@@ -64,6 +64,7 @@ from game_visual_forge.cli.audio import (
     run_audio_validate,
 )
 from game_visual_forge.cli.music import dispatch_music_command, register_music_commands
+from game_visual_forge.cli.image import dispatch_image_command, register_image_commands
 from game_visual_forge.contracts import AssetBrief, JobState, JobStatus, load_json
 from game_visual_forge.contracts import MapSourceType
 from game_visual_forge.contracts.serialization import dump_json
@@ -76,6 +77,7 @@ from game_visual_forge.routing import NativeAttemptOutcome
 def build_parser() -> argparse.ArgumentParser:
     parser = argparse.ArgumentParser(prog="game-visual-forge")
     commands = parser.add_subparsers(dest="command", required=True)
+    register_image_commands(commands)
 
     dry_run = commands.add_parser("dry-run")
     dry_run.add_argument("--brief", type=Path, required=True)
@@ -95,6 +97,7 @@ def build_parser() -> argparse.ArgumentParser:
     map_route.add_argument("--capabilities", type=Path, required=True)
     map_route.add_argument("--selection", choices=[item.value for item in MapSourceType])
     map_route.add_argument("--preflight", type=Path)
+    map_route.add_argument("--native-outcome", choices=[item.value for item in NativeAttemptOutcome], default=NativeAttemptOutcome.NOT_ATTEMPTED.value)
     map_route.add_argument("--out", type=Path, required=True)
     map_route.add_argument("--state", type=Path, required=True)
     map_route.add_argument("--now", required=True)
@@ -140,6 +143,7 @@ def build_parser() -> argparse.ArgumentParser:
     tilemap_route.add_argument("--capabilities", type=Path, required=True)
     tilemap_route.add_argument("--selection", choices=[item.value for item in MapSourceType])
     tilemap_route.add_argument("--preflight", type=Path)
+    tilemap_route.add_argument("--native-outcome", choices=[item.value for item in NativeAttemptOutcome], default=NativeAttemptOutcome.NOT_ATTEMPTED.value)
     tilemap_route.add_argument("--out", type=Path, required=True)
     tilemap_route.add_argument("--state", type=Path, required=True)
     tilemap_route.add_argument("--now", required=True)
@@ -243,6 +247,7 @@ def build_parser() -> argparse.ArgumentParser:
     ingest.add_argument("--request", type=Path, required=True)
     ingest.add_argument("--decision", type=Path, required=True)
     ingest.add_argument("--image", type=Path, required=True)
+    ingest.add_argument("--image-attempt", type=Path)
     ingest.add_argument("--repo-root", type=Path, required=True)
     ingest.add_argument("--out", type=Path, required=True)
     ingest.add_argument("--state", type=Path, required=True)
@@ -454,14 +459,16 @@ def run_dry_run(brief_path: Path, out_dir: Path, now: str) -> dict[str, Any]:
 def main(argv: list[str] | None = None) -> int:
     args = build_parser().parse_args(argv)
     try:
-        if args.command == "dry-run":
+        if args.command == "image":
+            payload = dispatch_image_command(args)
+        elif args.command == "dry-run":
             payload = run_dry_run(args.brief, args.out_dir, args.now)
         elif args.command == "show-state":
             payload = load_job(args.state).to_dict()
         elif args.command == "map" and args.map_command == "plan":
             payload = run_map_plan(args.request, args.out_dir, args.now)
         elif args.command == "map" and args.map_command == "route":
-            payload = run_map_route(args.request, args.capabilities, args.selection, args.preflight, args.out, args.state, args.now)
+            payload = run_map_route(args.request, args.capabilities, args.selection, args.preflight, args.out, args.state, args.now, args.native_outcome)
         elif args.command == "map" and args.map_command == "ingest":
             payload = run_map_ingest(args.request, args.decision, args.image, args.repo_root, args.out, args.state, args.now)
         elif args.command == "map" and args.map_command == "process":
@@ -471,7 +478,7 @@ def main(argv: list[str] | None = None) -> int:
         elif args.command == "map" and args.map_command == "tile" and args.tilemap_command == "plan":
             payload = run_tilemap_plan(args.request, args.out_dir, args.now)
         elif args.command == "map" and args.map_command == "tile" and args.tilemap_command == "route":
-            payload = run_tilemap_route(args.request, args.capabilities, args.selection, args.preflight, args.out, args.state, args.now)
+            payload = run_tilemap_route(args.request, args.capabilities, args.selection, args.preflight, args.out, args.state, args.now, args.native_outcome)
         elif args.command == "map" and args.map_command == "tile" and args.tilemap_command == "ingest":
             payload = run_tilemap_ingest(args.request, args.decision, args.image, args.atlas_page, args.repo_root, args.out, args.state, args.now, args.object_asset, args.style_approval, args.preassembly_review, args.critical_assets_report)
         elif args.command == "map" and args.map_command == "tile" and args.tilemap_command == "normalize-atlases":
@@ -493,7 +500,7 @@ def main(argv: list[str] | None = None) -> int:
         elif args.command == "sprite" and args.sprite_command == "route":
             payload = run_sprite_route(args.request, args.capabilities, args.native_outcome, args.selection, args.preflight, args.out, args.state, args.now)
         elif args.command == "sprite" and args.sprite_command == "ingest":
-            payload = run_sprite_ingest(args.request, args.decision, args.image, args.repo_root, args.out, args.state, args.now)
+            payload = run_sprite_ingest(args.request, args.decision, args.image, args.repo_root, args.out, args.state, args.now, args.image_attempt)
         elif args.command == "sprite" and args.sprite_command == "process":
             payload = run_sprite_process(args.request, args.raw_image, args.repo_root, args.out_dir, args.state, args.now)
         elif args.command == "sprite" and args.sprite_command == "validate":

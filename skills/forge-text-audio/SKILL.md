@@ -9,9 +9,15 @@ Use this Skill only when the user explicitly requests a game sound effect, UI so
 
 ## Workflow
 
+For Python interpreter/package issues, use the
+[Python environment guide](../../install/python-environment.md). Report the
+actual environment and offer precise manual steps or authorized Agent help.
+This permits scoped Python setup after user authorization; it does not replace
+Stable Audio's runtime/model installation flow or personal license acceptance.
+
 1. Group intake questions into sound, mode/source, and delivery. Ask for one consolidated request confirmation. Support exactly `text-to-audio`, `redraw`, `inpaint`, and `continue`.
 2. Preserve the user's original request and create an English Stable Audio prompt package. Use three candidates for text generation and redraw, and one candidate for inpainting and continuation unless the confirmed request overrides the count.
-3. Run the local-only provider preflight. The user must install the official `stable-audio-3` runtime in an isolated, user-selected directory, accept the Stability AI and Gemma model terms personally, make `stabilityai/stable-audio-3-small-sfx` available in the local Hugging Face cache, and install FFmpeg/FFprobe. If the runtime is missing, return `needs_user_action` with the installation request from the repository README. Never install, download, accept licenses, or call a hosted API during ordinary Skill use.
+3. Run the local-only provider preflight. The official `stable-audio-3` runtime must use an isolated, user-selected directory; the user must accept Stability AI and Gemma terms personally, make `stabilityai/stable-audio-3-small-sfx` available in the local Hugging Face cache, and have FFmpeg/FFprobe. If prerequisites are missing, report `needs_user_action` and offer the repository installation flow or scoped Python assistance. Never install or download without setup authorization. When setup is already authorized, help within that scope using the relevant guide. Never accept licenses for the user or call a hosted API during this local-only workflow.
 4. Run the provider through `scripts/providers/stable_audio.py` using the shared binary UTF-8 JSON protocol and the repository-local `game-visual-forge.local.json` runtime configuration. UTF-8 is mandatory for every subprocess even when the generated prompt is English because paths, original requests, logs, and Unity names may be non-ASCII.
 5. Decode provider latents without the official API's destructive output clamp. Before writing a raw candidate, record the decoded peak and overrange count and apply only enough global attenuation to keep the peak at or below -1.0 dBFS; never boost quiet audio. Keep written raw candidates and source audio immutable. Process into a separate staging directory, validate 44,100 Hz, 16-bit signed PCM WAV delivery, and record SHA-256 hashes, waveform, spectrum, loop evidence, and protected-region evidence.
 6. Present playable candidates and require the user's final listening approval. Record exactly these checks: prompt/action match; transient/impact clarity; noise/generation artifacts; unwanted speech/music; spatial/channel suitability; loop/tail quality. Do not publish with a failed or missing check.

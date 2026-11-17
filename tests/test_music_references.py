@@ -33,6 +33,8 @@ class MusicReferenceTests(unittest.TestCase):
         self.assertIn("stable-audio-3", text)
         self.assertIn("1 to 380", text)
         self.assertIn("202", text)
+        self.assertIn("8 credits", text)
+        self.assertIn("docs.stability.ai", text)
         self.assertNotIn("190 seconds", text)
 
 

@@ -33,4 +33,4 @@ For a fast game loop, prefer `steady kick and bass pulse from the first beat`, `
 - [MiniMax Music 3 repository](https://github.com/MiniMax-AI/MiniMax-Music3) — verified 2026-10-10; supplies the structured caption concept and local model context.
 - [MiniMax Music 3 official Space](https://huggingface.co/spaces/MiniMaxAI/MiniMax-Music3/blob/7b66a0bee1103243bf4d9406edd735619d55568c/app.py) — verified 2026-10-10; shows the explicit instrumental caption and lyric section convention.
 - [Stable Audio 3 prompt guide](https://kb.stability.ai/knowledge-base/stable-audio-3-prompt-guide) — verified 2026-10-10; supports TrackType, instruments, genre, mood, and BPM prompt vocabulary.
-- [Suno Platform](https://platform.suno.com/) — verified 2026-10-10; confirms an official REST API product exists, but does not expose the fields needed by this skill without account access.
+- [Suno Platform](https://platform.suno.com/) — verified 2026-11-17; confirms an official REST API product exists, but does not expose the fields needed by this skill without account access.

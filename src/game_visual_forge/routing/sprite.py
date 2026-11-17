@@ -52,6 +52,7 @@ def _decision(
     requires_paid_confirmation: bool,
     reason: str,
     provider: ExternalProvider | None = None,
+    recommendation: ExternalProvider | None = None,
 ) -> SourceDecision:
     return SourceDecision(
         schema_version=1,
@@ -61,6 +62,7 @@ def _decision(
         reason=reason,
         request_fingerprint=fingerprint_request(request.to_dict()),
         selected_provider=provider,
+        recommended_provider=recommendation,
     )
 
 
@@ -90,8 +92,9 @@ def route_sprite(
             reason="user-selected-existing-file",
         )
 
-    native_supported = native.supports("text-to-image")
-    if native_supported and native_outcome is NativeAttemptOutcome.NOT_ATTEMPTED:
+    operation = "reference-image" if request.reference_paths or request.seed_frame_path else "text-to-image"
+    native_supported = native.supports(operation)
+    if selected_source is None and request.source_preference in {SpriteSourcePreference.AUTO, SpriteSourcePreference.AGENT_NATIVE} and native_supported and native_outcome is NativeAttemptOutcome.NOT_ATTEMPTED:
         return _decision(
             request,
             SourceType.AGENT_NATIVE,
@@ -126,7 +129,7 @@ def route_sprite(
             reason="user-selected-local-tool",
         )
 
-    if selected_source in {SourceType.DREAMINA, SourceType.WANXIANG}:
+    if selected_source in {SourceType.MINIMAX, SourceType.JIMENG, SourceType.DREAMINA, SourceType.WANXIANG}:
         provider = ExternalProvider(selected_source.value)
         if provider_preflight is None or provider_preflight.provider is not provider:
             raise ValueError("selected provider requires matching preflight")
@@ -158,6 +161,7 @@ def route_sprite(
         requires_user_selection=True,
         requires_paid_confirmation=False,
         reason=reason,
+        recommendation=ExternalProvider.MINIMAX,
     )
 
 

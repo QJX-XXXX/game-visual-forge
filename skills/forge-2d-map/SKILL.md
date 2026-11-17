@@ -9,6 +9,11 @@ Use this Skill when the result must be a runtime map that a player can walk thro
 
 Compatibility terms: `standard_16` remains the one-page legacy profile; `adaptive_hd` remains the 4×4 multi-page profile; `COHERENT_FOUNDATION` is the fixed authored foundation route; and `TWO_GATE` names the two user gates. Tile dimensions use `preset_16`, `preset_32`, or `custom`; Unity derives cell size from `tile_width / pixels_per_unit`. Keep `map-quality-report.json`, `Buildings`, and `Props` in the artifact vocabulary.
 
+Before local CLI work, follow the [Python environment guide](../../install/python-environment.md).
+Report missing Python/packages with instructions for the detected OS. Offer
+manual setup or assist within existing user authorization, use the exact
+selected interpreter, and verify the environment afterward.
+
 ## Standard interaction
 
 1. Collect one grouped intake card before creating a request. Ask together for gameplay actions, visual direction, terrain topology, object identities and entrances, engine/project delivery, and source/regeneration policy. Do not repeat answered questions or ask one question per field.
@@ -77,4 +82,22 @@ Use `integrations/unity/com.game-visual-forge.tilemap`. Use `AssetsOnly` unless 
 
 After Unity changes, wait for compilation, inspect the console, run EditMode and PlayMode tests, save the target scene, confirm it is clean, and capture an orthographic top-down screenshot that matches the assembled review sheet. Never claim playability from a preview alone.
 
-Keep provider safety explicit: use native Agent tools, Jimeng, or Wanxiang only when the current request selects that source. Obtain explicit paid confirmation before every paid attempt. Ask the user to choose the provider, model, and parameters every time. Never install tools automatically. Never resubmit a failed or `submission_unknown` task. Keep native generation within the confirmed intake and candidate review.
+Use native image tools first under `auto` source policy when the required
+text generation or reference editing operation is available. If it is absent,
+ask the user to choose an API or another source. MiniMax is the recommended API;
+credentials never count as source selection. For failed/rejected native output,
+route with `--native-outcome failed` or `quality-rejected` and obtain the user's
+choice before switching. Explicit source selections override this default.
+Follow the [shared image API workflow](../forge-2d-sprite/references/image-api.md)
+through this Skill's launcher using `image provider` and `--kind map` or
+`--kind tilemap`. Preflight the selected provider and keep each candidate's
+generation attempt and provenance.
+
+Keep provider safety explicit: native Agent tools, Jimeng, and Wanxiang remain
+explicit choices. Confirm the provider, model, and parameters for every paid
+attempt, and obtain explicit paid confirmation with a verified total quote.
+Never install tools automatically. User-authorized Python/package setup may
+follow the shared environment guide; do not repeat an approval already given.
+Never resubmit a failed or
+`submission_unknown` task. Keep generation within the confirmed intake and
+candidate review; API download does not replace either map approval gate.

@@ -73,6 +73,8 @@ def _require_digest(value: Any, field_name: str) -> str:
 
 class SpriteSourcePreference(StrEnum):
     AUTO = "auto"
+    MINIMAX = "minimax"
+    JIMENG = "jimeng"
     AGENT_NATIVE = "agent-native"
     DREAMINA = "dreamina"
     WANXIANG = "wanxiang"
@@ -82,6 +84,8 @@ class SpriteSourcePreference(StrEnum):
 
 class SourceType(StrEnum):
     AGENT_NATIVE = "agent-native"
+    MINIMAX = "minimax"
+    JIMENG = "jimeng"
     DREAMINA = "dreamina"
     WANXIANG = "wanxiang"
     LOCAL_TOOL = "local-tool"
@@ -380,6 +384,7 @@ class SourceDecision:
     reason: str
     request_fingerprint: str
     selected_provider: ExternalProvider | None = None
+    recommended_provider: ExternalProvider | None = None
 
     def __post_init__(self) -> None:
         _require_schema_version(self.schema_version)
@@ -387,9 +392,9 @@ class SourceDecision:
         _require_bool(self.requires_paid_confirmation, "requires_paid_confirmation")
         _require_string(self.reason, "reason")
         _require_digest(self.request_fingerprint, "request_fingerprint")
-        if self.source_type in {SourceType.DREAMINA, SourceType.WANXIANG} and self.selected_provider is None:
+        if self.source_type in {SourceType.MINIMAX, SourceType.JIMENG, SourceType.DREAMINA, SourceType.WANXIANG} and self.selected_provider is None:
             raise ValueError("provider source requires selected_provider")
-        if self.requires_paid_confirmation and self.source_type not in {SourceType.DREAMINA, SourceType.WANXIANG}:
+        if self.requires_paid_confirmation and self.source_type not in {SourceType.MINIMAX, SourceType.JIMENG, SourceType.DREAMINA, SourceType.WANXIANG}:
             raise ValueError("paid confirmation requires a provider source")
 
     def to_dict(self) -> dict[str, Any]:
@@ -401,6 +406,7 @@ class SourceDecision:
             "reason": self.reason,
             "request_fingerprint": self.request_fingerprint,
             "selected_provider": self.selected_provider.value if self.selected_provider else None,
+            "recommended_provider": self.recommended_provider.value if self.recommended_provider else None,
         }
 
     @classmethod
@@ -415,6 +421,7 @@ class SourceDecision:
             reason=_require_string(value["reason"], "reason"),
             request_fingerprint=_require_digest(value["request_fingerprint"], "request_fingerprint"),
             selected_provider=None if value.get("selected_provider") is None else _require_enum(value["selected_provider"], ExternalProvider, "selected_provider"),
+            recommended_provider=None if value.get("recommended_provider") is None else _require_enum(value["recommended_provider"], ExternalProvider, "recommended_provider"),
         )
 
 

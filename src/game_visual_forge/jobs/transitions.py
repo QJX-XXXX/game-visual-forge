@@ -21,6 +21,7 @@ LEGAL_TRANSITIONS = {
         JobStatus.REJECTED,
     },
     JobStatus.READY: {
+        JobStatus.AWAITING_CONFIRMATION,
         JobStatus.SUBMITTING,
         JobStatus.RUNNING,
         JobStatus.CANCELLED,
@@ -54,6 +55,7 @@ LEGAL_TRANSITIONS = {
         JobStatus.REJECTED,
     },
     JobStatus.NEEDS_ATTENTION: {
+        JobStatus.AWAITING_CONFIRMATION,
         JobStatus.READY,
         JobStatus.VERIFYING,
         JobStatus.CANCELLED,
@@ -85,6 +87,21 @@ LEGAL_TRANSITIONS = {
 
 def _is_paid_provider_job(state: JobState) -> bool:
     return state.provider is not None
+
+
+def select_image_source(state: JobState, provider: str | None, *, now: str) -> JobState:
+    """Re-select an image source before processing, retaining its paid gate."""
+    if state.status not in {JobStatus.PLANNED, JobStatus.READY, JobStatus.AWAITING_CONFIRMATION, JobStatus.NEEDS_ATTENTION}:
+        raise ValueError("image source cannot change while processing or after completion")
+    target = JobStatus.AWAITING_CONFIRMATION if provider is not None else JobStatus.READY
+    selected = replace(state, provider=provider, external_task_id=None, error_code=None, ready_provenance=None)
+    if selected.status is not target:
+        selected = transition_job(selected, target, now=now)
+    else:
+        selected = replace(selected, updated_at=now)
+    if provider is None:
+        selected = replace(selected, ready_provenance=None)
+    return selected
 
 
 def _validate_provider_confirmation(state: JobState, target: JobStatus) -> None:

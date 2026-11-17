@@ -50,6 +50,13 @@ the launcher resolves the shared runtime from `src/`.
 
 ### 1. Check prerequisites
 
+For missing Python, old versions, wrong virtual environments, or missing image
+packages, follow the [environment assistance guide](python-environment.md).
+It starts with OS/shell discovery even when Python is absent and includes the
+read-only `check_environment.py` diagnostic. If the user has already authorized
+setup, help within that scope without asking the same approval again. Use the
+verified interpreter's full path for the `python` examples below.
+
 Git is needed to obtain the repository. Use Python 3.11 or newer for the shared
 runtime. FFmpeg and FFprobe are required for local video/audio processing.
 Check them without changing the machine:
@@ -150,7 +157,21 @@ repository or its `skills/` and `src/` directories.
 
 ## Optional workflow gates
 
-Core installation does not install optional workflows. For every profile:
+Use an appropriate native Agent image tool first. When it is unavailable, ask
+the user to select an API, recommending MiniMax. Image APIs use the shared
+Python runtime. The selected MiniMax route uses `MINIMAX_API_KEY`.
+Jimeng and Wanxiang remain explicit alternatives. See the
+[image API workflow](../skills/forge-2d-sprite/references/image-api.md) for Pillow
+requirements, offline preflight, models, quotes, confirmation, and recovery.
+Enabling an API does not authorize a paid generation.
+
+Task-scoped Python/package assistance follows the environment guide and respects
+existing user authorization. The separate optional provider/model gates below
+remain applicable to their own tools, weights, caches, and licenses.
+
+Core installation does not install optional workflows. The checkpoints below
+apply to optional provider/runtime/model workflow profiles, not to task-scoped
+Python/package help that the user has already authorized:
 
 1. Ask whether to enable it.
 2. If declined, skip it without probing or changing its environment.

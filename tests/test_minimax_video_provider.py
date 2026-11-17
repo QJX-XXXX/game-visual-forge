@@ -114,6 +114,38 @@ class MiniMaxProviderTests(unittest.TestCase):
             adapter.prepare(snapshot, "MiniMax-Future", VideoGenerationMode.T2V, {"prompt": "walk"})
         self.assertEqual([call[0] for call in transport.calls], ["GET"])
 
+    def test_models_snapshot_includes_current_h3_family_profiles(self) -> None:
+        transport = FakeTransport({"data": []})
+        adapter = MiniMaxAdapter(region="global", transport=transport)
+        with patch.dict(os.environ, {"MINIMAX_API_KEY": "test-key"}, clear=False):
+            snapshot = adapter.models()
+        self.assertEqual(snapshot.model("MiniMax-H3-Highspeed").resolutions, ("480P", "768P"))
+        self.assertEqual(snapshot.model("MiniMax-H3-Lite").resolutions, ("480P", "768P"))
+        self.assertEqual(snapshot.model("MiniMax-H3-Max").durations[0], 5)
+
+    def test_h3_max_accepts_prompt_expansion_mode(self) -> None:
+        request = build_minimax_submit_request(
+            model="MiniMax-H3-Max",
+            mode=VideoGenerationMode.T2V,
+            prompt="walk",
+            duration=5,
+            resolution="768P",
+            ratio="16:9",
+            extra={"prompt_expansion_mode": "balanced"},
+        )
+        self.assertEqual(request.body["extra"], {"prompt_expansion_mode": "balanced"})
+
+    def test_h3_lite_reference_requires_concrete_ratio(self) -> None:
+        with self.assertRaisesRegex(ValueError, "concrete ratio"):
+            build_minimax_submit_request(
+                model="MiniMax-H3-Lite",
+                mode=VideoGenerationMode.REFERENCE_TO_VIDEO,
+                prompt="match the action",
+                duration=5,
+                resolution="768P",
+                reference_image_urls=("https://example.invalid/reference.png",),
+            )
+
     def test_h3_profile_remains_available_when_discovery_omits_video_models(self) -> None:
         transport = FakeTransport({"data": [{"id": "MiniMax-Future"}]})
         adapter = MiniMaxAdapter(region="global", transport=transport)
@@ -255,7 +287,7 @@ class MiniMaxProviderTests(unittest.TestCase):
         transport = FakeTransport({})
         with patch("game_visual_forge.providers.minimax_video._UrllibTransport", return_value=transport) as transport_type:
             run_command("capabilities", {"region": "cn", "backend": "api"})
-        transport_type.assert_called_once_with("https://api.minimaxi.com")
+            transport_type.assert_called_once_with("https://api.minimax.cn")
 
     def test_cli_returns_sanitized_receipt_for_definite_http_rejection(self) -> None:
         body = io.BytesIO(json.dumps({
@@ -267,7 +299,7 @@ class MiniMaxProviderTests(unittest.TestCase):
             "request_id": "must-not-persist",
         }).encode("utf-8"))
         error = urllib.error.HTTPError(
-            "https://api.minimaxi.com/v2/video_generation", 400,
+            "https://api.minimax.cn/v2/video_generation", 400,
             "Bad Request", {}, body,
         )
         stdin = io.StringIO("{}")

@@ -38,15 +38,17 @@ class SpriteRoutingTests(unittest.TestCase):
         self.assertEqual(decision.source_type, SourceType.EXISTING_FILE)
         self.assertFalse(decision.requires_user_selection)
 
-    def test_auto_uses_native_when_supported(self) -> None:
-        decision = route_sprite(make_request(), AgentImageCapabilities(True, ("text-to-image",)))
+    def test_auto_uses_native_even_when_minimax_is_configured(self) -> None:
+        preflight = ProviderPreflight(1, ExternalProvider.MINIMAX, True, True, "minimax", "1", None, None)
+        decision = route_sprite(make_request(), AgentImageCapabilities(True, ("text-to-image", "reference-image")), provider_preflight=preflight)
         self.assertEqual(decision.source_type, SourceType.AGENT_NATIVE)
+        self.assertFalse(decision.requires_paid_confirmation)
 
-    def test_supported_native_precedes_provider_fallback(self) -> None:
+    def test_explicit_native_remains_available(self) -> None:
         decision = route_sprite(
             make_request(),
-            AgentImageCapabilities(True, ("text-to-image",)),
-            selected_source=SourceType.DREAMINA,
+            AgentImageCapabilities(True, ("text-to-image", "reference-image")),
+            selected_source=SourceType.AGENT_NATIVE,
         )
         self.assertEqual(decision.source_type, SourceType.AGENT_NATIVE)
 
@@ -55,6 +57,38 @@ class SpriteRoutingTests(unittest.TestCase):
         self.assertIsNone(decision.source_type)
         self.assertTrue(decision.requires_user_selection)
         self.assertEqual(decision.reason, "native-unsupported-user-selection-required")
+        self.assertIsNone(decision.selected_provider)
+        self.assertEqual(decision.recommended_provider, ExternalProvider.MINIMAX)
+
+    def test_minimax_preflight_does_not_authorize_fallback_selection(self) -> None:
+        preflight = ProviderPreflight(1, ExternalProvider.MINIMAX, True, True, "minimax", "1", None, None)
+        decision = route_sprite(make_request(), AgentImageCapabilities(False, ()), provider_preflight=preflight)
+        self.assertIsNone(decision.source_type)
+        self.assertIsNone(decision.selected_provider)
+        self.assertTrue(decision.requires_user_selection)
+        self.assertFalse(decision.requires_paid_confirmation)
+        self.assertEqual(type(decision).from_dict(decision.to_dict()), decision)
+
+    def test_missing_reference_operation_requires_source_choice(self) -> None:
+        decision = route_sprite(make_request(), AgentImageCapabilities(True, ("text-to-image",)))
+        self.assertIsNone(decision.source_type)
+        self.assertTrue(decision.requires_user_selection)
+
+    def test_native_failure_does_not_auto_select_minimax(self) -> None:
+        preflight = ProviderPreflight(1, ExternalProvider.MINIMAX, True, True, "minimax", "1", None, None)
+        decision = route_sprite(make_request(), AgentImageCapabilities(True, ("text-to-image", "reference-image")), native_outcome=NativeAttemptOutcome.FAILED, provider_preflight=preflight)
+        self.assertIsNone(decision.source_type)
+        self.assertTrue(decision.requires_user_selection)
+        self.assertEqual(decision.recommended_provider, ExternalProvider.MINIMAX)
+
+    def test_explicit_provider_is_honored_when_native_is_supported(self) -> None:
+        preflight = ProviderPreflight(1, ExternalProvider.JIMENG, True, True, "jimeng", "1", None, None)
+        decision = route_sprite(make_request(), AgentImageCapabilities(True, ("text-to-image",)), selected_source=SourceType.JIMENG, provider_preflight=preflight)
+        self.assertEqual(decision.source_type, SourceType.JIMENG)
+
+    def test_explicit_native_preference_does_not_require_minimax(self) -> None:
+        request = replace(make_request(), source_preference=SpriteSourcePreference.AGENT_NATIVE)
+        self.assertEqual(route_sprite(request, AgentImageCapabilities(True, ("text-to-image", "reference-image"))).source_type, SourceType.AGENT_NATIVE)
 
     def test_preference_does_not_count_as_current_provider_selection(self) -> None:
         request = replace(make_request(), source_preference=SpriteSourcePreference.DREAMINA)

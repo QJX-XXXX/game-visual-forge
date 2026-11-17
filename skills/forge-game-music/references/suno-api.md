@@ -2,7 +2,9 @@
 
 ## Current status
 
-Status is `needs_user_action`. The official platform landing page confirms that Suno offers a REST API product, but anonymous access redirects to account login. As of the 2026-10-10 inspection, the public surface did not expose a readable official API reference, OpenAPI document, request schema, task recovery contract, pricing table, or API-specific game licensing terms.
+Status is `needs_user_action`. The official platform landing page confirms that Suno offers a REST API product, but anonymous access redirects to account login. As of the 2026-11-17 inspection, the public surface did not expose a readable official API reference, OpenAPI document, request schema, task recovery contract, pricing table, or API-specific game licensing terms.
+
+Suno also publishes a logged-in MCP Beta at `https://api.suno.com/mcp`. That service is a separate MCP integration and is not the REST interface represented by this adapter. The repository has not wired the MCP service into its provider protocol.
 
 The adapter must remain disabled until an authorized account supplies official documentation or a written contract. Unknown values stay unknown. This reference deliberately contains no guessed request field names, model identifiers, instrumental controls, task states, candidate counts, or prices.
 
@@ -24,8 +26,9 @@ The public [Suno Terms](https://suno.com/terms) and [paid-plan help article](htt
 
 ## Sources
 
-- [Suno Platform](https://platform.suno.com/) — verified 2026-10-10; confirms the official REST API product and login requirement.
+- [Suno Platform](https://platform.suno.com/) — verified 2026-11-17; confirms the official REST API product and login requirement.
+- [Suno MCP Beta](https://suno.com/mcp) — verified 2026-11-17; confirms the separate MCP endpoint and account authorization requirement.
 - [Suno Terms](https://suno.com/terms) — verified 2026-10-10; web product rights context, not an API schema.
 - [Paid plan rights](https://help.suno.com/en/articles/9601665) — verified 2026-10-10; says eligible paid downloads may be used in video games.
 - [Free plan rights](https://help.suno.com/en/articles/9601601) — verified 2026-10-10; says free outputs are personal and non-commercial.
-- Official account documentation — not available anonymously on 2026-10-10; this is the explicit blocker, not a missing implementation guess.
+- Official account documentation — not available anonymously on 2026-11-17; this is the explicit blocker, not a missing implementation guess.
