@@ -29,7 +29,7 @@ class MiniMaxImageAdapter:
     def preflight(self):
         return preflight(self.provider, ("MINIMAX_API_KEY",))
 
-    def normalize(self, model, parameters, quantity):
+    def normalize(self, model, parameters, quantity, *, inline_response=True):
         if model not in MODELS:
             raise ValueError("unsupported MiniMax image model")
         integer(quantity, 1, 10, "quantity")
@@ -61,7 +61,7 @@ class MiniMaxImageAdapter:
             pixels = width * height
             if not 655360 <= pixels <= 20000000 or not 1 / 3 <= width / height <= 3:
                 raise ValueError("MiniMax size exceeds the documented area or ratio bounds")
-        if pixels * quantity > 20000000:
+        if inline_response and pixels * quantity > 20000000:
             raise ValueError("MiniMax PNG response total area exceeds 20,000,000 pixels")
         boolean_parameters(value, ("disable_prompt_enhanced", "aigc_watermark"))
         if value["references"] and "disable_prompt_enhanced" in value:

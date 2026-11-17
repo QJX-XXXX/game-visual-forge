@@ -66,6 +66,7 @@ def preflight(provider: ExternalProvider, names: tuple[str, ...]) -> dict[str, A
         reason += "; Pillow image runtime is required"
     value = ProviderPreflight(1, provider, configured and image_runtime, configured, None, "1.0", None, reason).to_dict()
     value["authentication_verified"] = False
+    value["backend"] = "api"
     value["image_runtime_available"] = image_runtime
     return value
 
@@ -244,14 +245,14 @@ def reference_bytes(reference: dict[str, Any], root: Path, transport) -> bytes:
     return transport.read_image(public_url(str(reference["url"])))
 
 
-def bind_references(references: list[dict[str, Any]], root: Path, provider: str, transport) -> list[dict[str, Any]]:
+def bind_references(references: list[dict[str, Any]], root: Path, provider: str, transport, *, allow_local=False) -> list[dict[str, Any]]:
     bound = []
     for reference in references:
         if not isinstance(reference, dict) or set(reference) - {"path", "url", "sha256"}:
             raise ValueError("each reference must contain path or url and optional sha256")
         if bool(reference.get("path")) == bool(reference.get("url")):
             raise ValueError("reference requires exactly one of path or url")
-        if provider in {"jimeng", "dreamina"} and reference.get("path"):
+        if provider in {"jimeng", "dreamina"} and reference.get("path") and not allow_local:
             raise ValueError("Jimeng references require public image URLs")
         data = reference_bytes(reference, root, transport)
         inspect_reference(data, provider=provider)

@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import json
+import hashlib
 import os
 import subprocess
 import sys
@@ -15,14 +16,17 @@ from game_visual_forge.errors import ErrorCode, ForgeError
 from game_visual_forge.processing.video_probe import sha256_file
 from game_visual_forge.providers.cli import _assert_safe
 from game_visual_forge.providers.stdio import run_utf8_json_process
+from game_visual_forge.providers.image_http import file_lock
 
 
 def _argv(executable: Path, command: ProviderCommand) -> list[str]:
     return [sys.executable, str(executable), command.value] if executable.suffix.lower() == ".py" else [str(executable), command.value]
 
 
-def _run(executable: Path, command: ProviderCommand, payload: dict[str, Any], *, timeout_seconds: int = 30) -> dict[str, Any]:
+def _run(executable: Path, command: ProviderCommand, payload: dict[str, Any], *, timeout_seconds: int | None = None) -> dict[str, Any]:
     _assert_safe(payload)
+    if timeout_seconds is None:
+        timeout_seconds = int(payload.get("parameters", {}).get("execution", {}).get("timeout_seconds", 600)) + 60
     try:
         result = run_utf8_json_process(_argv(executable, command), payload, timeout_seconds=timeout_seconds)
     except subprocess.TimeoutExpired as error:
@@ -56,11 +60,20 @@ def _attempt_generation_binding(attempt: VideoGenerationAttempt) -> tuple[VideoG
 
 
 def submit_video_attempt(attempt_path: Path, confirmation_path: Path, executable: Path, *, now: str) -> VideoGenerationAttempt:
+    with file_lock(attempt_path), file_lock(confirmation_path):
+        return _submit_video_attempt(attempt_path, confirmation_path, executable, now=now)
+
+
+def _submit_video_attempt(attempt_path: Path, confirmation_path: Path, executable: Path, *, now: str) -> VideoGenerationAttempt:
     attempt = VideoGenerationAttempt.from_dict(load_json(attempt_path))
     if attempt.status not in {VideoAttemptStatus.PREPARED, VideoAttemptStatus.AWAITING_CONFIRMATION}:
         raise ValueError("only a prepared attempt can submit; use query for submission_unknown")
     confirmation = VideoPaidConfirmation.from_dict(load_json(confirmation_path))
     mode, reference_sha256 = _attempt_generation_binding(attempt)
+    if attempt.backend.value in {"cli", "mcp"}:
+        readiness = _run(executable, ProviderCommand.PREFLIGHT, {"schema_version": 1, "provider": attempt.provider.value, "backend": attempt.backend.value, "region": attempt.region, "model": attempt.model, "mode": mode.value, "parameters": attempt.parameters})
+        if not readiness.get("available"):
+            raise ValueError(readiness.get("reason", "video tool prerequisites are missing"))
     values = {"attempt_id": attempt.attempt_id, "provider": attempt.provider, "backend": attempt.backend, "region": attempt.region, "model": attempt.model, "model_snapshot_sha256": attempt.model_snapshot_sha256, "mode": mode, "parameters": attempt.parameters, "reference_sha256": reference_sha256, "quantity": 1, "estimate": confirmation.estimate, "request_fingerprint": attempt.request_fingerprint}
     authorized = confirmation.authorize_attempt(now=now, **values)
     dump_json(confirmation_path, authorized.to_dict())
@@ -99,10 +112,15 @@ def submit_video_attempt(attempt_path: Path, confirmation_path: Path, executable
 
 
 def query_video_attempt(attempt_path: Path, executable: Path, *, now: str) -> VideoGenerationAttempt:
+    with file_lock(attempt_path):
+        return _query_video_attempt(attempt_path, executable, now=now)
+
+
+def _query_video_attempt(attempt_path: Path, executable: Path, *, now: str) -> VideoGenerationAttempt:
     attempt = VideoGenerationAttempt.from_dict(load_json(attempt_path))
     if attempt.external_task_id is None:
         raise ValueError("query requires an existing external task id")
-    payload = {"schema_version": 1, "provider": attempt.provider.value, "backend": attempt.backend.value, "region": attempt.region, "model": attempt.model, "external_task_id": attempt.external_task_id}
+    payload = {"schema_version": 1, "provider": attempt.provider.value, "backend": attempt.backend.value, "region": attempt.region, "model": attempt.model, "parameters": attempt.parameters, "external_task_id": attempt.external_task_id}
     receipt = _run(executable, ProviderCommand.QUERY, payload)
     provider_status = str(receipt.get("status", "unknown"))
     if provider_status in {"completed", "succeeded", "success"}:
@@ -119,15 +137,28 @@ def query_video_attempt(attempt_path: Path, executable: Path, *, now: str) -> Vi
 
 
 def download_video_attempt(attempt_path: Path, executable: Path, output_dir: Path, *, now: str) -> VideoGenerationAttempt:
+    with file_lock(attempt_path), file_lock(output_dir / "video.mp4"):
+        return _download_video_attempt(attempt_path, executable, output_dir, now=now)
+
+
+def _download_video_attempt(attempt_path: Path, executable: Path, output_dir: Path, *, now: str) -> VideoGenerationAttempt:
     attempt = VideoGenerationAttempt.from_dict(load_json(attempt_path))
     if attempt.external_task_id is None:
         raise ValueError("download requires an existing external task id")
+    if attempt.downloaded_path and attempt.downloaded_sha256:
+        saved = attempt_path.parent.resolve() / attempt.downloaded_path
+        if saved.is_file() and sha256_file(saved) == attempt.downloaded_sha256:
+            return attempt
     output_dir.mkdir(parents=True, exist_ok=True)
-    temporary = output_dir / ".video-download.tmp"
+    suffix = hashlib.sha256(attempt.attempt_id.encode()).hexdigest()[:20]
+    temporary = output_dir / f".video-download-{suffix}.tmp"
     target = output_dir / "video.mp4"
-    payload = {"schema_version": 1, "provider": attempt.provider.value, "backend": attempt.backend.value, "region": attempt.region, "model": attempt.model, "external_task_id": attempt.external_task_id, "output_path": str(temporary)}
+    if target.exists():
+        target = output_dir / f"video-{suffix}.mp4"
+    payload = {"schema_version": 1, "provider": attempt.provider.value, "backend": attempt.backend.value, "region": attempt.region, "model": attempt.model, "parameters": attempt.parameters, "external_task_id": attempt.external_task_id, "output_path": str(temporary)}
     receipt = _run(executable, ProviderCommand.DOWNLOAD, payload)
     provider_path = Path(str(receipt.get("path", temporary)))
+    provider_path.resolve().relative_to(output_dir.resolve())
     if not provider_path.is_file() or provider_path.stat().st_size == 0:
         raise ValueError("provider download is empty")
     os.replace(provider_path, target)

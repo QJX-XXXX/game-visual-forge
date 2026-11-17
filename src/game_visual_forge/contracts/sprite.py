@@ -385,6 +385,7 @@ class SourceDecision:
     request_fingerprint: str
     selected_provider: ExternalProvider | None = None
     recommended_provider: ExternalProvider | None = None
+    selected_backend: str | None = None
 
     def __post_init__(self) -> None:
         _require_schema_version(self.schema_version)
@@ -392,13 +393,15 @@ class SourceDecision:
         _require_bool(self.requires_paid_confirmation, "requires_paid_confirmation")
         _require_string(self.reason, "reason")
         _require_digest(self.request_fingerprint, "request_fingerprint")
+        if self.selected_backend is not None and self.selected_backend not in {"api", "cli", "mcp"}:
+            raise ValueError("unsupported selected image backend")
         if self.source_type in {SourceType.MINIMAX, SourceType.JIMENG, SourceType.DREAMINA, SourceType.WANXIANG} and self.selected_provider is None:
             raise ValueError("provider source requires selected_provider")
         if self.requires_paid_confirmation and self.source_type not in {SourceType.MINIMAX, SourceType.JIMENG, SourceType.DREAMINA, SourceType.WANXIANG}:
             raise ValueError("paid confirmation requires a provider source")
 
     def to_dict(self) -> dict[str, Any]:
-        return {
+        value = {
             "schema_version": 1,
             "source_type": self.source_type.value if self.source_type else None,
             "requires_user_selection": self.requires_user_selection,
@@ -408,6 +411,9 @@ class SourceDecision:
             "selected_provider": self.selected_provider.value if self.selected_provider else None,
             "recommended_provider": self.recommended_provider.value if self.recommended_provider else None,
         }
+        if self.selected_backend is not None:
+            value["selected_backend"] = self.selected_backend
+        return value
 
     @classmethod
     def from_dict(cls, value: dict[str, Any]) -> "SourceDecision":
@@ -422,6 +428,7 @@ class SourceDecision:
             request_fingerprint=_require_digest(value["request_fingerprint"], "request_fingerprint"),
             selected_provider=None if value.get("selected_provider") is None else _require_enum(value["selected_provider"], ExternalProvider, "selected_provider"),
             recommended_provider=None if value.get("recommended_provider") is None else _require_enum(value["recommended_provider"], ExternalProvider, "recommended_provider"),
+            selected_backend=value.get("selected_backend"),
         )
 
 

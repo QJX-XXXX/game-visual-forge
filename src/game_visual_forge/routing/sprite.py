@@ -53,6 +53,7 @@ def _decision(
     reason: str,
     provider: ExternalProvider | None = None,
     recommendation: ExternalProvider | None = None,
+    backend: str | None = None,
 ) -> SourceDecision:
     return SourceDecision(
         schema_version=1,
@@ -63,6 +64,7 @@ def _decision(
         request_fingerprint=fingerprint_request(request.to_dict()),
         selected_provider=provider,
         recommended_provider=recommendation,
+        selected_backend=backend,
     )
 
 
@@ -133,7 +135,7 @@ def route_sprite(
         provider = ExternalProvider(selected_source.value)
         if provider_preflight is None or provider_preflight.provider is not provider:
             raise ValueError("selected provider requires matching preflight")
-        if not provider_preflight.available or not provider_preflight.authenticated:
+        if not provider_preflight.ready:
             return _decision(
                 request,
                 None,
@@ -149,6 +151,7 @@ def route_sprite(
             requires_paid_confirmation=True,
             reason="user-selected-paid-provider",
             provider=provider,
+            backend=provider_preflight.backend or "api",
         )
 
     reason = {

@@ -23,6 +23,7 @@ def _decision(
     reason: str,
     provider: ExternalProvider | None = None,
     recommendation: ExternalProvider | None = None,
+    backend: str | None = None,
 ) -> MapSourceDecision:
     return MapSourceDecision(
         schema_version=1,
@@ -33,6 +34,7 @@ def _decision(
         request_fingerprint=fingerprint_request(request.to_dict()),
         selected_provider=provider,
         recommended_provider=recommendation,
+        selected_backend=backend,
     )
 
 
@@ -67,9 +69,9 @@ def route_map(
         provider = ExternalProvider(selected_source.value)
         if provider_preflight is None or provider_preflight.provider is not provider:
             raise ValueError("selected map provider requires matching preflight")
-        if not provider_preflight.available or not provider_preflight.authenticated:
+        if not provider_preflight.ready:
             return _decision(request, None, requires_user_selection=True, requires_paid_confirmation=False, reason="selected-provider-unavailable", provider=provider)
-        return _decision(request, selected_source, requires_user_selection=False, requires_paid_confirmation=True, reason="user-selected-paid-provider", provider=provider)
+        return _decision(request, selected_source, requires_user_selection=False, requires_paid_confirmation=True, reason="user-selected-paid-provider", provider=provider, backend=provider_preflight.backend or "api")
 
     reason = "map-source-selection-required" if native_outcome is NativeAttemptOutcome.NOT_ATTEMPTED else "native-failed-user-selection-required" if native_outcome is NativeAttemptOutcome.FAILED else "native-quality-rejected-user-selection-required"
     return _decision(request, None, requires_user_selection=True, requires_paid_confirmation=False, reason=reason, recommendation=ExternalProvider.MINIMAX)

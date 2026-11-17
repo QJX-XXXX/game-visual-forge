@@ -388,16 +388,20 @@ class JimengAdapter:
     def preflight_cli(self, executable: Path, *, runner: Callable[[list[str]], tuple[int, str, str]] | None = None) -> dict[str, Any]:
         run = runner or self._run_cli
         code, stdout, _ = run([str(executable), "--version"])
-        return {"schema_version": 1, "provider": "jimeng", "backend": "cli", "available": code == 0, "authenticated": code == 0, "version": stdout.strip() if code == 0 else None, "reason": None if code == 0 else "dreamina is unavailable"}
+        return {"schema_version": 1, "provider": "jimeng", "backend": "cli", "available": code == 0, "authenticated": False, "authentication_verified": False, "version": stdout.strip() if code == 0 else None, "reason": "live authentication unverified" if code == 0 else "dreamina is unavailable"}
 
     def query_cli_attempt(self, attempt: dict[str, Any], executable: Path, *, runner: Callable[[list[str]], tuple[int, str, str]] | None = None) -> dict[str, Any]:
         if attempt.get("backend") != "cli":
             raise ValueError("backend-specific task cannot be queried through CLI")
         run = runner or self._run_cli
-        code, stdout, _ = run([str(executable), "video", "query", str(attempt["external_task_id"])])
+        code, stdout, _ = run([str(executable), "query_result", "--submit_id=" + str(attempt["external_task_id"])])
         if code != 0:
             raise RuntimeError("dreamina query failed")
-        return {"schema_version": 1, "provider": "jimeng", "backend": "cli", "external_task_id": attempt["external_task_id"], "status": stdout.strip()}
+        result = json.loads(stdout)
+        status = {"success": "completed", "fail": "failed", "querying": "running"}.get(result.get("gen_status"))
+        if status is None:
+            raise ValueError("invalid Dreamina CLI status")
+        return {"schema_version": 1, "provider": "jimeng", "backend": "cli", "external_task_id": attempt["external_task_id"], "status": status}
 
     @staticmethod
     def _run_cli(argv: list[str]) -> tuple[int, str, str]:
@@ -406,11 +410,14 @@ class JimengAdapter:
 
 
 def run_command(command: str, payload: dict[str, Any]) -> dict[str, Any]:
+    if payload.get("backend", "api") != "api":
+        from .tool_video import run_video_tool
+        return run_video_tool("jimeng", command, payload)
     adapter = JimengAdapter(transport=_UrllibTransport())
     if command == "capabilities":
         return {"schema_version": 1, "provider": "jimeng", "backend": payload.get("backend", "api"), "operations": ["capabilities", "models", "preflight", "estimate", "prepare", "submit", "query", "download"]}
     if command == "preflight":
-        return adapter.preflight_api() if payload.get("backend", "api") == "api" else adapter.preflight_cli(Path(payload.get("executable", "dreamina")))
+        return adapter.preflight_api()
     if command == "models":
         return adapter.models().to_dict()
     if command == "estimate":

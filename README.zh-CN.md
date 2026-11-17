@@ -2,10 +2,11 @@
 
 [English](README.md) | 简体中文
 
-Game Visual Forge 将五个 Agent Skills 汇成一个制作入口，完成 2D 地图、
-角色精灵、动画序列帧、音效与游戏音乐的制作、检查和交付。
-用自然语言描述需求，即可结合 Agent 原生工具、已配置的 API 和本地处理，
-准备适合游戏引擎使用的素材。
+**Game Visual Forge 是面向 2D 游戏开发的 Agent Skills 集合**，涵盖地图、角色精灵、动画序列帧、音效和背景音乐的制作与交付。
+
+用自然语言描述需求，由 Agent 协助完成素材生成、背景清理、图集整理、视频抽帧和质量检查，输出透明 PNG、动画图集、GIF 预览、地图数据及 WAV 音频，并提供 Unity 导入支持。
+
+五个技能可以独立使用，也可组合完成素材制作流程。生图优先使用 Agent 自带能力，外部生成支持通过 API、CLI 和 MCP 接入 MiniMax、即梦、万相等平台。缺少运行环境时提供配置指引，工具安装与付费生成均由用户确认。
 
 ## Skills
 
@@ -20,7 +21,7 @@ Game Visual Forge 将五个 Agent Skills 汇成一个制作入口，完成 2D �
 ## 提供的能力
 
 - 通过自然语言收集风格、布局、运行时和交付格式等关键选择。
-- 优先使用 Agent 原生生图工具。不可用时由用户选择图像 API，推荐 MiniMax，也可选择即梦或万相。[图像 API 流程](skills/forge-2d-sprite/references/image-api.md)
+- 优先使用 Agent 原生生图工具。不可用时由用户选择 MiniMax（推荐）、即梦或万相的 API、已安装 CLI 或 MCP 接入。安装工具需用户确认。[接入配置](install/provider-tools.md)
 - 检查 Python 环境并提供适合当前系统的配置指引，Agent 可在用户授权范围内协助配置。[环境配置](install/python-environment.md)
 - 使用确定性的本地处理、验证报告和可复现输出清单。
 - 地图交付包含可行走区域、碰撞、对象、入口和 Unity Tilemap 支持。

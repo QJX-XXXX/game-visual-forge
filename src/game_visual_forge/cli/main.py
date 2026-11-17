@@ -78,6 +78,11 @@ def build_parser() -> argparse.ArgumentParser:
     parser = argparse.ArgumentParser(prog="game-visual-forge")
     commands = parser.add_subparsers(dest="command", required=True)
     register_image_commands(commands)
+    mcp = commands.add_parser("mcp", help="Project-provided provider MCP bridges")
+    mcp_commands = mcp.add_subparsers(dest="mcp_command", required=True)
+    mcp_serve = mcp_commands.add_parser("serve")
+    mcp_serve.add_argument("--provider", choices=("jimeng", "wanxiang"), default="jimeng")
+    mcp_serve.add_argument("--repo-root", type=Path, required=True)
 
     dry_run = commands.add_parser("dry-run")
     dry_run.add_argument("--brief", type=Path, required=True)
@@ -459,7 +464,11 @@ def run_dry_run(brief_path: Path, out_dir: Path, now: str) -> dict[str, Any]:
 def main(argv: list[str] | None = None) -> int:
     args = build_parser().parse_args(argv)
     try:
-        if args.command == "image":
+        if args.command == "mcp":
+            from game_visual_forge.providers.workflow_mcp import serve
+            serve(args.repo_root, args.provider)
+            return 0
+        elif args.command == "image":
             payload = dispatch_image_command(args)
         elif args.command == "dry-run":
             payload = run_dry_run(args.brief, args.out_dir, args.now)

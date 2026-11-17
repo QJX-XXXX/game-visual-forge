@@ -5,6 +5,9 @@ description: "Generate and integrate playable 2D game maps with demand-driven or
 
 # Forge 2D Map
 
+For external CLI/MCP generation, read the [provider tool guide](../../install/provider-tools.md).
+Use existing installations and ask for user confirmation before installing missing tools.
+
 Use this Skill when the result must be a runtime map that a player can walk through, collide with, and enter—not a decorative bitmap. Treat the request, generated candidates, processed artifacts, approval records, and Unity scene as one hash-bound contract.
 
 Compatibility terms: `standard_16` remains the one-page legacy profile; `adaptive_hd` remains the 4×4 multi-page profile; `COHERENT_FOUNDATION` is the fixed authored foundation route; and `TWO_GATE` names the two user gates. Tile dimensions use `preset_16`, `preset_32`, or `custom`; Unity derives cell size from `tile_width / pixels_per_unit`. Keep `map-quality-report.json`, `Buildings`, and `Props` in the artifact vocabulary.

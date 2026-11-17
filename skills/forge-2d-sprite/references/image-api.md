@@ -1,5 +1,9 @@
 # Image API workflow
 
+For installed CLI and MCP execution, follow the [provider tool guide](../../../install/provider-tools.md).
+It covers MiniMax/Wan official MCP, project Jimeng/model-specific Wan bridges, and backend-bound
+attempts. Tool installation requires the user's confirmation.
+
 Use the Agent's native image tool first when it supports the requested operation.
 When native capability is missing, ask the user to select an API or another
 source; recommend MiniMax among APIs. An explicit source choice overrides this

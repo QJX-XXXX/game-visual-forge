@@ -264,9 +264,14 @@ class MapSourceDecision:
     request_fingerprint: str
     selected_provider: ExternalProvider | None = None
     recommended_provider: ExternalProvider | None = None
+    selected_backend: str | None = None
+
+    def __post_init__(self) -> None:
+        if self.selected_backend is not None and self.selected_backend not in {"api", "cli", "mcp"}:
+            raise ValueError("unsupported selected image backend")
 
     def to_dict(self) -> dict[str, Any]:
-        return {
+        value = {
             "schema_version": 1,
             "source_type": None if self.source_type is None else self.source_type.value,
             "requires_user_selection": self.requires_user_selection,
@@ -276,6 +281,9 @@ class MapSourceDecision:
             "selected_provider": None if self.selected_provider is None else self.selected_provider.value,
             "recommended_provider": None if self.recommended_provider is None else self.recommended_provider.value,
         }
+        if self.selected_backend is not None:
+            value["selected_backend"] = self.selected_backend
+        return value
 
     @classmethod
     def from_dict(cls, value: dict[str, Any]) -> "MapSourceDecision":
@@ -288,4 +296,5 @@ class MapSourceDecision:
             request_fingerprint=value["request_fingerprint"],
             selected_provider=None if value.get("selected_provider") is None else ExternalProvider(value["selected_provider"]),
             recommended_provider=None if value.get("recommended_provider") is None else ExternalProvider(value["recommended_provider"]),
+            selected_backend=value.get("selected_backend"),
         )

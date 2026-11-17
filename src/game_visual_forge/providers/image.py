@@ -31,8 +31,13 @@ _BINDING_FIELDS = ("schema_version", "attempt_id", "kind", "provider", "model", 
 _STATUSES = {"prepared", "submitting", "submitted", "running", "completed", "downloaded", "failed", "submission_unknown", "needs_attention"}
 
 
-def image_adapter(provider: str, transport=None):
+def image_adapter(provider: str, transport=None, *, execution=None, repo_root=None, output_dir=None):
     provider = ExternalProvider(provider)
+    if execution is not None and not isinstance(execution, dict):
+        raise ValueError("execution configuration must be a JSON object")
+    if execution and execution.get("backend", "api") != "api":
+        from game_visual_forge.providers.tool_images import ToolImageAdapter
+        return ToolImageAdapter(provider, execution, root=repo_root, output_dir=output_dir, transport=transport)
     if provider is ExternalProvider.MINIMAX:
         return MiniMaxImageAdapter(transport=transport)
     if provider in {ExternalProvider.JIMENG, ExternalProvider.DREAMINA}:
@@ -53,7 +58,7 @@ def _load_attempt(path: Path):
         raise ValueError("invalid image attempt")
     if attempt.get("binding_sha256") != _binding(attempt):
         raise ValueError("image attempt binding has changed")
-    image_adapter(attempt["provider"]).normalize(attempt["model"], attempt["parameters"], attempt["quantity"])
+    image_adapter(attempt["provider"], execution=attempt["parameters"].get("execution")).normalize(attempt["model"], attempt["parameters"], attempt["quantity"])
     return attempt
 
 
@@ -78,7 +83,7 @@ def _image_prompt(request, kind):
     return prompt
 
 
-def prepare_image_attempt(request_path, decision_path, parameters_path, attempt_path, *, kind, model, quantity, repo_root, now, state_path=None, transport=None):
+def prepare_image_attempt(request_path, decision_path, parameters_path, attempt_path, *, kind, model, quantity, repo_root, now, state_path=None, transport=None, execution=None):
     _validate_timestamp(now, field_name="now")
     root = Path(repo_root).resolve()
     attempt_path = Path(attempt_path)
@@ -93,8 +98,18 @@ def prepare_image_attempt(request_path, decision_path, parameters_path, attempt_
     provider = ExternalProvider(decision.get("selected_provider"))
     if decision.get("source_type") != provider.value:
         raise ValueError("image source/provider binding does not match")
-    adapter = image_adapter(provider, transport)
     parameters = load_json(Path(parameters_path)) if parameters_path else {}
+    if execution is not None:
+        if "execution" in parameters and parameters["execution"] != execution:
+            raise ValueError("conflicting image execution configurations")
+        parameters["execution"] = execution
+    selected_backend = decision.get("selected_backend")
+    if selected_backend:
+        if selected_backend != "api":
+            parameters.setdefault("execution", {"backend": selected_backend})
+        if parameters.get("execution", {}).get("backend", "api") != selected_backend:
+            raise ValueError("image backend differs from the selected source route")
+    adapter = image_adapter(provider, transport, execution=parameters.get("execution"), repo_root=root)
     parameters.setdefault("prompt", _image_prompt(request, kind))
     if "references" not in parameters:
         paths = list(getattr(request, "reference_paths", ()))
@@ -103,7 +118,7 @@ def prepare_image_attempt(request_path, decision_path, parameters_path, attempt_
             paths.insert(0, seed)
         parameters["references"] = [{"path": path} for path in paths]
     parameters = adapter.normalize(model, parameters, quantity)
-    parameters["references"] = bind_references(parameters["references"], root, provider.value, adapter.transport)
+    parameters["references"] = bind_references(parameters["references"], root, provider.value, adapter.transport, allow_local=parameters.get("execution", {}).get("backend") == "cli")
     workflow_state = None
     if state_path:
         state_path = Path(state_path).resolve()
@@ -238,12 +253,12 @@ def submit_image_attempt(attempt_path, confirmation_path, *, repo_root, now, tra
             state = load_job(repo_path(root, attempt["workflow_state"]))
             if state.request_fingerprint != attempt["request_fingerprint"] or state.provider != attempt["provider"] or state.status not in {JobStatus.AWAITING_CONFIRMATION, JobStatus.READY}:
                 raise ValueError("workflow source changed after image preparation")
-        adapter = image_adapter(attempt["provider"], transport)
+        adapter = image_adapter(attempt["provider"], transport, execution=attempt["parameters"].get("execution"), repo_root=root, output_dir=repo_path(root, attempt["output_dir"]))
         references = verify_references(attempt["parameters"]["references"], root, attempt["provider"], adapter.transport)
         readiness = adapter.preflight()
         if not readiness["available"]:
             raise ValueError(readiness["reason"])
-        if adapter.synchronous:
+        if hasattr(adapter, "build_body"):
             adapter.build_body(attempt["model"], attempt["parameters"], attempt["quantity"], references)
         confirmation = PaidConfirmation.from_dict(load_json(confirmation_path))
         consumed = confirmation.authorize_attempt(now=now, **_confirmation_values(attempt, confirmation.estimate))
@@ -296,7 +311,8 @@ def query_image_attempt(attempt_path, *, repo_root, now, transport=None, recover
         if attempt["status"] == "downloaded":
             _saved_outputs_valid(attempt, Path(repo_root).resolve())
             return attempt
-        adapter = image_adapter(attempt["provider"], transport)
+        root = Path(repo_root).resolve()
+        adapter = image_adapter(attempt["provider"], transport, execution=attempt["parameters"].get("execution"), repo_root=root, output_dir=repo_path(root, attempt["output_dir"]))
         if recovered_task_id:
             if adapter.synchronous or attempt["status"] not in {"submission_unknown", "submitting"} or attempt["external_task_id"]:
                 raise ValueError("a recovered task ID can only be attached to an unknown async submission")
@@ -328,9 +344,17 @@ def download_image_attempt(attempt_path, *, repo_root, now, transport=None):
     with file_lock(attempt_path):
         attempt = _load_attempt(attempt_path)
         _saved_outputs_valid(attempt, root)
-        adapter = image_adapter(attempt["provider"], transport)
+        adapter = image_adapter(attempt["provider"], transport, execution=attempt["parameters"].get("execution"), repo_root=root, output_dir=repo_path(root, attempt["output_dir"]))
         if adapter.synchronous:
             _recover_local_images(attempt_path, attempt, root, now)
+            if len(attempt["outputs"]) < attempt["quantity"] and hasattr(adapter, "recover_images"):
+                receipt = adapter.recover_images(attempt["quantity"])
+                for index, data in enumerate(receipt["images"], 1):
+                    if data is not None and not any(item["index"] == index for item in attempt["outputs"]):
+                        attempt["outputs"].append(_save_image(attempt, index, data, root))
+                        _write_attempt(attempt_path, attempt, now)
+                if len(attempt["outputs"]) == attempt["quantity"]:
+                    attempt["status"], attempt["error_code"], attempt["errors"] = "downloaded", None, []
             if not attempt["outputs"]:
                 raise ValueError("synchronous attempt has no saved image results")
         elif attempt["status"] != "downloaded":
@@ -339,14 +363,19 @@ def download_image_attempt(attempt_path, *, repo_root, now, transport=None):
                 attempt["status"] = receipt["status"]
                 attempt["error_code"] = receipt.get("error_code")
                 return _write_attempt(attempt_path, attempt, now)
-            urls = receipt["result_urls"]
+            urls = receipt.get("result_urls", receipt.get("result_paths", []))
             if len(urls) > 16:
                 raise ValueError("provider returned too many image candidates")
             attempt["status"] = "completed"
             for index, url in enumerate(urls, 1):
                 if any(item["index"] == index for item in attempt["outputs"]):
                     continue
-                data = adapter.transport.read_image(url)
+                if "result_paths" in receipt:
+                    path = Path(url).resolve()
+                    path.relative_to(repo_path(root, attempt["output_dir"]))
+                    data = path.read_bytes()
+                else:
+                    data = adapter.transport.read_image(url)
                 attempt["outputs"].append(_save_image(attempt, index, data, root))
                 _write_attempt(attempt_path, attempt, now)
             attempt["status"] = "downloaded" if len(urls) == attempt["quantity"] else "needs_attention"

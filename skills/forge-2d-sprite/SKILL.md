@@ -5,6 +5,9 @@ description: "Use when creating or processing production-oriented 2D game sprite
 
 # Forge 2D Sprite
 
+For external CLI/MCP generation, read the [provider tool guide](../../install/provider-tools.md).
+Use existing installations and ask for user confirmation before installing missing tools.
+
 Use the shared CLI to orchestrate 2D Sprite generation, ingestion, processing,
 and quality validation. Interpret the user request, invoke a native Agent image
 tool when selected, and obtain every required user choice. Leave deterministic

@@ -40,13 +40,23 @@ class ProviderPreflight:
     version: str | None
     account_credit: int | None
     reason: str | None
+    backend: str | None = None
+    authentication_verified: bool | None = None
 
     def __post_init__(self) -> None:
         if self.schema_version != 1:
             raise ValueError("schema_version must be 1")
+        if self.backend is not None and self.backend not in {"api", "cli", "mcp"}:
+            raise ValueError("unsupported provider backend")
+        if self.authentication_verified is not None and not isinstance(self.authentication_verified, bool):
+            raise ValueError("authentication_verified must be boolean")
+
+    @property
+    def ready(self) -> bool:
+        return self.available and (self.authenticated or (self.backend in {"cli", "mcp"} and self.authentication_verified is False))
 
     def to_dict(self) -> dict[str, Any]:
-        return {
+        value = {
             "schema_version": self.schema_version,
             "provider": self.provider.value,
             "available": self.available,
@@ -56,6 +66,11 @@ class ProviderPreflight:
             "account_credit": self.account_credit,
             "reason": self.reason,
         }
+        if self.backend is not None:
+            value["backend"] = self.backend
+        if self.authentication_verified is not None:
+            value["authentication_verified"] = self.authentication_verified
+        return value
 
     @classmethod
     def from_dict(cls, value: dict[str, Any]) -> "ProviderPreflight":
@@ -70,6 +85,8 @@ class ProviderPreflight:
             version=value.get("version"),
             account_credit=value.get("account_credit"),
             reason=value.get("reason"),
+            backend=value.get("backend"),
+            authentication_verified=value.get("authentication_verified"),
         )
 
 

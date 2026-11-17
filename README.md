@@ -2,10 +2,11 @@
 
 English | [简体中文](README.zh-CN.md)
 
-Game Visual Forge brings five Agent Skills together to create, check, and deliver
-2D maps, character sprites, animation frames, sound effects, and game music.
-Describe what you need in natural language and use native Agent tools,
-configured APIs, and local processing to prepare assets for your game engine.
+**Game Visual Forge is a collection of Agent Skills for 2D game development**, covering the creation and delivery of maps, character sprites, animation frames, sound effects, and background music.
+
+Describe what you need in natural language. The Agent assists with asset generation, background cleanup, sprite-sheet assembly, video frame extraction, and quality checks, producing transparent PNGs, animation sheets, GIF previews, map data, and WAV audio, with Unity import support.
+
+Use the five skills independently or combine them into an asset production workflow. Image generation prioritizes the Agent's native tools, with external generation available through APIs, CLIs, and MCP integrations for platforms including MiniMax, Jimeng, and Wanxiang. Environment setup guidance is available when needed. Tool installation and paid generation require user confirmation.
 
 ## Skills
 
@@ -20,7 +21,7 @@ configured APIs, and local processing to prepare assets for your game engine.
 ## What it provides
 
 - Natural-language intake with explicit choices for style, layout, runtime, and delivery format.
-- Native Agent image tools take priority. When unavailable, choose an image API, with MiniMax recommended and Jimeng or Wanxiang available. [Image API workflow](skills/forge-2d-sprite/references/image-api.md)
+- Native Agent image tools take priority. When unavailable, choose MiniMax (recommended), Jimeng or Wanxiang through API, installed CLI or MCP. Tool installation requires user confirmation. [Provider setup](install/provider-tools.md)
 - Python environment checks provide setup instructions for the current system and Agent assistance within the user's authorization. [Environment setup](install/python-environment.md)
 - Deterministic local processing, validation reports, and reproducible output manifests.
 - Playable map handoff with walkability, collision, objects, entrances, and Unity Tilemap support.

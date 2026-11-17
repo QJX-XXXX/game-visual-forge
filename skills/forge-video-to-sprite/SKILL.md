@@ -5,6 +5,9 @@ description: "Use when existing, MiniMax Hailuo, Jimeng, optional local ComfyUI 
 
 # Forge Video to Sprite
 
+For MiniMax/Jimeng CLI or MCP execution, read the [provider tool guide](../../install/provider-tools.md).
+Use existing installations and ask for user confirmation before installing missing tools.
+
 Use this Skill for a local MP4, MOV, WebM, or an explicitly selected generated
 motion clip that must become game-ready Sprite frames. Keep the repository root
 and shared `src/` package available; the launcher is

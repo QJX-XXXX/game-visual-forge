@@ -370,7 +370,7 @@ class MiniMaxAdapter:
         code, stdout, stderr = run([str(executable), "--version"])
         if code != 0:
             return {"schema_version": 1, "provider": "minimax", "backend": "cli", "available": False, "authenticated": False, "reason": "mmx is unavailable"}
-        return {"schema_version": 1, "provider": "minimax", "backend": "cli", "available": True, "authenticated": True, "version": stdout.strip(), "reason": None}
+        return {"schema_version": 1, "provider": "minimax", "backend": "cli", "available": True, "authenticated": False, "authentication_verified": False, "version": stdout.strip(), "reason": "live authentication unverified"}
 
     @staticmethod
     def _run_cli(argv: list[str]) -> tuple[int, str, str]:
@@ -379,6 +379,9 @@ class MiniMaxAdapter:
 
 
 def run_command(command: str, payload: dict[str, Any]) -> dict[str, Any]:
+    if payload.get("backend", "api") != "api":
+        from .tool_video import run_video_tool
+        return run_video_tool("minimax", command, payload)
     region = str(payload.get("region", "global"))
     default_base_url = "https://api.minimax.cn" if region == "cn" else "https://api.minimax.io"
     transport = _UrllibTransport(str(payload.get("base_url") or default_base_url))
@@ -388,7 +391,7 @@ def run_command(command: str, payload: dict[str, Any]) -> dict[str, Any]:
     if command == "models":
         return adapter.models().to_dict()
     if command == "preflight":
-        return adapter.preflight_api() if payload.get("backend", "api") == "api" else adapter.preflight_cli(Path(payload.get("executable", "mmx")))
+        return adapter.preflight_api()
     if command == "estimate":
         return adapter.estimate(payload)
     if command == "prepare":

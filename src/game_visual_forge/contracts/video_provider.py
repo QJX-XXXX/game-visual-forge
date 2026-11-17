@@ -54,6 +54,7 @@ def _scan_safe(value: Any, path: str = "parameters") -> None:
 class VideoProviderBackend(StrEnum):
     API = "api"
     CLI = "cli"
+    MCP = "mcp"
 
 
 class VideoModelSupport(StrEnum):
