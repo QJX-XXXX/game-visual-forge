@@ -135,6 +135,15 @@ class MiniMaxProviderTests(unittest.TestCase):
         )
         self.assertEqual(request.body["extra"], {"prompt_expansion_mode": "balanced"})
 
+    def test_h3_api_keeps_selected_model_and_resolution(self) -> None:
+        for model in ("MiniMax-H3-Highspeed", "MiniMax-H3-Lite", "MiniMax-H3-Max"):
+            with self.subTest(model=model):
+                request = build_minimax_submit_request(
+                    model=model, mode=VideoGenerationMode.T2V, prompt="walk", duration=5, resolution="480P",
+                )
+                self.assertEqual(request.body["model"], model)
+                self.assertEqual(request.body["resolution"], "480P")
+
     def test_h3_lite_reference_requires_concrete_ratio(self) -> None:
         with self.assertRaisesRegex(ValueError, "concrete ratio"):
             build_minimax_submit_request(

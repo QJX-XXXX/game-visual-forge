@@ -79,7 +79,7 @@ def submit(payload: Mapping[str, Any], transport: MusicHttpTransport) -> MusicPr
 def query(task_id: str, capability, transport: MusicHttpTransport, *, credential: str | None = None) -> MusicProviderReceipt:
     if not isinstance(task_id, str) or not task_id:
         raise ValueError("task_id is required")
-    headers = {"Authorization": "Bearer " + _credential(credential=credential), "Accept": "application/json"}
+    headers = {"Authorization": "Bearer " + _credential(credential=credential), "Accept": "audio/*"}
     response = transport("GET", STABLE_AUDIO_3_RESULTS.format(task_id), headers, None)
     if response.status_code == 404:
         raise RuntimeError("Stable Audio task is missing or expired")
@@ -87,9 +87,9 @@ def query(task_id: str, capability, transport: MusicHttpTransport, *, credential
         return MusicProviderReceipt("running", task_id)
     if response.status_code != 200:
         raise RuntimeError(f"Stable Audio query failed with HTTP {response.status_code}")
-    data = _body(response)
-    status = str(data.get("status", "completed"))
-    return MusicProviderReceipt("completed" if status in {"completed", "succeeded", "success"} else "running", task_id)
+    if not response.body:
+        raise RuntimeError("Stable Audio returned an empty result")
+    return MusicProviderReceipt("completed", task_id)
 
 
 def download(task_id: str, capability, output_dir: Path, transport: MusicHttpTransport, *, credential: str | None = None) -> tuple[MusicDownloadedFile, ...]:
@@ -100,7 +100,10 @@ def download(task_id: str, capability, output_dir: Path, transport: MusicHttpTra
         raise RuntimeError(f"Stable Audio download failed with HTTP {response.status_code}")
     output_dir = Path(output_dir)
     output_dir.mkdir(parents=True, exist_ok=True)
-    suffix = ".mp3" if response.headers.get("content-type", "").lower().find("mpeg") >= 0 else ".wav"
+    content_type = response.headers.get("content-type", "").partition(";")[0].strip().lower()
+    if not response.body or content_type not in {"audio/mpeg", "audio/mp3", "audio/wav", "audio/x-wav", "audio/wave", "audio/vnd.wave"}:
+        raise RuntimeError("Stable Audio download did not return WAV or MP3 audio")
+    suffix = ".mp3" if content_type in {"audio/mpeg", "audio/mp3"} else ".wav"
     final = output_dir / (task_id.replace("/", "_") + suffix)
     temporary = final.with_suffix(final.suffix + ".part")
     temporary.write_bytes(response.body)

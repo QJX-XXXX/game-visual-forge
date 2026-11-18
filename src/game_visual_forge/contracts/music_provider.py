@@ -98,11 +98,14 @@ class MusicGenerationAttempt:
     returned_candidate_count: int = 0
     error_code: str | None = None
     estimated_credits: float | None = None
+    downloaded_files: tuple[MusicDownloadedFile, ...] = ()
 
     def to_dict(self):
         value = asdict(self)
         value["provider"] = self.provider.value
         value["status"] = self.status.value
+        if not self.downloaded_files:
+            value.pop("downloaded_files")
         return value
 
     @classmethod
@@ -111,6 +114,7 @@ class MusicGenerationAttempt:
         values["provider"] = MusicProvider(values["provider"])
         values["status"] = MusicAttemptStatus(values["status"])
         values["parameters"] = dict(values["parameters"])
+        values["downloaded_files"] = tuple(MusicDownloadedFile(**item) for item in values.get("downloaded_files", ()))
         return cls(**values)
 
 

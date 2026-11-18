@@ -1,14 +1,17 @@
 import tempfile
 import unittest
+from concurrent.futures import ThreadPoolExecutor
 from dataclasses import replace
+from hashlib import sha256
 from pathlib import Path
+from threading import Event
 from unittest.mock import patch
 from tests._bootstrap import ROOT  # noqa: F401
 from tests.test_music_contract import music_request
 from game_visual_forge.contracts.music import build_music_prompt_package
 from game_visual_forge.contracts.music_provider import MusicProvider, MusicPaidConfirmation, MusicProviderReceipt, default_music_capabilities
 from game_visual_forge.contracts.serialization import dump_json, load_json
-from game_visual_forge.providers.music import prepare_music_attempt, begin_music_submission, record_music_receipt, submit_cloud_music_attempt, query_cloud_music_attempt
+from game_visual_forge.providers.music import prepare_music_attempt, begin_music_submission, record_music_receipt, submit_cloud_music_attempt, query_cloud_music_attempt, download_cloud_music_attempt, _validate_confirmation
 
 NOW = "2026-10-10T00:00:00Z"
 
@@ -89,6 +92,63 @@ class MusicOrchestrationTests(unittest.TestCase):
         self.assertEqual(result.status, "running")
         self.assertEqual(call.call_args.args[1]["operation"], "query")
         self.assertEqual(result.external_task_id, "id-1")
+
+    def test_concurrent_submit_consumes_confirmation_once(self):
+        self.authorize()
+        validating, release = Event(), Event()
+
+        def blocked_validation(attempt, path):
+            confirmation = _validate_confirmation(attempt, path)
+            validating.set()
+            if not release.wait(5):
+                raise TimeoutError("test did not release the first submission")
+            return confirmation
+
+        with (
+            patch("game_visual_forge.providers.music._validate_confirmation", side_effect=blocked_validation),
+            patch("game_visual_forge.providers.music._provider_call", return_value={"status": "submitted", "external_task_id": "one"}) as provider,
+            ThreadPoolExecutor(max_workers=1) as pool,
+        ):
+            first = pool.submit(submit_cloud_music_attempt, self.path, self.confirmation, Path("fake.py"), now=NOW)
+            try:
+                self.assertTrue(validating.wait(5))
+                with self.assertRaises(ValueError):
+                    submit_cloud_music_attempt(self.path, self.confirmation, Path("fake.py"), now=NOW)
+            finally:
+                release.set()
+            self.assertEqual(first.result(timeout=5).status, "submitted")
+            provider.assert_called_once()
+        self.assertTrue(load_json(self.confirmation)["consumed"])
+
+    def test_completed_task_download_records_and_reuses_verified_files(self):
+        self.authorize()
+        begin_music_submission(self.path, self.confirmation, now=NOW)
+        record_music_receipt(self.path, MusicProviderReceipt("submitted", "id-1"), now=NOW)
+        output = self.path.parent / "downloads"
+        output.mkdir()
+        wav = output / "result.wav"
+
+        def response(executable, payload):
+            receipt = {"status": "completed", "external_task_id": "id-1"}
+            if payload["operation"] == "download":
+                wav.write_bytes(b"audio fixture")
+                receipt.update(candidate_ids=["id-1"], downloaded_files=[{
+                    "path": str(wav), "provider_candidate_id": "id-1", "sha256": sha256(wav.read_bytes()).hexdigest(),
+                }])
+            return receipt
+
+        with patch("game_visual_forge.providers.music._provider_call", side_effect=response) as provider:
+            self.assertEqual(query_cloud_music_attempt(self.path, Path("fake.py"), now=NOW).status, "completed")
+            downloaded = download_cloud_music_attempt(self.path, Path("fake.py"), output, now=NOW)
+            self.assertEqual(downloaded.status, "downloaded")
+            self.assertEqual(load_json(self.path)["downloaded_files"][0]["path"], str(wav))
+            self.assertEqual(download_cloud_music_attempt(self.path, Path("fake.py"), output, now=NOW), downloaded)
+            self.assertEqual(query_cloud_music_attempt(self.path, Path("fake.py"), now=NOW), downloaded)
+            self.assertEqual(provider.call_count, 2)
+            wav.write_bytes(b"changed")
+            self.assertEqual(download_cloud_music_attempt(self.path, Path("fake.py"), output, now=NOW), downloaded)
+            self.assertEqual(wav.read_bytes(), b"audio fixture")
+            self.assertEqual(provider.call_count, 3)
 
 
 if __name__ == "__main__":

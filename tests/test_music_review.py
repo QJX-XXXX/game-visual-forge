@@ -21,7 +21,7 @@ class MusicReviewTests(unittest.TestCase):
         with tempfile.TemporaryDirectory() as temp:
             root = Path(temp); path = root / "track.wav"; write_wav(path, rate=44100, channels=2, seconds=1)
             source = MusicSourceRecord("track.wav", hashlib.sha256(path.read_bytes()).hexdigest(), "wav", 44100, 2, 1, "local", "a", "c")
-            processing = MusicProcessingResult(source.sha256, str(path), "b" * 64, "c" * 64, 44100, 2, 1, 44100, 2)
+            processing = MusicProcessingResult(source.sha256, str(path), source.sha256, "c" * 64, 44100, 2, 1, 44100, 2)
             quality = assess_music_outputs(music_request(usage="bgm-linear"), source, processing, repo_root=root)
             review = record_music_review(music_request(usage="bgm-linear"), processing, quality, {key: True for key in REQUIRED_MUSIC_CHECKS}, now="2026-10-10T00:00:00Z", repo_root=root)
             self.assertTrue(all(review.checks.values()))
@@ -29,7 +29,7 @@ class MusicReviewTests(unittest.TestCase):
             with self.assertRaises(ValueError):
                 review.assert_current(processing, quality, repo_root=root)
             path.write_bytes(path.read_bytes()[:-1])
-            processing = MusicProcessingResult(source.sha256, str(path), "b" * 64, "c" * 64, 44100, 2, 1, 44100, 2, source_path="track.wav")
+            processing = MusicProcessingResult(source.sha256, str(path), source.sha256, "c" * 64, 44100, 2, 1, 44100, 2, source_path="track.wav")
             quality = assess_music_outputs(music_request(usage="bgm-linear"), source, processing, repo_root=root)
             review = record_music_review(music_request(usage="bgm-linear"), processing, quality, {key: True for key in REQUIRED_MUSIC_CHECKS}, now="2026-10-10T00:00:00Z", repo_root=root)
             path.write_bytes(path.read_bytes() + b"raw-change")

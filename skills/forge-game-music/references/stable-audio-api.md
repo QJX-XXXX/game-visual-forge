@@ -13,6 +13,8 @@ The current pricing snapshot is 8 credits per successful generation. A failed ge
 
 The same bearer credential must be sent on submission, status polling, and result download. The repository provider reads `STABILITY_API_KEY` at execution time for recovery calls so the key does not enter a persisted attempt or confirmation.
 
+Polling requests audio and uses the HTTP status to report readiness. Download then saves the native audio and records its path and SHA-256 in the attempt. For MP3 results, `audio music ingest` uses FFprobe and `audio music process` uses FFmpeg to prepare a separate PCM WAV for review.
+
 ## Vocal policy
 
 Stable Audio is primarily an instrumental route for this skill. A request that explicitly requires lyrics or singing is rejected during preflight with `unsupported` and kept available for a different provider. Non-lexical vocal-like texture may still occur in an instrumental result; listening review must check it. `standalone-instrumental` therefore has a strict review rule that rejects audible voice-like content.

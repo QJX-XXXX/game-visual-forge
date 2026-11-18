@@ -35,15 +35,9 @@ Use the five skills independently or combine them into an asset production workf
 ## Showcase
 
 ![Adaptive river crossing map in Unity](assets/readme/adaptive-river-crossing-map-unity-game-view.png)
-
 ![HD background removal comparison](assets/readme/rembg-production-comparison-on-gray.jpg)
 
-HD cleanup uses Pillow for image conversion, NumPy/SciPy for masks, rembg with
-the `birefnet-general` model for semantic separation, known-magenta spill
-reconstruction, and optional PyMatting refinement. If CUDA fails, the processor
-tries CPU and reports a deterministic Chroma fallback when needed.
-
-Install optional cleanup tools manually:
+HD cleanup uses Pillow and NumPy/SciPy with rembg and the `birefnet-general` model. Optional PyMatting refines edges. Use `U2NET_HOME` for a shared model directory. The processor can fall back from CUDA to CPU, then to Chroma cleanup when needed.
 
 ```powershell
 python -m pip install -e ".[image]"
@@ -54,109 +48,30 @@ python -m pip install -e ".[matting]"
 python -c "from rembg import new_session; new_session('birefnet-general')"
 ```
 
-Use `U2NET_HOME` for a shared model directory. CPU is the compatibility default;
-GPU requires a verified CUDA environment. PyMatting is optional and slower.
+Choose the CPU or GPU rembg package for your environment. GPU requires a verified CUDA setup.
 
-### Video to sprite: character animations
+### Video to sprite
 
-#### Original video → v12 walk sprites
+The walk comparison pairs seconds 2–4 of a local ComfyUI MiniMax H3 video with 48 extracted transparent frames at 128 × 128 and 24 FPS. The full 124-frame source took 116 seconds end to end. Nine other local runs averaged 67.6 seconds on an RTX 4070 Ti. [H3 community license](https://huggingface.co/MiniMaxAI/MiniMax-H3/blob/main/LICENSE) · [Timing and provenance](assets/readme/video-to-sprite-showcase-provenance.json)
+![Original video beside the extracted walk animation](assets/readme/video-to-sprite-soldier-walk-v12-comparison.gif)
+[Original video](assets/readme/video-to-sprite-soldier-walk-v12-original.mp4) · [MP4 comparison](assets/readme/video-to-sprite-soldier-walk-v12-comparison.mp4)
 
-The Soldier walk source was generated with a local ComfyUI MiniMax H3 `FL2VA`
-workflow: `640 × 640`, `24 FPS`, `124 frames` (about `5.17 seconds`),
-Turbo/LowVRAM `8 steps`, fixed seed `20260917`. The [H3 local open weights](https://design.minimax.io/h3)
-are available free under the [Community License](https://huggingface.co/MiniMaxAI/MiniMax-H3/blob/main/LICENSE).
-This run used local compute, with no paid API call or cloud generation credits.
-Current local hardware: Intel Core i7-13700KF, `32 GB` RAM, and NVIDIA GeForce RTX 4070 Ti
-with `12 GB` VRAM. From newer local tasks, nine completed generations were
-selected; submission to completion averaged `67.6 seconds` (about `1 minute 8 seconds`,
-range `64–72 seconds`). This showcase source is a longer `124-frame` run:
-it was submitted at `04:48:23` and completed
-at `04:50:19` (`116 seconds`); the ComfyUI log reports `114.58 seconds` of
-prompt execution. [Samples and timing sources](assets/readme/video-to-sprite-showcase-provenance.json)
-
-The left panel shows seconds `2–4` of the original video. The right panel shows
-a newly created empty character prefab playing 48 transparent `128 × 128` frames
-re-extracted from that same source at `24 FPS`, looping every `2 seconds`.
-The original twelve-frame `Soldier_L1_Walk_PseudoTopDown_128_from2s_v12` asset
-remains unchanged; the new preview adds intermediate poses at the source speed.
-
-![Original v12 video beside walk animation on an empty Unity character prefab](assets/readme/video-to-sprite-soldier-walk-v12-comparison.gif)
-
-[Full original video](assets/readme/video-to-sprite-soldier-walk-v12-original.mp4) ·
-[MP4 comparison](assets/readme/video-to-sprite-soldier-walk-v12-comparison.mp4)
-
-#### Soldier_L1_View
-
-![Soldier_L1_View Idle, Walk, and Attack animations in Unity](assets/readme/video-to-sprite-soldier-l1-unity-actions.gif)
-
+Soldier Idle, Walk, and Attack retain their prefab anchors and animation references. The gameplay capture shows the animations on Soldier and both enemies in Tuanjie.
+![Soldier Idle, Walk, and Attack in Unity](assets/readme/video-to-sprite-soldier-l1-unity-actions.gif)
 [Soldier animation MP4](assets/readme/video-to-sprite-soldier-l1-unity-actions.mp4)
+![Soldier and enemy animations in action](assets/readme/video-to-sprite-tower-defense-gameplay.gif)
+[35-second gameplay MP4](assets/readme/video-to-sprite-tower-defense-gameplay.mp4)
 
-The Soldier Idle, Walk, and Attack sprites were extracted from locally generated
-H3 videos. The preview retains the prefab's visual hierarchy, anchors, shadows,
-and Sprite animation references. Attack retains its clip timing and repeats
-after a short Idle pause. The current Walk uses the first eight v16 frames,
-separate from the v12 example above.
-Source videos and animation timing: Idle `39 frames / 1.625 seconds` →
-`12 frames / 12 FPS`; Walk `124 frames / about 5.17 seconds` →
-`8 frames / 8 FPS`; Attack `107 frames / about 4.46 seconds` →
-`12 frames / 12 FPS`.
+### Audio samples
 
-#### Animation in action
+`forge-text-audio` produced the wooden UI click and hammer strikes locally with Stable Audio 3 Small-SFX.
+[Wooden click WAV](assets/readme/stable-audio-3-small-sfx-wooden-ui-click.wav)
+![Wooden click waveform](assets/readme/stable-audio-3-small-sfx-wooden-ui-click-waveform.png)
+![Wooden click spectrum](assets/readme/stable-audio-3-small-sfx-wooden-ui-click-spectrum.png)
+[Hammer WAV 1](assets/readme/stable-audio-3-small-sfx-blacksmith-hammer-01.wav) · [Hammer WAV 2](assets/readme/stable-audio-3-small-sfx-blacksmith-hammer-02.wav) · [Hammer WAV 3](assets/readme/stable-audio-3-small-sfx-blacksmith-hammer-03.wav)
 
-![Soldier, Enemy_Basic, and Enemy_Fast animations in action](assets/readme/video-to-sprite-tower-defense-gameplay.gif)
-
-[35-second animation capture MP4](assets/readme/video-to-sprite-tower-defense-gameplay.mp4)
-
-The capture shows `Soldier_L1_View`, `Enemy_Basic_View`, and `Enemy_Fast_View`
-playing their animations. Soldier's three actions and Enemy_Basic's Walk were
-made from locally generated H3 videos. The capture itself records actual Tuanjie
-Editor playback; only the viewport and time interval were trimmed, preserving
-the original `12 FPS`. Timing: the GIF uses seconds `6–18` (`12 seconds`) of the
-recording; the MP4 uses seconds `0–35` (`35 seconds`).
-[Asset provenance and parameters](assets/readme/video-to-sprite-showcase-provenance.json)
-
-### Stable Audio 3 examples
-
-Generated with `forge-text-audio` and the official
-`stabilityai/stable-audio-3-small-sfx` model.
-
-#### Wooden UI click
-
-Prompt:
-
-```text
-Dry wooden UI click, short transient, no music, no voice
-```
-
-[Listen to the wooden UI click](assets/readme/stable-audio-3-small-sfx-wooden-ui-click.wav)
-
-![Stable Audio 3 wooden UI click waveform](assets/readme/stable-audio-3-small-sfx-wooden-ui-click-waveform.png)
-
-![Stable Audio 3 wooden UI click spectrum](assets/readme/stable-audio-3-small-sfx-wooden-ui-click-spectrum.png)
-
-#### Blacksmith hammer sound
-
-Prompt:
-
-```text
-TrackType: SFX, a clean professional studio Foley recording of one natural strike of a small steel blacksmith hammer against a red-hot iron billet on a solid anvil, an isolated metallic impact with a fast attack and a short clean natural decay, recorded with a dry close microphone in a quiet room.
-```
-
-- [Listen to blacksmith hammer candidate 1](assets/readme/stable-audio-3-small-sfx-blacksmith-hammer-01.wav)
-- [Listen to blacksmith hammer candidate 2](assets/readme/stable-audio-3-small-sfx-blacksmith-hammer-02.wav)
-- [Listen to blacksmith hammer candidate 3](assets/readme/stable-audio-3-small-sfx-blacksmith-hammer-03.wav)
-
-Implementation and validation: generated locally with Stable Audio 3 Small-SFX, exported through no-boost WAV processing, and passed format, clipping, and sustained-noise checks.
-
-### Local MiniMax Music 3 BGM test
-
-The local Comfy Desktop `audio_minimax_music_3` workflow produced this cheerful instrumental game-BGM candidate. The checked-in WAV is 60 seconds, 44,100 Hz, 16-bit stereo, with a -1.57 dBFS peak; native Comfy output was MP3.
-
-Prompt focus: continuous medium-energy 4/4 groove, no intro or low-energy section, mid-register marimba and muted pluck, strictly instrumental, clean resolved ending.
-
-- [Listen to the 60-second WAV](assets/readme/minimax-music3-game-bgm-60s-clean-ending.wav)
-- [Listen to the 60-second MP3](assets/readme/minimax-music3-game-bgm-60s-clean-ending.mp3) · [Listen to the final 5 seconds](assets/readme/minimax-music3-game-bgm-60s-final-5s.wav)
-- [Waveform](assets/readme/minimax-music3-game-bgm-60s-waveform.png) · [Provenance](assets/readme/minimax-music3-game-bgm-60s-provenance.json)
+The local Comfy Desktop MiniMax Music 3 example is 60 seconds of instrumental BGM, delivered as 44,100 Hz, 16-bit stereo WAV.
+[WAV](assets/readme/minimax-music3-game-bgm-60s-clean-ending.wav) · [MP3](assets/readme/minimax-music3-game-bgm-60s-clean-ending.mp3) · [Final 5 seconds](assets/readme/minimax-music3-game-bgm-60s-final-5s.wav) · [Waveform](assets/readme/minimax-music3-game-bgm-60s-waveform.png) · [Provenance](assets/readme/minimax-music3-game-bgm-60s-provenance.json)
 
 ## Install
 

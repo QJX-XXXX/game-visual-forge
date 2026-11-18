@@ -1,5 +1,7 @@
 import hashlib
 import json
+import subprocess
+import sys
 import tempfile
 import unittest
 from unittest.mock import patch
@@ -36,17 +38,27 @@ class StableAudioProviderTests(unittest.TestCase):
         self.assertIn(b"stable-audio-3", transport.calls[0][3])
 
     def test_query_202_does_not_post_and_download_hashes_audio(self):
-        transport = Transport([response(202, {"id": "task-1"}), response(200, b"RIFFaudio")])
+        audio = MusicHttpResponse(200, {"content-type": "audio/mpeg"}, b"ID3 audio bytes")
+        transport = Transport([response(202, {"id": "task-1"}), audio, audio])
         cap = MusicProviderCapability.from_dict({"provider": "stable-audio-api", "model": "stable-audio-3", "official_source": "x", "verified_at": "2026-10-10", "is_paid": True, "available": True, "schema_verified": True, "auth_verified": True, "rights_status": "ok", "duration_bounds": [1, 380], "vocal_modes": ["instrumental"], "output_formats": ["wav"], "submission_mode": "async", "id_recovery": True, "pricing_status": "dated"})
         with patch.dict("os.environ", {"STABILITY_API_KEY": "test-token"}, clear=False):
             self.assertEqual(query("task-1", cap, transport).status, "running")
+            self.assertEqual(query("task-1", cap, transport).status, "completed")
             with tempfile.TemporaryDirectory() as temp:
                 files = download("task-1", cap, Path(temp), transport)
-                self.assertEqual(files[0].sha256, hashlib.sha256(b"RIFFaudio").hexdigest())
+                self.assertEqual(files[0].sha256, hashlib.sha256(audio.body).hexdigest())
                 self.assertTrue(Path(files[0].path).exists())
+                self.assertEqual(Path(files[0].path).suffix, ".mp3")
         self.assertEqual(transport.calls[0][2]["Authorization"], "Bearer test-token")
         self.assertEqual(transport.calls[1][2]["Authorization"], "Bearer test-token")
-        self.assertEqual([call[0] for call in transport.calls], ["GET", "GET"])
+        self.assertEqual([call[0] for call in transport.calls], ["GET", "GET", "GET"])
+        self.assertTrue(all(call[2]["Accept"] == "audio/*" for call in transport.calls))
+
+    def test_provider_script_preflight_from_uninstalled_checkout(self):
+        script = ROOT / "skills" / "forge-game-music" / "scripts" / "providers" / "stable_audio_api.py"
+        with tempfile.TemporaryDirectory() as temp:
+            result = subprocess.run([sys.executable, "-I", "-S", str(script)], input='{"operation":"preflight","duration":5}', cwd=temp, capture_output=True, text=True, check=True)
+        self.assertEqual(json.loads(result.stdout)["status"], "ready")
 
     def test_404_is_expired_and_does_not_retry(self):
         transport = Transport([response(404, {"error": "expired"})])

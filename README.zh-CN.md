@@ -35,14 +35,9 @@
 ## 展示
 
 ![Unity 中的自适应河流地图](assets/readme/adaptive-river-crossing-map-unity-game-view.png)
-
 ![HD 背景清理对比](assets/readme/rembg-production-comparison-on-gray.jpg)
 
-HD 清理使用 Pillow 进行图像转换，使用 NumPy/SciPy 生成遮罩，使用带有
-`birefnet-general` 模型的 rembg 进行语义分离，处理已知洋红色溢出，并可选用
-PyMatting 做细化。CUDA 失败时会尝试 CPU，并在需要时报告确定性的 Chroma 回退。
-
-手动安装可选清理工具：
+高清抠图使用 Pillow、NumPy/SciPy 和 rembg 的 `birefnet-general` 模型，也可用 PyMatting 细化边缘。可通过 `U2NET_HOME` 指定共享模型目录。处理器支持 CUDA、CPU 和 Chroma 清理回退。
 
 ```powershell
 python -m pip install -e ".[image]"
@@ -53,102 +48,30 @@ python -m pip install -e ".[matting]"
 python -c "from rembg import new_session; new_session('birefnet-general')"
 ```
 
-可使用 `U2NET_HOME` 指定共享模型目录。CPU 是兼容性默认选项；GPU 需要已验证
-的 CUDA 环境。PyMatting 是可选项，速度更慢。
+按环境选择 CPU 或 GPU 版 rembg。GPU 需要已验证的 CUDA 环境。
 
-### 视频转精灵：人物动作
+### 视频转精灵
 
-#### 原视频 → v12 行走精灵
+行走对照展示本地 ComfyUI MiniMax H3 视频的第 2–4 秒，以及从同一片段提取的 48 张 128 × 128 透明帧，按 24 FPS 播放。完整的 124 帧原片从提交到完成耗时 116 秒。同一台 RTX 4070 Ti 上的另 9 次本地生成平均耗时 67.6 秒。[H3 社区许可](https://huggingface.co/MiniMaxAI/MiniMax-H3/blob/main/LICENSE) · [计时与来源](assets/readme/video-to-sprite-showcase-provenance.json)
+![原视频与抽帧行走动画对照](assets/readme/video-to-sprite-soldier-walk-v12-comparison.gif)
+[原视频](assets/readme/video-to-sprite-soldier-walk-v12-original.mp4) · [MP4 对照](assets/readme/video-to-sprite-soldier-walk-v12-comparison.mp4)
 
-Soldier 行走原片由本机 ComfyUI 的 MiniMax H3 `FL2VA` 工作流生成：
-`640 × 640`、`24 FPS`、`124 帧`（约 `5.17 秒`）、Turbo/LowVRAM `8 步`、
-固定种子 `20260917`。[H3 本地开放权重](https://design.minimax.io/h3)
-按[社区许可](https://huggingface.co/MiniMaxAI/MiniMax-H3/blob/main/LICENSE)免费提供；
-本次本地生成未调用付费 API，也未消耗云端额度，使用的是本机算力。
-当前本机配置：Intel Core i7-13700KF、`32 GB` 内存、NVIDIA GeForce RTX 4070 Ti
-（`12 GB` 显存）。从较新的本地任务中筛出 9 次已完成的生成，从提交到完成平均 `67.6 秒`（约 `1 分 08 秒`，范围`64–72 秒`）。展示原片为较长的 `124 帧`任务，
-`04:48:23` 提交、`04:50:19` 完成，耗时 `116 秒`；ComfyUI 日志记录的
-Prompt 执行时间为 `114.58 秒`。[样本与计时依据](assets/readme/video-to-sprite-showcase-provenance.json)
+Soldier 的待机、行走和攻击动作沿用预制体的锚点和动画引用。运行录屏展示了 Soldier 和两种敌人在团结编辑器里的动作。
+![Soldier 在 Unity 中的待机、行走和攻击](assets/readme/video-to-sprite-soldier-l1-unity-actions.gif)
+[Soldier 动作 MP4](assets/readme/video-to-sprite-soldier-l1-unity-actions.mp4)
+![Soldier 与敌人的动作运行效果](assets/readme/video-to-sprite-tower-defense-gameplay.gif)
+[35 秒运行效果 MP4](assets/readme/video-to-sprite-tower-defense-gameplay.mp4)
 
-左侧为原视频的 `2–4 秒` 区间，右侧为新建空人物预制体播放同一原片
-重新提取的 48 个 `128 × 128` 透明帧，以 `24 FPS`、`2 秒`循环。
-原来的 `Soldier_L1_Walk_PseudoTopDown_128_from2s_v12` 12 帧素材保持不变；
-新展示补足中间动作姿势，同时保持源视频的速度。
+### 音频示例
 
-![v12 原视频与 Unity 空人物预制体行走动画对照](assets/readme/video-to-sprite-soldier-walk-v12-comparison.gif)
+`forge-text-audio` 通过本地 Stable Audio 3 Small-SFX 生成木质点击和打铁音效。
+[木质点击 WAV](assets/readme/stable-audio-3-small-sfx-wooden-ui-click.wav)
+![木质点击波形](assets/readme/stable-audio-3-small-sfx-wooden-ui-click-waveform.png)
+![木质点击频谱](assets/readme/stable-audio-3-small-sfx-wooden-ui-click-spectrum.png)
+[打铁 WAV 1](assets/readme/stable-audio-3-small-sfx-blacksmith-hammer-01.wav) · [打铁 WAV 2](assets/readme/stable-audio-3-small-sfx-blacksmith-hammer-02.wav) · [打铁 WAV 3](assets/readme/stable-audio-3-small-sfx-blacksmith-hammer-03.wav)
 
-[查看完整原视频](assets/readme/video-to-sprite-soldier-walk-v12-original.mp4) ·
-[查看 MP4 对照](assets/readme/video-to-sprite-soldier-walk-v12-comparison.mp4)
-
-#### Soldier_L1_View
-
-![Soldier_L1_View 在 Unity 中的 Idle、Walk、Attack 动作](assets/readme/video-to-sprite-soldier-l1-unity-actions.gif)
-
-[查看 Soldier 动作 MP4](assets/readme/video-to-sprite-soldier-l1-unity-actions.mp4)
-
-Soldier 的 Idle、Walk、Attack 均由本地 H3 视频抽帧制成。三个动作保留
-当前预制体的视觉层级、锚点、阴影与 Sprite 动画引用；
-Attack 按原 Clip 时长播放，再短暂停回 Idle 后重复，便于观看。
-当前 Walk 使用 v16 的前 8 帧，与上方独立展示的 v12 不同。
-源片与动作时长：Idle `39 帧 / 1.625 秒` → `12 帧 / 12 FPS`；
-Walk `124 帧 / 约 5.17 秒` → `8 帧 / 8 FPS`；
-Attack `107 帧 / 约 4.46 秒` → `12 帧 / 12 FPS`。
-
-#### 动作运行效果
-
-![Soldier、Enemy_Basic 与 Enemy_Fast 的动作运行效果](assets/readme/video-to-sprite-tower-defense-gameplay.gif)
-
-[查看 35 秒运行效果 MP4](assets/readme/video-to-sprite-tower-defense-gameplay.mp4)
-
-录屏展示 `Soldier_L1_View`、`Enemy_Basic_View` 和 `Enemy_Fast_View` 的
-实际动作播放；其中 Soldier 的三个动作与 Enemy_Basic 的 Walk 均取自本地 H3
-生成的视频。录屏本身是团结编辑器的真实运行画面，只做裁切和截取，
-保持原始 `12 FPS`。时间标注：GIF 对应原录屏 `6–18 秒`（`12 秒`），
-MP4 对应 `0–35 秒`（`35 秒`）。
-[素材出处与参数](assets/readme/video-to-sprite-showcase-provenance.json)
-
-### Stable Audio 3 示例
-
-以下音效由 `forge-text-audio` 使用官方
-`stabilityai/stable-audio-3-small-sfx` 模型生成。
-
-#### 木质 UI 点击
-
-提示词：
-
-```text
-Dry wooden UI click, short transient, no music, no voice
-```
-
-[试听木质 UI 点击音效](assets/readme/stable-audio-3-small-sfx-wooden-ui-click.wav)
-
-![Stable Audio 3 木质 UI 点击音效波形](assets/readme/stable-audio-3-small-sfx-wooden-ui-click-waveform.png)
-
-![Stable Audio 3 木质 UI 点击音效频谱](assets/readme/stable-audio-3-small-sfx-wooden-ui-click-spectrum.png)
-
-#### 生成打铁音效
-
-提示词：
-
-```text
-TrackType: SFX, a clean professional studio Foley recording of one natural strike of a small steel blacksmith hammer against a red-hot iron billet on a solid anvil, an isolated metallic impact with a fast attack and a short clean natural decay, recorded with a dry close microphone in a quiet room.
-```
-
-- [试听打铁候选 1](assets/readme/stable-audio-3-small-sfx-blacksmith-hammer-01.wav)
-- [试听打铁候选 2](assets/readme/stable-audio-3-small-sfx-blacksmith-hammer-02.wav)
-- [试听打铁候选 3](assets/readme/stable-audio-3-small-sfx-blacksmith-hammer-03.wav)
-
-实现与验证：使用 Stable Audio 3 Small-SFX 在本地生成，经无增益 WAV 处理，并通过格式、削波和持续噪声检查。
-
-### 本地 MiniMax Music 3 背景音乐实测
-
-本地 Comfy Desktop `audio_minimax_music_3` 生成了这条欢快、持续有节奏的游戏背景纯音乐。仓库中的 WAV 为 60 秒、44,100 Hz、16-bit 立体声，峰值为 −1.57 dBFS；Comfy 原生输出格式是 MP3。
-
-提示词重点：全程中等强度的 4/4 节奏、没有启动段或低潮段、中音域马林巴和闷音拨弦、严格纯音乐、干净的器乐收尾。
-
-- [试听 60 秒 WAV](assets/readme/minimax-music3-game-bgm-60s-clean-ending.wav)
-- [试听 60 秒 MP3](assets/readme/minimax-music3-game-bgm-60s-clean-ending.mp3) · [试听最后 5 秒](assets/readme/minimax-music3-game-bgm-60s-final-5s.wav)
-- [波形图](assets/readme/minimax-music3-game-bgm-60s-waveform.png) · [来源记录](assets/readme/minimax-music3-game-bgm-60s-provenance.json)
+本地 Comfy Desktop MiniMax Music 3 样例为 60 秒纯音乐，交付 WAV 为 44,100 Hz、16-bit 立体声。
+[WAV](assets/readme/minimax-music3-game-bgm-60s-clean-ending.wav) · [MP3](assets/readme/minimax-music3-game-bgm-60s-clean-ending.mp3) · [最后 5 秒](assets/readme/minimax-music3-game-bgm-60s-final-5s.wav) · [波形](assets/readme/minimax-music3-game-bgm-60s-waveform.png) · [来源](assets/readme/minimax-music3-game-bgm-60s-provenance.json)
 
 ## 安装
 

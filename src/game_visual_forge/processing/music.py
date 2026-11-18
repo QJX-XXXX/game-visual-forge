@@ -3,11 +3,15 @@ from __future__ import annotations
 import hashlib
 import math
 import os
+import tempfile
 import wave
 from array import array
+from contextlib import ExitStack
 from pathlib import Path
 
 from game_visual_forge.contracts.music import MusicLoopEvidence, MusicProcessingOptions, MusicProcessingResult, MusicSourceRecord, music_hash
+from .audio import _run_ffmpeg
+from .audio_probe import _probe, discover_audio_toolchain
 
 
 def _sha256(path):
@@ -44,15 +48,25 @@ def _write_frames(path, channels, rate, frames):
             handle.writeframes(values.tobytes())
 
 
-def ingest_music_source(repo_root: Path, source_path: Path, attempt, ffprobe: Path) -> MusicSourceRecord:
+def ingest_music_source(repo_root: Path, source_path: Path, attempt, ffprobe: Path | None = None) -> MusicSourceRecord:
     root = Path(repo_root).resolve(); source = Path(source_path).resolve()
     try: relative = source.relative_to(root).as_posix()
     except ValueError as exc: raise ValueError("source path must be inside repo root") from exc
-    with wave.open(str(source), "rb") as handle:
-        channels, rate, width, frame_count = handle.getnchannels(), handle.getframerate(), handle.getsampwidth(), handle.getnframes()
-    if width != 2 or channels not in {1, 2} or rate <= 0 or frame_count <= 0:
-        raise ValueError("music source must be non-empty 16-bit mono or stereo WAV")
-    return MusicSourceRecord(relative, _sha256(source), "pcm_s16le", rate, channels, frame_count / rate, str(getattr(attempt, "provider", "unknown")), str(getattr(attempt, "attempt_id", "unknown")), str(getattr(attempt, "candidate_id", "candidate")))
+    if source.suffix.lower() == ".mp3":
+        metadata = _probe(ffprobe or discover_audio_toolchain().ffprobe, source)
+        if metadata.codec_name != "mp3":
+            raise ValueError("music source must contain an MP3 audio stream")
+        codec, rate, channels, duration = "mp3", metadata.sample_rate, metadata.channels, metadata.duration_seconds
+    else:
+        try:
+            with wave.open(str(source), "rb") as handle:
+                channels, rate, width, frame_count = handle.getnchannels(), handle.getframerate(), handle.getsampwidth(), handle.getnframes()
+        except (wave.Error, EOFError) as error:
+            raise ValueError("music source must be a readable WAV or MP3") from error
+        if width != 2 or channels not in {1, 2} or rate <= 0 or frame_count <= 0:
+            raise ValueError("WAV music source must be non-empty 16-bit mono or stereo PCM")
+        codec, duration = "pcm_s16le", frame_count / rate
+    return MusicSourceRecord(relative, _sha256(source), codec, rate, channels, duration, str(getattr(attempt, "provider", "unknown")), str(getattr(attempt, "attempt_id", "unknown")), str(getattr(attempt, "candidate_id", "candidate")))
 
 
 def _convert_frames(source, start, count, target_rate=44100, target_channels=2):
@@ -89,10 +103,24 @@ def _limit_peak(path, target_dbfs=-1.0):
     return 20 * math.log10(gain)
 
 
-def process_music_candidate(repo_root: Path, source: MusicSourceRecord, options: MusicProcessingOptions, ffmpeg: Path, ffprobe: Path) -> MusicProcessingResult:
-    del ffmpeg, ffprobe
-    root = Path(repo_root).resolve(); input_path = root / source.path
-    with wave.open(str(input_path), "rb") as handle:
+def process_music_candidate(repo_root: Path, source: MusicSourceRecord, options: MusicProcessingOptions, ffmpeg: Path | None = None, ffprobe: Path | None = None) -> MusicProcessingResult:
+    root = Path(repo_root).resolve()
+    input_path = (root / source.path).resolve()
+    input_path.relative_to(root)
+    if _sha256(input_path) != source.sha256:
+        raise ValueError("music source changed after ingest")
+    staging = root / "outputs" / "music" / "staging"
+    with ExitStack() as stack:
+        pcm_path = input_path
+        if source.codec_name == "mp3":
+            executable = ffmpeg or discover_audio_toolchain(explicit_ffprobe=ffprobe).ffmpeg
+            scratch = Path(stack.enter_context(tempfile.TemporaryDirectory(prefix="forge-music-decode-")))
+            pcm_path = scratch / "decoded.wav"
+            try:
+                _run_ffmpeg(executable, ["-v", "error", "-i", str(input_path), "-map", "0:a:0", "-c:a", "pcm_s16le", str(pcm_path)])
+            except RuntimeError as error:
+                raise ValueError(str(error)) from error
+        handle = stack.enter_context(wave.open(str(pcm_path), "rb"))
         rate, channels, frames = handle.getframerate(), handle.getnchannels(), handle.getnframes()
         start_seconds, end_seconds = options.trim_start_seconds, options.trim_end_seconds
         if options.duration_policy == "trim":
@@ -100,7 +128,9 @@ def process_music_candidate(repo_root: Path, source: MusicSourceRecord, options:
             start = round(start_seconds * rate); count = round((end_seconds - start_seconds) * rate)
         else: start, count = 0, frames
         if count <= 0: raise ValueError("selected duration must be positive")
-        output_path = root / "outputs" / "music" / "staging" / (Path(source.path).stem + "-music.wav")
+        staging.mkdir(parents=True, exist_ok=True)
+        output_dir = Path(tempfile.mkdtemp(prefix="candidate-", dir=staging))
+        output_path = output_dir / (input_path.stem + "-music.wav")
         _write_frames(output_path, 2, 44100, _convert_frames(handle, start, count))
     gain_db = _limit_peak(output_path)
     with wave.open(str(output_path), "rb") as output_handle:

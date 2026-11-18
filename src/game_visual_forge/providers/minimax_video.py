@@ -127,7 +127,7 @@ def _h3_profile(model: str = "MiniMax-H3") -> VideoModelProfile:
         (VideoGenerationMode.T2V, VideoGenerationMode.I2V_FIRST, VideoGenerationMode.I2V_FIRST_TAIL, VideoGenerationMode.REFERENCE_TO_VIDEO),
         ("first_frame", "last_frame", "reference_image", "reference_video", "reference_audio"),
         spec["durations"], spec["resolutions"], _H3_RATIOS, True,
-        (VideoProviderBackend.API, VideoProviderBackend.CLI), "2026-11-17",
+        (VideoProviderBackend.API, VideoProviderBackend.CLI) if model == "MiniMax-H3" else (VideoProviderBackend.API,), "2026-11-18",
     )
 
 
@@ -218,7 +218,7 @@ def build_minimax_submit_request(
         raise ValueError(f"MiniMax-H3 mode is not supported: {mode.value}")
 
     body = {
-        "model": "MiniMax-H3",
+        "model": model,
         "content": content,
         "resolution": resolution,
         "duration": duration,

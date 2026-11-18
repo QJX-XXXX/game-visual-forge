@@ -17,7 +17,7 @@ class MusicPublicationTests(unittest.TestCase):
             root = Path(temp); path = root / "track.wav"; write_wav(path, rate=44100, channels=2, seconds=1)
             source = MusicSourceRecord("track.wav", hashlib.sha256(path.read_bytes()).hexdigest(), "wav", 44100, 2, 1, "local", "a", "c")
             request = music_request(usage="bgm-linear", unity_import_requested=True)
-            processing = MusicProcessingResult(source.sha256, str(path), "b" * 64, "c" * 64, 44100, 2, 1, 44100, 2)
+            processing = MusicProcessingResult(source.sha256, str(path), source.sha256, "c" * 64, 44100, 2, 1, 44100, 2)
             quality = assess_music_outputs(request, source, processing, repo_root=root)
             with self.assertRaises(ValueError):
                 publish_music_bundle(root, request, processing, quality, None, root / "final")

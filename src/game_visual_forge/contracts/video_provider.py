@@ -5,6 +5,7 @@ import json
 import re
 from dataclasses import dataclass, replace
 from enum import StrEnum
+from pathlib import PurePosixPath, PureWindowsPath
 from typing import Any
 
 from .pathing import normalize_repo_relative_path
@@ -287,7 +288,15 @@ class VideoGenerationAttempt:
         _timestamp(self.created_at, "created_at")
         _timestamp(self.updated_at, "updated_at")
         if self.downloaded_path is not None:
-            object.__setattr__(self, "downloaded_path", normalize_repo_relative_path(self.downloaded_path, field_name="downloaded_path"))
+            value = _string(self.downloaded_path, "downloaded_path")
+            path = PureWindowsPath(value) if PureWindowsPath(value).is_absolute() else PurePosixPath(value)
+            if path.is_absolute():
+                if ".." in path.parts:
+                    raise ValueError("downloaded_path must not contain '..' path segments")
+                value = path.as_posix()
+            else:
+                value = normalize_repo_relative_path(value, field_name="downloaded_path")
+            object.__setattr__(self, "downloaded_path", value)
         if self.downloaded_sha256 is not None:
             _digest(self.downloaded_sha256, "downloaded_sha256")
         if self.confirmation_binding_fingerprint is not None:

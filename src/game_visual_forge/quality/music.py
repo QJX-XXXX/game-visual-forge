@@ -42,8 +42,11 @@ def assess_music_outputs(request, source, processing: MusicProcessingResult, *, 
             if not loop.is_file(): failures.append("missing-loop-evidence")
             elif processing.loop_evidence_sha256 and _sha(loop) != processing.loop_evidence_sha256: failures.append("loop-evidence-hash-mismatch")
     processed_hash = _sha(path) if path.is_file() else "0" * 64
+    if processed_hash != processing.processed_sha256:
+        failures.append("processed-hash-mismatch")
     source_path = _path(root, source.path)
-    if source_path.is_file() and _sha(source_path) != source.sha256: failures.append("source-hash-mismatch")
+    if processing.source_sha256 != source.sha256 or not source_path.is_file() or _sha(source_path) != source.sha256:
+        failures.append("source-hash-mismatch")
     status = "failed" if failures else "passed"
     return MusicQualityReport(1, hashlib.sha256(json.dumps(request.to_dict(), sort_keys=True, ensure_ascii=False, separators=(",", ":")).encode()).hexdigest(), processing.processing_fingerprint, status, tuple(failures), tuple(warnings), metrics, source.sha256, processed_hash, processing.loop_evidence_sha256)
 
@@ -52,6 +55,8 @@ def record_music_review(request, processing, quality, checks, now, repo_root=Non
     if set(checks) != REQUIRED_MUSIC_CHECKS: raise ValueError("review must contain exactly the six required music checks")
     root = Path(repo_root or "."); path = _path(root, processing.processed_path)
     artifacts = {"processed": _sha(path), "source": processing.source_sha256}
+    if artifacts["processed"] != processing.processed_sha256 or artifacts["processed"] != quality.processed_sha256:
+        raise ValueError("processed music differs from the processing or quality record")
     if processing.loop_evidence_path:
         loop = _path(root, processing.loop_evidence_path); artifacts["loop_evidence"] = _sha(loop)
     return MusicReview.create(request_fingerprint=quality.request_fingerprint, processing_fingerprint=processing.processing_fingerprint, quality_report_sha256=quality.sha256, artifact_sha256=artifacts, checks=checks, reviewed_at=now)

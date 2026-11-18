@@ -38,8 +38,8 @@ def _models(provider, backend, region):
     provider_enum = ExternalProvider(provider)
     backend_enum = VideoProviderBackend(backend)
     if provider == "minimax" and backend == "cli":
-        from .minimax_video import _H3_MODEL_SPECS, _h3_profile
-        models = tuple(replace(_h3_profile(model), supported_backends=(backend_enum,)) for model in _H3_MODEL_SPECS)
+        from .minimax_video import _h3_profile
+        models = (replace(_h3_profile(), supported_backends=(backend_enum,)),)
     else:
         if provider == "minimax":
             model, durations, resolutions = "MiniMax-Hailuo-02", (6, 10), ("768P", "1080P")
@@ -58,6 +58,8 @@ def _arguments(provider, payload, config):
         raise ValueError("video prompt is required")
     if provider == "minimax" and config["backend"] == "cli":
         from .minimax_video import _prepared_submit_request
+        if model != "MiniMax-H3":
+            raise ValueError("MiniMax CLI supports MiniMax-H3 for V2. Select the API for other H3 models.")
         _prepared_submit_request(model, mode, parameters)
         if parameters.get("extra") or parameters.get("aigc_watermark"):
             raise ValueError("these H3 options require API execution")
@@ -131,12 +133,14 @@ def _query(provider, payload, config):
     if provider == "minimax":
         arguments = ["video", "task", "get", "--task-id", task_id, "--model", payload["model"], *_minimax_region_arguments(payload.get("region", "global")), "--output", "json"]
         result = run_tool(config, arguments)
-        status = result.get("status")
-        if status in {"Success", "SUCCESS", "SUCCEEDED", "completed", "success"}:
+        status = str(result.get("status", "")).lower()
+        if status in {"success", "succeeded", "completed"}:
             return {"status": "completed", "url": result.get("url"), "file_id": result.get("file_id")}
-        if status in {"Fail", "Failed", "FAILED", "failed"}:
+        if status in {"fail", "failed"}:
             return {"status": "failed"}
-        if status not in {"Preparing", "Queueing", "Processing", "RUNNING", "PENDING", "running", "queued", "submitted", "pending", "processing", "in_progress"}:
+        if status in {"cancelled", "canceled", "expired"}:
+            return {"status": status}
+        if status not in {"preparing", "queueing", "processing", "running", "queued", "submitted", "pending", "in_progress"}:
             raise ImageApiError("invalid_minimax_cli_video_status")
         return {"status": "running"}
     result = run_tool(config, ["query_result", "--submit_id=" + task_id])

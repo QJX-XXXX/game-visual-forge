@@ -120,18 +120,21 @@ def _query_video_attempt(attempt_path: Path, executable: Path, *, now: str) -> V
     attempt = VideoGenerationAttempt.from_dict(load_json(attempt_path))
     if attempt.external_task_id is None:
         raise ValueError("query requires an existing external task id")
+    if attempt.status is VideoAttemptStatus.DOWNLOADED:
+        return attempt
     payload = {"schema_version": 1, "provider": attempt.provider.value, "backend": attempt.backend.value, "region": attempt.region, "model": attempt.model, "parameters": attempt.parameters, "external_task_id": attempt.external_task_id}
     receipt = _run(executable, ProviderCommand.QUERY, payload)
-    provider_status = str(receipt.get("status", "unknown"))
+    provider_status = str(receipt.get("status", "unknown")).lower()
     if provider_status in {"completed", "succeeded", "success"}:
         status = VideoAttemptStatus.COMPLETED
-    elif provider_status == "failed":
+    elif provider_status in {"failed", "expired"}:
         status = VideoAttemptStatus.FAILED
     elif provider_status in {"cancelled", "canceled"}:
         status = VideoAttemptStatus.CANCELLED
     else:
         status = VideoAttemptStatus.RUNNING
-    result = attempt.replace(status=status, updated_at=now)
+    error_code = "expired" if provider_status == "expired" else attempt.error_code
+    result = attempt.replace(status=status, updated_at=now, error_code=error_code)
     dump_json(attempt_path, result.to_dict())
     return result
 
@@ -145,9 +148,10 @@ def _download_video_attempt(attempt_path: Path, executable: Path, output_dir: Pa
     attempt = VideoGenerationAttempt.from_dict(load_json(attempt_path))
     if attempt.external_task_id is None:
         raise ValueError("download requires an existing external task id")
+    output_dir = output_dir.resolve()
     if attempt.downloaded_path and attempt.downloaded_sha256:
-        saved = attempt_path.parent.resolve() / attempt.downloaded_path
-        if saved.is_file() and sha256_file(saved) == attempt.downloaded_sha256:
+        saved = (attempt_path.parent.resolve() / attempt.downloaded_path).resolve()
+        if saved.parent == output_dir and saved.is_file() and sha256_file(saved) == attempt.downloaded_sha256:
             return attempt
     output_dir.mkdir(parents=True, exist_ok=True)
     suffix = hashlib.sha256(attempt.attempt_id.encode()).hexdigest()[:20]
@@ -162,7 +166,8 @@ def _download_video_attempt(attempt_path: Path, executable: Path, output_dir: Pa
     if not provider_path.is_file() or provider_path.stat().st_size == 0:
         raise ValueError("provider download is empty")
     os.replace(provider_path, target)
-    relative = target.relative_to(attempt_path.parent.resolve()).as_posix()
-    result = attempt.replace(status=VideoAttemptStatus.DOWNLOADED, updated_at=now, downloaded_path=relative, downloaded_sha256=sha256_file(target))
+    attempt_dir = attempt_path.parent.resolve()
+    recorded_path = target.relative_to(attempt_dir) if target.is_relative_to(attempt_dir) else target
+    result = attempt.replace(status=VideoAttemptStatus.DOWNLOADED, updated_at=now, downloaded_path=recorded_path.as_posix(), downloaded_sha256=sha256_file(target))
     dump_json(attempt_path, result.to_dict())
     return result

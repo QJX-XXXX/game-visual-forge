@@ -77,7 +77,16 @@ def _image_prompt(request, kind):
     # the existing local processor meets the transparent delivery contract.
     chroma = request.chroma_color or "#ff00ff"
     opaque_request = replace(request, background_removal=BackgroundRemoval.CHROMA, chroma_color=chroma)
-    prompt = build_prompt_package(opaque_request).positive_prompt
+    package = build_prompt_package(opaque_request)
+    prompt = package.positive_prompt
+    if request.frame_count > 1:
+        prompt += " Frame order from left to right, then top to bottom: " + ", ".join(package.frame_order) + "."
+    else:
+        prompt += f" Facing direction: {request.directions[0]}."
+    if request.style_constraints:
+        prompt += " Follow these style constraints: " + "; ".join(request.style_constraints) + "."
+    if request.identity_constraints:
+        prompt += " Follow these character identity constraints: " + "; ".join(request.identity_constraints) + "."
     if request.background_removal is not BackgroundRemoval.PRESERVE:
         prompt += f" Use a uniform solid {chroma} background, without shadows or checkerboards, for local background removal."
     return prompt

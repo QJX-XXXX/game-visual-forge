@@ -52,6 +52,14 @@ class ImageProviderWorkflowTests(unittest.TestCase):
         dump_json(self.quote_path, {"schema_version": 1, "provider": provider, "currency": "CNY", "amount": "0.20", "verified": True, "notice": "user verified account estimate"})
         return confirm_image_attempt(self.attempt_path, self.quote_path, self.confirmation_path, now=NOW)
 
+    def test_default_external_prompt_preserves_direction_order_style_and_identity(self):
+        self.request = replace(self.request, directions=("west", "east"), style_constraints=("woodcut",), identity_constraints=("red scarf",))
+        attempt = self.prepare(parameters={"size": "1024x1024"})
+        prompt = attempt["parameters"]["prompt"]
+        self.assertLess(prompt.index("west:00"), prompt.index("east:00"))
+        self.assertIn("woodcut", prompt)
+        self.assertIn("red scarf", prompt)
+
     def test_minimax_saves_png_and_only_then_releases_normal_ingest(self):
         self.prepare()
         self.confirm()

@@ -146,7 +146,8 @@ for its server preset. No tools or MCP registrations are installed automatically
 
 MiniMax and Jimeng video wrappers accept explicit `backend=cli` and bind optional
 `parameters.execution` to the attempt. Queries and downloads carry the same
-configuration. MiniMax CLI supports the existing H3 profiles. Its H3 download
+configuration. MiniMax CLI supports the base `MiniMax-H3` V2 model. Select API
+execution for H3 Highspeed, Lite, or Max. The CLI download
 uses the URL returned by the CLI task query and the project's media downloader.
 MiniMax's official video MCP has a separate verified `MiniMax-Hailuo-02` profile
 for text or first-frame generation. Unsupported H3 video MCP profiles are rejected.

@@ -74,7 +74,8 @@ class MusicReview:
         root = Path(repo_root or ".")
         path = Path(processing.processed_path); path = path if path.is_absolute() else root / path
         current = hashlib.sha256(path.read_bytes()).hexdigest()
-        if self.artifact_sha256.get("processed") != current: raise ValueError("processed artifact changed after review")
+        if current != self.artifact_sha256.get("processed") or current != processing.processed_sha256 or current != quality.processed_sha256:
+            raise ValueError("processed artifact does not match the processing, quality, and review records")
         if processing.source_path:
             source = Path(processing.source_path); source = source if source.is_absolute() else root / source
             if self.artifact_sha256.get("source") != hashlib.sha256(source.read_bytes()).hexdigest(): raise ValueError("source artifact changed after review")

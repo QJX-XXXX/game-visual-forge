@@ -40,7 +40,7 @@ class ProviderToolTests(unittest.TestCase):
             " if directory:\n  output=Path(directory)/'result.png';output.parent.mkdir(parents=True,exist_ok=True);output.write_bytes(base64.b64decode('" + __import__("base64").b64encode(png_bytes()).decode() + "'))\n"
             " print(json.dumps({'gen_status':'success','submit_id':'dream-task'}));sys.exit()\n"
             "if args[:2]==['video','generate']:\n print(json.dumps({'taskId':'mmx-task'}));sys.exit()\n"
-            "if args[:3]==['video','task','get']:\n print(json.dumps({'status':'Success','url':'https://example.test/video.mp4'}));sys.exit()\n"
+            "if args[:3]==['video','task','get']:\n print(json.dumps({'status':'succeeded','url':'https://example.test/video.mp4'}));sys.exit()\n"
             "directory=Path(args[args.index('--out-dir')+1]);directory.mkdir(parents=True,exist_ok=True)\n"
             "output=directory/'result.png';output.write_bytes(base64.b64decode('" + __import__("base64").b64encode(png_bytes()).decode() + "'))\n"
             "print(json.dumps({'saved':[str(output)],'success_count':1,'total':1}))\n",
@@ -196,10 +196,12 @@ class ProviderToolTests(unittest.TestCase):
         payload = {"backend": "cli", "region": "cn", "model": "MiniMax-H3", "mode": "t2v", "parameters": {"prompt": "hero walking", "execution": self.execution}}
         snapshot = run_command("models", payload)
         self.assertEqual(snapshot["backend"], "cli")
+        self.assertEqual([item["model"] for item in snapshot["models"]], ["MiniMax-H3"])
         prepared = run_command("prepare", {**payload, "snapshot": snapshot})
         attempt = VideoGenerationAttempt(1, "video-cli", "b" * 64, ExternalProvider.MINIMAX, VideoProviderBackend.CLI, "cn", "MiniMax-H3", snapshot["snapshot_sha256"], prepared["parameters"], VideoAttemptStatus.PREPARED, NOW, NOW)
         confirmation = VideoPaidConfirmation.create(attempt_id=attempt.attempt_id, provider=attempt.provider, backend=attempt.backend, region=attempt.region, model=attempt.model, model_snapshot_sha256=attempt.model_snapshot_sha256, mode=VideoGenerationMode.T2V, parameters=attempt.parameters, reference_sha256=(), quantity=1, estimate=CostEstimate(1, attempt.provider, "CNY", "0.2", True, "verified"), request_fingerprint=attempt.request_fingerprint, confirmed_at=NOW)
-        attempt_path, confirmation_path = self.root / "video.json", self.root / "video-confirmation.json"
+        attempt_path = self.root / "job" / "video.json"
+        confirmation_path = attempt_path.with_name("video-confirmation.json")
         dump_json(attempt_path, attempt.to_dict())
         dump_json(confirmation_path, confirmation.to_dict())
         calls = []
@@ -217,12 +219,24 @@ class ProviderToolTests(unittest.TestCase):
             self.assertEqual(query_video_attempt(attempt_path, self.script, now=NOW).status, VideoAttemptStatus.COMPLETED)
             downloaded = download_video_attempt(attempt_path, self.script, self.root / "video-output", now=NOW)
             self.assertEqual(downloaded.status, VideoAttemptStatus.DOWNLOADED)
-            self.assertTrue((self.root / downloaded.downloaded_path).is_file())
+            self.assertEqual(Path(downloaded.downloaded_path), self.root / "video-output" / "video.mp4")
+            self.assertTrue(Path(downloaded.downloaded_path).is_file())
             count = len(calls)
             download_video_attempt(attempt_path, self.script, self.root / "video-output", now=NOW)
+            self.assertEqual(query_video_attempt(attempt_path, self.script, now=NOW).status, VideoAttemptStatus.DOWNLOADED)
             self.assertEqual(len(calls), count)
         self.assertTrue(load_json(confirmation_path)["consumed_at"])
         self.assertTrue(all(value["backend"] == "cli" and value["parameters"]["execution"] == attempt.parameters["execution"] for _, value in calls))
+
+        for status, expected in (("cancelled", VideoAttemptStatus.CANCELLED), ("expired", VideoAttemptStatus.FAILED)):
+            with self.subTest(status=status), patch("game_visual_forge.providers.video._run", side_effect=dispatch), patch(
+                "game_visual_forge.providers.tool_video.run_tool", return_value={"status": status},
+            ):
+                dump_json(attempt_path, submitted.to_dict())
+                queried = query_video_attempt(attempt_path, self.script, now=NOW)
+                self.assertEqual(queried.status, expected)
+                if status == "expired":
+                    self.assertEqual(queried.error_code, "expired")
 
     def test_video_downloads_keep_existing_other_attempt_output(self):
         from tests import test_video_provider_orchestration as video_tests

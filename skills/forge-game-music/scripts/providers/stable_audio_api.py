@@ -5,7 +5,12 @@ import os
 import sys
 import urllib.error
 import urllib.request
+from dataclasses import asdict
 from pathlib import Path
+
+SRC = Path(__file__).resolve().parents[4] / "src"
+if str(SRC) not in sys.path:
+    sys.path.insert(0, str(SRC))
 
 from game_visual_forge.contracts.music_provider import MusicHttpResponse
 from game_visual_forge.providers.stable_audio_music import (
@@ -45,6 +50,7 @@ def run(payload: dict) -> dict:
             "external_task_id": task_id,
             "candidate_ids": [item.provider_candidate_id for item in files],
             "returned_candidate_count": len(files),
+            "downloaded_files": [asdict(item) for item in files],
         }
     raise ValueError(f"unsupported Stable Audio operation: {operation}")
 

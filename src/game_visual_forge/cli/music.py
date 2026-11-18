@@ -70,16 +70,16 @@ def run_music_download(attempt_path, executable, output_dir, now):
 
 
 def run_music_ingest(request_path, source_path, repo_root, attempt_path, out, ffprobe=None):
-    del request_path, ffprobe
+    del request_path
     attempt = MusicGenerationAttempt.from_dict(load_json(Path(attempt_path)))
-    source = ingest_music_source(Path(repo_root), Path(source_path), attempt, Path("unused"))
+    source = ingest_music_source(Path(repo_root), Path(source_path), attempt, ffprobe)
     dump_json(Path(out), source.to_dict()); return source.to_dict()
 
 
 def run_music_process(source_path, options_path, repo_root, out, ffmpeg=None, ffprobe=None):
     source = MusicSourceRecord.from_dict(load_json(Path(source_path)))
     options = MusicProcessingOptions.from_dict(load_json(Path(options_path))) if options_path else MusicProcessingOptions()
-    result = process_music_candidate(Path(repo_root), source, options, Path(ffmpeg or "unused"), Path(ffprobe or "unused"))
+    result = process_music_candidate(Path(repo_root), source, options, ffmpeg, ffprobe)
     dump_json(Path(out), result.to_dict()); return result.to_dict()
 
 
@@ -100,6 +100,7 @@ def register_music_commands(audio_commands):
     plan = commands.add_parser("plan"); plan.add_argument("--request", type=Path, required=True); plan.add_argument("--out-dir", type=Path, required=True); plan.add_argument("--now", required=True)
     route = commands.add_parser("route"); route.add_argument("--request", type=Path, required=True); route.add_argument("--capabilities", type=Path); route.add_argument("--selection", choices=[item.value for item in MusicProvider]); route.add_argument("--out", type=Path, required=True); route.add_argument("--state", type=Path, required=True); route.add_argument("--now", required=True)
     ingest = commands.add_parser("ingest"); ingest.add_argument("--request", type=Path); ingest.add_argument("--source", type=Path, required=True); ingest.add_argument("--repo-root", type=Path, required=True); ingest.add_argument("--attempt", type=Path, required=True); ingest.add_argument("--out", type=Path, required=True)
+    ingest.add_argument("--ffprobe", type=Path)
     process = commands.add_parser("process"); process.add_argument("--source-record", type=Path, required=True); process.add_argument("--options", type=Path); process.add_argument("--repo-root", type=Path, required=True); process.add_argument("--out", type=Path, required=True); process.add_argument("--ffmpeg", type=Path); process.add_argument("--ffprobe", type=Path)
     review = commands.add_parser("record-review"); review.add_argument("--request", type=Path, required=True); review.add_argument("--processing", type=Path, required=True); review.add_argument("--quality", type=Path, required=True); review.add_argument("--checks", type=Path, required=True); review.add_argument("--repo-root", type=Path, required=True); review.add_argument("--out", type=Path, required=True); review.add_argument("--now", required=True)
     validate = commands.add_parser("validate"); validate.add_argument("--request", type=Path, required=True); validate.add_argument("--processing", type=Path, required=True); validate.add_argument("--quality", type=Path, required=True); validate.add_argument("--review", type=Path, required=True); validate.add_argument("--repo-root", type=Path, required=True); validate.add_argument("--final-dir", type=Path, required=True)
@@ -116,7 +117,7 @@ def register_music_commands(audio_commands):
 def dispatch_music_command(args):
     if args.audio_music_command == "plan": return run_music_plan(args.request, args.out_dir, now=args.now)
     if args.audio_music_command == "route": return run_music_route(args.request, args.capabilities, args.selection, args.out, args.state, now=args.now)
-    if args.audio_music_command == "ingest": return run_music_ingest(args.request, args.source, args.repo_root, args.attempt, args.out)
+    if args.audio_music_command == "ingest": return run_music_ingest(args.request, args.source, args.repo_root, args.attempt, args.out, args.ffprobe)
     if args.audio_music_command == "process": return run_music_process(args.source_record, args.options, args.repo_root, args.out, args.ffmpeg, args.ffprobe)
     if args.audio_music_command == "record-review": return run_music_record_review(args.request, args.processing, args.quality, args.checks, args.out, args.repo_root, args.now)
     if args.audio_music_command == "validate": return run_music_validate(args.request, args.processing, args.quality, args.review, args.repo_root, args.final_dir)

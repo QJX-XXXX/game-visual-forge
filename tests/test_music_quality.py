@@ -15,7 +15,7 @@ class MusicQualityTests(unittest.TestCase):
         with tempfile.TemporaryDirectory() as temp:
             root = Path(temp); path = root / "track.wav"; write_wav(path, rate=44100, channels=2, seconds=1, amp=28000)
             source = MusicSourceRecord("track.wav", hashlib.sha256(path.read_bytes()).hexdigest(), "wav", 44100, 2, 1, "local", "a", "c")
-            processing = MusicProcessingResult(source.sha256, str(path), "b" * 64, "c" * 64, 44100, 2, 1, 44100, 2)
+            processing = MusicProcessingResult(source.sha256, str(path), source.sha256, "c" * 64, 44100, 2, 1, 44100, 2)
             report = assess_music_outputs(music_request(usage="bgm-linear"), source, processing, repo_root=root)
             self.assertEqual(report.status, "passed")
             self.assertNotIn("dense-noise", report.failures)
@@ -27,7 +27,7 @@ class MusicQualityTests(unittest.TestCase):
                 handle.setnchannels(2); handle.setsampwidth(2); handle.setframerate(44100)
                 handle.writeframes((32767).to_bytes(2, "little", signed=True) * 2 * 44100)
             source = MusicSourceRecord("track.wav", hashlib.sha256(path.read_bytes()).hexdigest(), "wav", 44100, 2, 1, "local", "a", "c")
-            processing = MusicProcessingResult(source.sha256, str(path), "b" * 64, "c" * 64, 44100, 2, 1, 44100, 2)
+            processing = MusicProcessingResult(source.sha256, str(path), source.sha256, "c" * 64, 44100, 2, 1, 44100, 2)
             report = assess_music_outputs(music_request(), source, processing, repo_root=root)
             self.assertEqual(report.status, "failed")
             self.assertIn("missing-loop-evidence", report.failures)
