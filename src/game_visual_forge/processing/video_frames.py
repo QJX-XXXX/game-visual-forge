@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import shutil
 import subprocess
 import sys
 from dataclasses import dataclass
@@ -8,6 +9,7 @@ from pathlib import Path
 from typing import Any
 
 from game_visual_forge.contracts.video import VideoFrameRecord, VideoSourceRecord
+from game_visual_forge.errors import ErrorCode, ForgeError
 from game_visual_forge.processing.video_probe import sha256_file
 
 
@@ -70,6 +72,20 @@ def _rotation_filter(rotation: int) -> str | None:
     return {0: None, 90: "transpose=1", 180: "hflip,vflip", 270: "transpose=2"}[rotation]
 
 
+def _extract_image(ffmpeg: Path, source: Path, target: Path, timestamp: float, rotation: int, *, last: bool = False) -> tuple[bool, bool]:
+    target.unlink(missing_ok=True)
+    args = ["-hide_banner", "-loglevel", "error", "-y", "-ss", f"{timestamp:.9f}", "-i", str(source), "-map", "0:v:0"]
+    rotation_filter = _rotation_filter(rotation)
+    if rotation_filter is not None:
+        args.extend(["-vf", rotation_filter])
+    # The image2 muxer replaces a single file as frames arrive, keeping memory
+    # bounded when the last frame must be recovered from a sparse video stream.
+    args.extend(["-vsync", "0", "-update", "1"] if last else ["-frames:v", "1"])
+    result = subprocess.run(_argv(ffmpeg, [*args, str(target)]), capture_output=True, shell=False, check=False)
+    written = target.is_file() and target.stat().st_size > 0
+    return result.returncode == 0, written
+
+
 def extract_highest_density(
     repo_root: Path,
     source: VideoSourceRecord,
@@ -83,18 +99,30 @@ def extract_highest_density(
     target_root = root / output_dir
     target_root.mkdir(parents=True, exist_ok=True)
     records: list[VideoFrameRecord] = []
+    last_frame: Path | None = None
     for index, timestamp in enumerate(timestamps):
         target = target_root / f"frame-{index:04d}.png"
-        args = ["-hide_banner", "-loglevel", "error", "-y", "-ss", f"{timestamp:.9f}", "-i", str(source_path)]
-        rotation_filter = _rotation_filter(source.display_rotation)
-        if rotation_filter is not None:
-            args.extend(["-vf", rotation_filter])
-        args.extend(["-frames:v", "1", str(target)])
-        result = subprocess.run(_argv(Path(ffmpeg), args), capture_output=True, text=True, encoding="utf-8", shell=False, check=False)
-        if result.returncode != 0 or not target.is_file() or target.stat().st_size == 0:
-            if target.exists():
-                target.unlink()
-            raise RuntimeError(f"FFmpeg failed to extract frame {index}")
+        if last_frame is None or timestamp > source.duration_seconds:
+            ok, written = _extract_image(ffmpeg, source_path, target, timestamp, source.display_rotation)
+            if ok and not written and 0 <= timestamp <= source.duration_seconds:
+                # A seek after the final presentation timestamp can exit 0
+                # without emitting a frame, including a seek to the exact EOF.
+                tail_start = max(0.0, timestamp - 1.0)
+                ok, written = _extract_image(ffmpeg, source_path, target, tail_start, source.display_rotation, last=True)
+                if ok and not written and tail_start > 0:
+                    ok, written = _extract_image(ffmpeg, source_path, target, 0.0, source.display_rotation, last=True)
+                if ok and written and all(later >= timestamp for later in timestamps[index + 1:]):
+                    last_frame = target
+        else:
+            target.unlink(missing_ok=True)
+            shutil.copyfile(last_frame, target)
+            ok, written = True, True
+        if not ok or not written:
+            target.unlink(missing_ok=True)
+            raise ForgeError(
+                ErrorCode.PROCESSING_FAILED, f"FFmpeg failed to extract frame {index}",
+                recoverable=True, context={"frame_index": index, "timestamp": timestamp},
+            )
         records.append(VideoFrameRecord(1, index, float(timestamp), None, target.relative_to(root).as_posix(), None, None, sha256_file(target)))
     return tuple(records)
 

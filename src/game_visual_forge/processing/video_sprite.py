@@ -19,6 +19,7 @@ from game_visual_forge.contracts.video import (
 )
 from game_visual_forge.processing.background import BackgroundResult, VIDEO_CHROMA_TOLERANCE, remove_background, remove_chroma, resize_rgba_alpha_safe
 from game_visual_forge.processing.frames import trim_alpha
+from game_visual_forge.errors import ErrorCode, ForgeError
 from game_visual_forge.processing.images import _load_pillow
 from game_visual_forge.processing.video_probe import sha256_file
 from game_visual_forge.processing.video_review import calculate_safe_frame_bounds, visible_alpha_bounds
@@ -174,6 +175,7 @@ def process_video_sprite(
     reasons: list[str] = []
     for source_index, image in enumerate(source_images):
         background, method, attention = _video_background(image, request, remover)
+        background = background.convert("RGBA")
         methods.append(method)
         needs_attention = needs_attention or attention
         if attention and "background-removal-failed" not in reasons:
@@ -187,16 +189,16 @@ def process_video_sprite(
             or source_bound[3] >= background.height
         ):
             source_edge_contact_frames.append(source_index)
-        try:
-            if request.layout_mode is VideoLayoutMode.REFERENCE_LOCKED:
-                cleaned.append(background.convert("RGBA"))
-            else:
-                cleaned.append(trim_alpha(background))
-        except Exception:
-            needs_attention = True
-            reasons.append("empty-clean-frame")
-    if not cleaned:
-        return VideoProcessingResult(1, request.asset_id, source.request_fingerprint, staging.relative_to(root).as_posix(), (), {}, "frame-timing.json", tuple(methods), True, tuple(reasons))
+        if background.getchannel("A").getbbox() is None:
+            raise ForgeError(
+                ErrorCode.INVALID_FRAME, f"video frame {source_index} is empty after background cleanup",
+                recoverable=True,
+                context={"frame_index": source_index, "timestamp": raw_frames[source_index].source_timestamp},
+            )
+        if request.layout_mode is VideoLayoutMode.REFERENCE_LOCKED:
+            cleaned.append(background)
+        else:
+            cleaned.append(trim_alpha(background))
     delivery, scale, bounds = _delivery_frames(tuple(cleaned), request)
     reference_delivery_bounds = None
     if request.layout_mode is VideoLayoutMode.REFERENCE_LOCKED:

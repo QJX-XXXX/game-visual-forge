@@ -291,11 +291,15 @@ def _rembg_provider_timeout_seconds() -> float:
 
 
 def _rembg_model_path(model: str) -> Path:
-    configured_home = os.environ.get("U2NET_HOME")
-    if configured_home is None:
-        data_home = os.environ.get("XDG_DATA_HOME", "~")
-        configured_home = os.path.join(data_home, ".u2net")
-    return Path(configured_home).expanduser() / f"{model}.onnx"
+    shared_home = os.environ.get("U2NET_HOME")
+    data_home = os.environ.get("XDG_DATA_HOME")
+    legacy_home = Path(shared_home or Path(data_home or "~") / ".u2net").expanduser()
+    default_home = Path(data_home) / "rembg" if data_home else Path("~/.rembg")
+    model_home = Path(shared_home or os.environ.get("REMBG_HOME") or default_home).expanduser()
+    filename = f"{model}.onnx"
+    nested = model_home / "models" / model / filename
+    legacy = legacy_home / filename
+    return nested if nested.is_file() or not legacy.is_file() else legacy
 
 
 def _remove_direct_onnx(image: Any, provider: str, model: str) -> tuple[Any, str]:

@@ -25,7 +25,7 @@ from game_visual_forge.routing import AgentImageCapabilities, NativeAttemptOutco
 
 
 def _request(path: Path) -> tuple[SpriteRequest, str]:
-    request = SpriteRequest.from_dict(load_json(path))
+    request = load_json(path, SpriteRequest.from_dict)
     return request, fingerprint_request(request.to_dict())
 
 
@@ -55,7 +55,7 @@ def run_sprite_route(
     request, fingerprint = _request(request_path)
     capabilities_payload = load_json(capabilities_path)
     capabilities = AgentImageCapabilities(bool(capabilities_payload["supported"]), tuple(capabilities_payload["operations"]))
-    preflight = None if preflight_path is None else ProviderPreflight.from_dict(load_json(preflight_path))
+    preflight = None if preflight_path is None else load_json(preflight_path, ProviderPreflight.from_dict)
     decision = route_sprite(
         request,
         capabilities,
@@ -85,7 +85,7 @@ def run_sprite_ingest(
     image_attempt_path: Path | None = None,
 ) -> dict[str, Any]:
     request, fingerprint = _request(request_path)
-    decision = SourceDecision.from_dict(load_json(decision_path))
+    decision = load_json(decision_path, SourceDecision.from_dict)
     if decision.request_fingerprint != fingerprint or decision.source_type is None:
         raise ValueError("source decision does not match request or has no source")
     model = None if image_attempt_path is None else verified_image_model(image_attempt_path, image_path, repo_root, fingerprint, decision.selected_provider)
@@ -106,7 +106,7 @@ def run_sprite_process(
     now: str,
 ) -> dict[str, Any]:
     request, fingerprint = _request(request_path)
-    record = RawImageRecord.from_dict(load_json(raw_image_path))
+    record = load_json(raw_image_path, RawImageRecord.from_dict)
     if record.request_fingerprint != fingerprint:
         raise ValueError("raw image fingerprint does not match request")
     result = process_sprite(repo_root, request, record, repo_root / PurePosixPath(request.output_dir))
@@ -130,8 +130,8 @@ def run_sprite_validate(
     now: str,
 ) -> dict[str, Any]:
     request, fingerprint = _request(request_path)
-    record = RawImageRecord.from_dict(load_json(raw_image_path))
-    result = ProcessingResult.from_dict(load_json(processing_result_path))
+    record = load_json(raw_image_path, RawImageRecord.from_dict)
+    result = load_json(processing_result_path, ProcessingResult.from_dict)
     if record.request_fingerprint != fingerprint:
         raise ValueError("raw image fingerprint does not match request")
     report = validate_sprite_outputs(staging_dir, request, record, result)

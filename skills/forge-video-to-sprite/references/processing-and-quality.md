@@ -27,7 +27,9 @@ frame output is written.
 
 Sampling uses presentation timestamps. Looping clips use `[start,end)` so the
 endpoint does not duplicate the first pose. Non-looping clips include both
-endpoints when more than one frame is requested. When multiple densities such
+endpoints when more than one frame is requested. A sample within the clip but
+after the last decodable frame uses the last available frame and retains its
+requested sampling timestamp. When multiple densities such
 as 8, 16, 24, and 48 are requested, extract the highest density once and derive
 the lower densities from that ordered timeline.
 

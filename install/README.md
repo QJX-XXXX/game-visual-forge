@@ -148,8 +148,9 @@ Confirm every link resolves to a `SKILL.md`, then run:
 python skills/forge-2d-map/scripts/run.py --help
 python skills/forge-2d-sprite/scripts/run.py --help
 python skills/forge-video-to-sprite/scripts/run.py --help
-python -m unittest discover -s tests -q
 ```
+
+To run the developer test suite, follow the [development check](../README.md#development-check).
 
 Restart the Agent session so Skill discovery reloads. To uninstall the core
 links, remove only the five links under `.agents/skills`; do not delete the

@@ -68,11 +68,11 @@ POSIX equivalent:
 "<verified-python>" "<forge-root>/install/check_environment.py" --profile image
 ```
 
-Profiles are `core` (runtime commands), `image` (Pillow), and `background`
-(Pillow, NumPy, SciPy, rembg). Choose only what this task requires. Valid native
-Alpha and explicit opaque delivery do not require rembg. A known chroma source
-can use the existing color-key processor when the user selects that treatment.
-Background package checks do not prove model files are cached or usable.
+Use `core` for commands that only need the Python runtime and `image` for local
+image and video processing with Pillow and NumPy. Use `background` for rembg
+processing with SciPy and ONNX Runtime. Use `matting` when PyMatting edge
+refinement is requested. Chroma and Preserve video processing use `image`.
+Video requests that use the default REMBG mode need `background`.
 
 The JSON identifies `python.executable`, version, virtual-environment state,
 pip/venv availability, dependencies, missing items, and suggested setup argv.
@@ -81,6 +81,10 @@ background model assets, FFmpeg, audio runtimes, or engine tools were verified.
 Imports run in child processes; the checker does not install or download models.
 It never reads API keys or invokes a provider. Exit 0 means ready; exit 1 means
 setup is needed. `--venv-dir` selects another proposed environment directory.
+When ONNX Runtime is missing, the setup command includes `rembg[cpu]` by
+default. Pass `--onnx-runtime gpu` to suggest `rembg[gpu]` for a CUDA environment.
+This option selects the package suggestion. CUDA and model readiness require
+separate verification.
 
 If the selected interpreter is wrong, re-run the checker with the existing
 environment's interpreter. Do not install into the wrong environment just
@@ -103,8 +107,9 @@ environment instead of overwriting it. For a new approved destination:
 & "<chosen-environment>/Scripts/python.exe" -m pip install -e "<forge-root>[image]"
 ```
 
-On POSIX use `<chosen-environment>/bin/python`. Use `[background]` only when
-local background removal needs it. Always bind pip to the selected interpreter
+On POSIX use `<chosen-environment>/bin/python`. For rembg, install `[background]`
+or `[matting]` with the selected `rembg[cpu]` or `rembg[gpu]` extra in the same environment.
+Always bind pip to the selected interpreter
 with `-m pip`; render argv with quoting appropriate to the user's shell.
 Activation and PowerShell execution-policy changes are unnecessary when using
 the environment interpreter directly. Do not create over an existing directory.

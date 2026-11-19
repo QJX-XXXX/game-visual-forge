@@ -13,9 +13,10 @@ authors = [{ name = "Game Visual Forge contributors" }]
 dependencies = []
 
 [project.optional-dependencies]
-image = ["Pillow>=10"]
+image = ["Pillow>=10", "numpy>=1.26"]
 mcp = ["mcp>=2,<3", "Pillow>=10"]
 background = ["Pillow>=10", "numpy>=1.26", "scipy>=1.11", "rembg>=2"]
+test = ["Pillow>=10", "numpy>=1.26", "scipy>=1.11", "mcp>=2,<3"]
 matting = [
     "Pillow>=10",
     "numpy>=1.26",

@@ -6,11 +6,16 @@ import io
 import json
 import os
 import re
+import socket
 import sys
+import time
 import urllib.error
 import urllib.parse
 import urllib.request
 from contextlib import contextmanager
+from datetime import datetime, timezone
+from email.utils import parsedate_to_datetime
+from http.client import IncompleteRead
 from pathlib import Path
 from typing import Any
 
@@ -19,6 +24,12 @@ from game_visual_forge.contracts.provider import ExternalProvider, ProviderPrefl
 
 
 MAX_IMAGE_BYTES = 128 * 1024 * 1024
+_RETRYABLE_READ_ERRORS = {
+    prefix + str(status)
+    for prefix in ("http_", "download_http_")
+    for status in (408, 429, 500, 502, 503, 504)
+} | {"50429"}  # Jimeng query throttle
+_MAX_RETRY_AFTER_SECONDS = 10
 _SECRET_FIELDS = {
     "api_key", "access_key", "secret_key", "secret", "token", "authorization",
     "cookie", "credential", "base64", "binary_data_base64",
@@ -26,11 +37,54 @@ _SECRET_FIELDS = {
 
 
 class ImageApiError(RuntimeError):
-    def __init__(self, code: str, *, definite_rejection: bool = False, external_task_id=None) -> None:
+    def __init__(self, code: str, *, definite_rejection: bool = False, external_task_id=None, retry_after: float | None = None) -> None:
         self.code = safe_error_code(code)
         super().__init__(f"image provider request failed ({self.code})")
         self.external_task_id = valid_task_id(external_task_id)
         self.definite_rejection = definite_rejection and self.external_task_id is None
+        self.retry_after = retry_after
+
+
+def _retry_after_seconds(error: urllib.error.HTTPError) -> float | None:
+    value = error.headers.get("Retry-After") if error.headers else None
+    if not value:
+        return None
+    try:
+        if value.isascii() and value.isdigit():
+            return float(value)
+        when = parsedate_to_datetime(value)
+        if when.tzinfo is None:
+            when = when.replace(tzinfo=timezone.utc)
+        return max(0.0, (when - datetime.now(timezone.utc)).total_seconds())
+    except (TypeError, ValueError, OverflowError):
+        return None
+
+
+def _should_retry_image_read(error: Exception) -> bool:
+    if isinstance(error, ImageApiError):
+        return error.external_task_id is None and error.code in _RETRYABLE_READ_ERRORS
+    reason = error.reason if isinstance(error, urllib.error.URLError) else error
+    if isinstance(reason, socket.gaierror):
+        return reason.errno == socket.EAI_AGAIN
+    return isinstance(reason, (TimeoutError, ConnectionError, IncompleteRead))
+
+
+def retry_image_read(operation):
+    """Retry a read operation that can safely be repeated."""
+    for delay in (0.5, 1.0):
+        try:
+            return operation()
+        except (ImageApiError, urllib.error.URLError, TimeoutError, ConnectionError, IncompleteRead) as error:
+            if not _should_retry_image_read(error):
+                raise
+            retry_after = error.retry_after if isinstance(error, ImageApiError) else None
+            if retry_after is not None and retry_after > _MAX_RETRY_AFTER_SECONDS:
+                raise
+            time.sleep(max(delay, retry_after or 0.0))
+    try:
+        return operation()
+    except (TimeoutError, ConnectionError, IncompleteRead) as error:
+        raise urllib.error.URLError(error) from None
 
 
 def safe_error_code(value):
@@ -173,17 +227,26 @@ class ImageHttpTransport:
     def request(self, method: str, url: str, *, body=None, headers=None, timeout: int = 120) -> dict[str, Any]:
         data = None if body is None else json_bytes(body)
         request = urllib.request.Request(url, data=data, headers=headers or {}, method=method)
+        if method.upper() in {"GET", "HEAD"}:
+            return retry_image_read(lambda: self._request_once(request, timeout))
+        return self._request_once(request, timeout)
+
+    def _request_once(self, request: urllib.request.Request, timeout: int) -> dict[str, Any]:
         try:
             with urllib.request.urlopen(request, timeout=timeout) as response:
                 raw = response.read(128 * 1024 * 1024 + 1)
         except urllib.error.HTTPError as error:
             # Even a contradictory error response may contain a recoverable ID.
-            try:
-                error_payload = json.loads(error.read(1024 * 1024).decode("utf-8"))
-            except (OSError, UnicodeDecodeError, ValueError):
-                error_payload = None
+            with error:
+                try:
+                    error_payload = json.loads(error.read(1024 * 1024).decode("utf-8"))
+                except (OSError, ValueError, IncompleteRead):
+                    error_payload = None
             task_id = response_task_id(error_payload)
-            raise ImageApiError(f"http_{error.code}", definite_rejection=400 <= error.code < 500, external_task_id=task_id) from None
+            raise ImageApiError(
+                f"http_{error.code}", definite_rejection=400 <= error.code < 500,
+                external_task_id=task_id, retry_after=_retry_after_seconds(error),
+            ) from None
         if len(raw) > 128 * 1024 * 1024:
             raise ImageApiError("response_too_large")
         try:
@@ -199,11 +262,15 @@ class ImageHttpTransport:
         parsed = urllib.parse.urlsplit(url)
         if parsed.scheme not in {"http", "https"} or not parsed.hostname:
             raise ValueError("provider image URL must use HTTP(S)")
+        return retry_image_read(lambda: self._read_image_once(url))
+
+    def _read_image_once(self, url: str) -> bytes:
         try:
             with urllib.request.urlopen(url, timeout=120) as response:
                 data = response.read(MAX_IMAGE_BYTES + 1)
         except urllib.error.HTTPError as error:
-            raise ImageApiError(f"download_http_{error.code}") from None
+            with error:
+                raise ImageApiError(f"download_http_{error.code}", retry_after=_retry_after_seconds(error)) from None
         if not data or len(data) > MAX_IMAGE_BYTES:
             raise ValueError("image download is empty or exceeds 128 MiB")
         return data

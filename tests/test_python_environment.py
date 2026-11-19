@@ -75,6 +75,21 @@ class PythonEnvironmentTests(unittest.TestCase):
                     self.assertEqual(commands[-1]["argv"], [target, "-m", "pip", "install", "-e", str(root) + "[image]"])
                     self.assertFalse((root / ".venv").exists())
 
+    def test_image_profile_requires_numpy(self):
+        report = self.inspect(ROOT, profile="image", probe=lambda name: name != "numpy")
+        self.assertEqual(report["status"], "needs_setup")
+        self.assertEqual(report["missing"], ["numpy"])
+
+    def test_background_profile_suggests_the_selected_onnx_backend(self):
+        for backend in ("cpu", "gpu"):
+            with self.subTest(backend=backend):
+                report = self.inspect(
+                    ROOT, profile="background", virtual_environment=True,
+                    probe=lambda name: name != "onnxruntime", onnx_runtime=backend,
+                )
+                self.assertIn("ONNX Runtime", report["missing"])
+                self.assertIn(f"rembg[{backend}]", report["suggested_commands"][-1]["argv"])
+
     def test_current_venv_installs_only_selected_extra_without_creating_another(self):
         report = self.inspect(ROOT, profile="image", virtual_environment=True, probe=lambda name: name != "PIL.Image")
         self.assertEqual(report["suggested_commands"], [{"action": "install-selected-extra", "argv": [sys.executable, "-m", "pip", "install", "-e", str(ROOT) + "[image]"]}])

@@ -4,12 +4,12 @@ import json
 from pathlib import Path
 from typing import Any
 
-from game_visual_forge.contracts import JobState, JobStatus, VideoGenerationAttempt, VideoModelCatalogSnapshot, VideoSourceDecision, VideoSourceRecord, VideoSpriteRequest, VideoFrameRecord, VideoMotionReview
+from game_visual_forge.contracts import JobState, JobStatus, VideoGenerationAttempt, VideoModelCatalogSnapshot, VideoSourceDecision, VideoSourceRecord, VideoSpriteRequest, VideoFrameRecord, VideoMotionReview, VideoProcessingResult
 from game_visual_forge.contracts.serialization import dump_json, load_json
 from game_visual_forge.contracts.video_provider import VideoProviderBackend
 from game_visual_forge.jobs import fingerprint_request, load_job, save_job, transition_job
 from game_visual_forge.processing.video_frames import build_sampling_plan, extract_highest_density
-from game_visual_forge.processing.video_probe import discover_toolchain, ingest_video
+from game_visual_forge.processing.video_probe import discover_toolchain, ingest_video, validate_trim
 from game_visual_forge.processing.video_sprite import process_video_sprite
 from game_visual_forge.processing.comfy_h3_workflow import load_and_inspect_comfy_h3_workflow
 from game_visual_forge.processing.video_review import calculate_safe_frame_bounds, calculate_temporal_metrics, create_anchor_diagnostic, create_contact_sheet, create_motion_difference, record_video_motion_review
@@ -21,7 +21,7 @@ from game_visual_forge.cli.planning import build_video_execution_plan
 
 
 def _request(path: Path) -> tuple[VideoSpriteRequest, str]:
-    request = VideoSpriteRequest.from_dict(load_json(path))
+    request = load_json(path, VideoSpriteRequest.from_dict)
     return request, fingerprint_request(request.to_dict())
 
 
@@ -82,7 +82,10 @@ def run_video_provider_download(attempt_path: Path, executable: Path, output_dir
 
 def run_video_ingest(request_path: Path, video_path: Path, repo_root: Path, out_path: Path, state_path: Path, now: str, ffprobe: Path | None = None) -> dict[str, Any]:
     request, fingerprint = _request(request_path)
-    record = ingest_video(repo_root, video_path, fingerprint, ffprobe=ffprobe)
+    record = ingest_video(
+        repo_root, video_path, fingerprint, ffprobe=ffprobe,
+        clip_start_seconds=request.clip_start_seconds, clip_end_seconds=request.clip_end_seconds,
+    )
     dump_json(out_path, record.to_dict())
     state = transition_job(load_job(state_path), JobStatus.RUNNING, now=now)
     save_job(state_path, state)
@@ -91,18 +94,18 @@ def run_video_ingest(request_path: Path, video_path: Path, repo_root: Path, out_
 
 def run_video_process(request_path: Path, source_path: Path, raw_frames_path: Path | None, repo_root: Path, out_dir: Path, state_path: Path, now: str, ffmpeg: Path | None = None) -> dict[str, Any]:
     request, fingerprint = _request(request_path)
-    source = VideoSourceRecord.from_dict(load_json(source_path))
+    source = load_json(source_path, VideoSourceRecord.from_dict)
+    if source.request_fingerprint != fingerprint:
+        raise ValueError("source record fingerprint does not match request")
     if raw_frames_path is None or not raw_frames_path.is_file():
         toolchain = discover_toolchain(explicit_ffmpeg=ffmpeg)
-        end = request.clip_end_seconds or source.duration_seconds
-        sampling = build_sampling_plan(request.clip_start_seconds, end, request.frame_counts, loop=request.loop)
+        start, end = validate_trim(request.clip_start_seconds, request.clip_end_seconds, source.duration_seconds)
+        sampling = build_sampling_plan(start, end, request.frame_counts, loop=request.loop)
         relative_raw = out_dir.resolve().relative_to(repo_root.resolve()).as_posix() + "/raw-frames"
         extracted = extract_highest_density(repo_root, source, sampling.timestamps, toolchain.ffmpeg, output_dir=relative_raw)
         raw_frames_path = out_dir / "raw-frames.json"
         dump_json(raw_frames_path, {"schema_version": 1, "frames": [item.to_dict() for item in extracted]})
-    raw_frames = tuple(VideoFrameRecord.from_dict(item) for item in load_json(raw_frames_path)["frames"])
-    if source.request_fingerprint != fingerprint:
-        raise ValueError("source record fingerprint does not match request")
+    raw_frames = load_json(raw_frames_path, lambda payload: tuple(VideoFrameRecord.from_dict(item) for item in payload["frames"]))
     result = process_video_sprite(repo_root, request, source, raw_frames)
     result_path = repo_root / result.staging_dir / "processing-result.json"
     dump_json(result_path, result.to_dict())
@@ -119,8 +122,8 @@ def run_video_inspect_h3(workflow_path: Path, out_path: Path) -> dict[str, Any]:
 
 def run_video_assess(request_path: Path, source_path: Path, processing_path: Path, repo_root: Path, out_path: Path) -> dict[str, Any]:
     request, _ = _request(request_path)
-    source = VideoSourceRecord.from_dict(load_json(source_path))
-    processing = __import__("game_visual_forge.contracts", fromlist=["VideoProcessingResult"]).VideoProcessingResult.from_dict(load_json(processing_path))
+    source = load_json(source_path, VideoSourceRecord.from_dict)
+    processing = load_json(processing_path, VideoProcessingResult.from_dict)
     report = assess_video_outputs(repo_root, request, source, processing)
     dump_json(out_path, report.to_dict())
     return {"schema_version": 1, "quality_report_path": str(out_path), "deterministic_status": report.deterministic_status.value}
@@ -128,8 +131,8 @@ def run_video_assess(request_path: Path, source_path: Path, processing_path: Pat
 
 def run_video_record_review(request_path: Path, source_path: Path, processing_path: Path, repo_root: Path, quality_path: Path, out_path: Path, checks_path: Path, reviewed_at: str) -> dict[str, Any]:
     request, _ = _request(request_path)
-    source = VideoSourceRecord.from_dict(load_json(source_path))
-    processing = __import__("game_visual_forge.contracts", fromlist=["VideoProcessingResult"]).VideoProcessingResult.from_dict(load_json(processing_path))
+    source = load_json(source_path, VideoSourceRecord.from_dict)
+    processing = load_json(processing_path, VideoProcessingResult.from_dict)
     report = assess_video_outputs(repo_root, request, source, processing)
     dump_json(quality_path, report.to_dict())
     highest = max(request.frame_counts)
@@ -174,9 +177,9 @@ def run_video_record_review(request_path: Path, source_path: Path, processing_pa
 
 def run_video_validate(request_path: Path, source_path: Path, processing_path: Path, review_path: Path, quality_path: Path, repo_root: Path, final_dir: Path, now: str) -> dict[str, Any]:
     request, _ = _request(request_path)
-    source = VideoSourceRecord.from_dict(load_json(source_path))
-    processing = __import__("game_visual_forge.contracts", fromlist=["VideoProcessingResult"]).VideoProcessingResult.from_dict(load_json(processing_path))
-    review = __import__("game_visual_forge.contracts", fromlist=["VideoMotionReview"]).VideoMotionReview.from_dict(load_json(review_path))
+    source = load_json(source_path, VideoSourceRecord.from_dict)
+    processing = load_json(processing_path, VideoProcessingResult.from_dict)
+    review = load_json(review_path, VideoMotionReview.from_dict)
     highest = max(request.frame_counts)
     report = validate_reviewed_video_outputs(repo_root, request, source, processing, review, quality_path, {"preview": repo_root / processing.artifacts[f"gif:{highest}"]})
     manifest = build_video_asset_manifest(repo_root, request, source, processing, report)

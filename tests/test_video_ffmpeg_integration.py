@@ -36,6 +36,18 @@ class RealFfmpegIntegrationTests(unittest.TestCase):
             self.assertEqual(len(frames), 8)
             self.assertTrue(all((root / frame.raw_path).stat().st_size > 0 for frame in frames))
 
+            timestamps = sample_timestamps(0.0, record.duration_seconds, 8, loop=False)
+            frames = extract_highest_density(root, record, timestamps, tools.ffmpeg, output_dir="staging/non-loop")
+            self.assertEqual(tuple(frame.source_timestamp for frame in frames), timestamps)
+            self.assertEqual(frames[-1].sha256, extract_highest_density(
+                root, record, (0.875,), tools.ffmpeg, output_dir="staging/last-frame",
+            )[0].sha256)
+
+            timestamps = sample_timestamps(0.0, record.duration_seconds, 24, loop=True)
+            densest = extract_highest_density(root, record, timestamps, tools.ffmpeg, output_dir="staging/dense-loop")
+            self.assertEqual(tuple(frame.source_timestamp for frame in densest), timestamps)
+            self.assertEqual(densest[-1].sha256, frames[-1].sha256)
+
 
 if __name__ == "__main__":
     unittest.main()

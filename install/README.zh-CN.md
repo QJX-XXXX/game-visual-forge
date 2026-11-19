@@ -119,8 +119,9 @@ done
 python skills/forge-2d-map/scripts/run.py --help
 python skills/forge-2d-sprite/scripts/run.py --help
 python skills/forge-video-to-sprite/scripts/run.py --help
-python -m unittest discover -s tests -q
 ```
+
+需要运行完整开发测试时，参见[开发检查](../README.zh-CN.md#开发检查)。
 
 重启 Agent 会话，让 Skill 发现重新加载。卸载核心链接时，只删除 `.agents/skills` 下的四个链接，不要删除仓库或其中的 `skills/`、`src/` 目录。
 

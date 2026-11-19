@@ -37,18 +37,29 @@
 ![Unity 中的自适应河流地图](assets/readme/adaptive-river-crossing-map-unity-game-view.png)
 ![HD 背景清理对比](assets/readme/rembg-production-comparison-on-gray.jpg)
 
-高清抠图使用 Pillow、NumPy/SciPy 和 rembg 的 `birefnet-general` 模型，也可用 PyMatting 细化边缘。可通过 `U2NET_HOME` 指定共享模型目录。处理器支持 CUDA、CPU 和 Chroma 清理回退。
+高清抠图使用 Pillow、NumPy/SciPy 和 rembg 的 `birefnet-general` 模型，也可用 PyMatting 细化边缘。通过 `REMBG_HOME` 或旧版的 `U2NET_HOME` 指定共享模型缓存。处理器支持 CUDA、CPU 和 Chroma 清理回退。
+
+本地图像处理以及使用 Preserve 或 Chroma 的视频处理需要图像依赖。
 
 ```powershell
 python -m pip install -e ".[image]"
+```
+
+使用 rembg 时，安装抠图依赖并选择一种 ONNX Runtime 后端。GPU 版需要可用的 CUDA 环境。
+
+```powershell
 python -m pip install -e ".[background]"
-python -m pip install "rembg[cpu]"
-python -m pip install "rembg[gpu]"
+```
+
+使用 CPU 时运行 `python -m pip install "rembg[cpu]"`，
+使用 CUDA 时运行 `python -m pip install "rembg[gpu]"`。
+
+需要 PyMatting 细化时，在同一个环境安装细化依赖。准备好下载后再预缓存模型。
+
+```powershell
 python -m pip install -e ".[matting]"
 python -c "from rembg import new_session; new_session('birefnet-general')"
 ```
-
-按环境选择 CPU 或 GPU 版 rembg。GPU 需要已验证的 CUDA 环境。
 
 ### 视频转精灵
 
@@ -144,8 +155,11 @@ install/      统一安装与独立运行时指南
 
 ```powershell
 Set-Location "game-visual-forge项目路径"
+python -m pip install -e ".[test]"
 python -m unittest discover -s tests -q
 ```
+
+工作流命令将结果以 JSON 写入 stdout。命令行参数错误以 JSON 写入 stderr，退出码为 2。其他失败以 JSON 写入 stderr，退出码为 1。可通过 `error.code` 判断请求、依赖、I/O、Provider、处理或内部错误。
 
 ## 许可证
 

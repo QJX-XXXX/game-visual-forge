@@ -14,7 +14,7 @@ from game_visual_forge.quality.music import assess_music_outputs, record_music_r
 from game_visual_forge.providers.music import prepare_music_attempt, begin_music_submission, record_music_receipt, submit_cloud_music_attempt, query_cloud_music_attempt, download_cloud_music_attempt
 
 
-def _request(path): return MusicRequest.from_dict(load_json(Path(path)))
+def _request(path): return load_json(Path(path), MusicRequest.from_dict)
 
 
 def run_music_plan(request_path: Path, out_dir: Path, *, now: str):
@@ -46,7 +46,7 @@ def run_music_provider_preflight(provider: str):
 
 
 def run_music_prepare(request_path, prompt_path, capability_path, parameters_path, out, now):
-    request = _request(request_path); prompt = __import__("game_visual_forge.contracts.music", fromlist=["MusicPromptPackage"]).MusicPromptPackage(**load_json(Path(prompt_path))); capability = MusicProviderCapability.from_dict(load_json(Path(capability_path))); parameters = load_json(Path(parameters_path)); attempt = prepare_music_attempt(request, prompt, capability, parameters, now=now); dump_json(Path(out), attempt.to_dict()); return attempt.to_dict()
+    request = _request(request_path); prompt = __import__("game_visual_forge.contracts.music", fromlist=["MusicPromptPackage"]).MusicPromptPackage(**load_json(Path(prompt_path))); capability = load_json(Path(capability_path), MusicProviderCapability.from_dict); parameters = load_json(Path(parameters_path)); attempt = prepare_music_attempt(request, prompt, capability, parameters, now=now); dump_json(Path(out), attempt.to_dict()); return attempt.to_dict()
 
 
 def run_music_begin(attempt_path, confirmation_path, now):
@@ -54,7 +54,7 @@ def run_music_begin(attempt_path, confirmation_path, now):
 
 
 def run_music_record_receipt(attempt_path, receipt_path, now):
-    return record_music_receipt(Path(attempt_path), MusicProviderReceipt.from_dict(load_json(Path(receipt_path))), now=now).to_dict()
+    return record_music_receipt(Path(attempt_path), load_json(Path(receipt_path), MusicProviderReceipt.from_dict), now=now).to_dict()
 
 
 def run_music_submit(attempt_path, confirmation_path, executable, now):
@@ -71,26 +71,26 @@ def run_music_download(attempt_path, executable, output_dir, now):
 
 def run_music_ingest(request_path, source_path, repo_root, attempt_path, out, ffprobe=None):
     del request_path
-    attempt = MusicGenerationAttempt.from_dict(load_json(Path(attempt_path)))
+    attempt = load_json(Path(attempt_path), MusicGenerationAttempt.from_dict)
     source = ingest_music_source(Path(repo_root), Path(source_path), attempt, ffprobe)
     dump_json(Path(out), source.to_dict()); return source.to_dict()
 
 
 def run_music_process(source_path, options_path, repo_root, out, ffmpeg=None, ffprobe=None):
-    source = MusicSourceRecord.from_dict(load_json(Path(source_path)))
-    options = MusicProcessingOptions.from_dict(load_json(Path(options_path))) if options_path else MusicProcessingOptions()
+    source = load_json(Path(source_path), MusicSourceRecord.from_dict)
+    options = load_json(Path(options_path), MusicProcessingOptions.from_dict) if options_path else MusicProcessingOptions()
     result = process_music_candidate(Path(repo_root), source, options, ffmpeg, ffprobe)
     dump_json(Path(out), result.to_dict()); return result.to_dict()
 
 
 def run_music_record_review(request_path, processing_path, quality_path, checks_path, out, repo_root, now):
-    request = _request(request_path); processing = MusicProcessingResult(**load_json(Path(processing_path))); quality = MusicQualityReport.from_dict(load_json(Path(quality_path))); checks = load_json(Path(checks_path))
+    request = _request(request_path); processing = MusicProcessingResult(**load_json(Path(processing_path))); quality = load_json(Path(quality_path), MusicQualityReport.from_dict); checks = load_json(Path(checks_path))
     review = record_music_review(request, processing, quality, checks, now, repo_root)
     dump_json(Path(out), review.to_dict()); return review.to_dict()
 
 
 def run_music_validate(request_path, processing_path, quality_path, review_path, repo_root, final_dir):
-    request = _request(request_path); processing = MusicProcessingResult(**load_json(Path(processing_path))); quality = MusicQualityReport.from_dict(load_json(Path(quality_path))); review = MusicReview.from_dict(load_json(Path(review_path)))
+    request = _request(request_path); processing = MusicProcessingResult(**load_json(Path(processing_path))); quality = load_json(Path(quality_path), MusicQualityReport.from_dict); review = load_json(Path(review_path), MusicReview.from_dict)
     return publish_music_bundle(Path(repo_root), request, processing, quality, review, Path(final_dir))
 
 

@@ -8,6 +8,7 @@ from tests._bootstrap import ROOT
 
 from game_visual_forge.contracts.video import VideoBackgroundMode, VideoSpriteRequest
 from game_visual_forge.contracts.video import VideoSourceRecord
+from game_visual_forge.errors import ErrorCode, ForgeError
 from game_visual_forge.processing.video_frames import build_sampling_plan
 from game_visual_forge.processing.background import resize_rgba_alpha_safe
 from game_visual_forge.processing.video_probe import sha256_file
@@ -39,6 +40,28 @@ def make_raw_frames(root: Path, count: int = 4, background: tuple[int, int, int,
 
 
 class VideoProcessingTests(unittest.TestCase):
+    def test_empty_chroma_frame_reports_its_index_and_stops_export(self) -> None:
+        from dataclasses import replace
+        from PIL import Image
+
+        for layout_mode in ("tight", "reference-locked"):
+            with self.subTest(layout_mode=layout_mode), tempfile.TemporaryDirectory() as directory:
+                root = Path(directory)
+                frames = list(make_raw_frames(root))
+                path = root / frames[1].raw_path
+                Image.new("RGBA", (32, 32), (255, 0, 255, 255)).save(path)
+                frames[1] = replace(frames[1], sha256=sha256_file(path))
+                request = VideoSpriteRequest.from_dict(valid_request(
+                    background_mode="chroma", chroma_color="#ff00ff", frame_counts=[4],
+                    layout_mode=layout_mode,
+                ))
+
+                with self.assertRaises(ForgeError) as error:
+                    process_video_sprite(root, request, source_record(root), tuple(frames))
+                self.assertEqual(error.exception.code, ErrorCode.INVALID_FRAME)
+                self.assertEqual(error.exception.context["frame_index"], 1)
+                self.assertFalse(any(root.rglob("delivery")))
+
     def test_reference_locked_layout_keeps_first_frame_body_position(self) -> None:
         from PIL import Image
 

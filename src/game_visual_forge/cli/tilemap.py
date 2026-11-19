@@ -121,7 +121,7 @@ def run_tilemap_normalize_atlases(
     allow_non_native: bool = False,
 ) -> dict[str, Any]:
     request, _ = _request(request_path)
-    decision = MapSourceDecision.from_dict(load_json(decision_path))
+    decision = load_json(decision_path, MapSourceDecision.from_dict)
     pages = tuple(parse_atlas_page_argument(argument) for argument in atlas_page_arguments)
     report = normalize_tilemap_atlases(repo_root, request, decision, pages, out_dir, allow_non_native=allow_non_native)
     report_path = out_dir.resolve() / "atlas-normalization-report.json"
@@ -149,9 +149,9 @@ def run_tilemap_preflight_assets(
     normalization_report_path: Path | None = None,
 ) -> dict[str, Any]:
     request, _ = _request(request_path)
-    architecture = TileMapArchitectureDecision.from_dict(load_json(architecture_path))
-    decision = None if decision_path is None else MapSourceDecision.from_dict(load_json(decision_path))
-    normalization_report = None if normalization_report_path is None else AtlasNormalizationReport.from_dict(load_json(normalization_report_path))
+    architecture = load_json(architecture_path, TileMapArchitectureDecision.from_dict)
+    decision = None if decision_path is None else load_json(decision_path, MapSourceDecision.from_dict)
+    normalization_report = None if normalization_report_path is None else load_json(normalization_report_path, AtlasNormalizationReport.from_dict)
     candidates = []
     for argument in atlas_page_arguments:
         atlas_id, path = parse_atlas_page_argument(argument)
@@ -174,7 +174,7 @@ def run_tilemap_preflight_assets(
 
 
 def run_tilemap_record_asset_review(report_path: Path, decisions_path: Path, out_path: Path, now: str) -> dict[str, Any]:
-    report = TilemapCriticalAssetReport.from_dict(load_json(report_path))
+    report = load_json(report_path, TilemapCriticalAssetReport.from_dict)
     payload = load_json(decisions_path)
     decisions = tuple(PreassemblyAssetDecision.from_dict(item) for item in payload.get("assets", []))
     review = record_preassembly_review(report, decisions, now)
@@ -183,7 +183,7 @@ def run_tilemap_record_asset_review(report_path: Path, decisions_path: Path, out
 
 
 def _request(path: Path) -> tuple[TileMapRequest, str]:
-    request = TileMapRequest.from_dict(load_json(path))
+    request = load_json(path, TileMapRequest.from_dict)
     return request, fingerprint_request(request.to_dict())
 
 
@@ -229,7 +229,7 @@ def run_tilemap_route(
     request, fingerprint = _request(request_path)
     capabilities_payload = load_json(capabilities_path)
     capabilities = MapSourceCapabilities(bool(capabilities_payload["supported"]), tuple(capabilities_payload["operations"]))
-    preflight = None if preflight_path is None else ProviderPreflight.from_dict(load_json(preflight_path))
+    preflight = None if preflight_path is None else load_json(preflight_path, ProviderPreflight.from_dict)
     decision = route_map(request, capabilities, selected_source=None if selection is None else MapSourceType(selection), provider_preflight=preflight, native_outcome=NativeAttemptOutcome(native_outcome))
     state = load_job(state_path)
     if state.request_fingerprint != fingerprint:
@@ -261,9 +261,9 @@ def run_tilemap_ingest(
     if request.intake is not None:
         if preassembly_review_path is None or critical_assets_report_path is None:
             raise ValueError("new two-gate tilemap ingest requires an accepted preassembly review")
-        report = TilemapCriticalAssetReport.from_dict(load_json(critical_assets_report_path))
+        report = load_json(critical_assets_report_path, TilemapCriticalAssetReport.from_dict)
         critical_report = report
-        review = TilemapPreassemblyReview.from_dict(load_json(preassembly_review_path))
+        review = load_json(preassembly_review_path, TilemapPreassemblyReview.from_dict)
         validate_preassembly_review(report, review)
         validate_preassembly_candidate_files(report, repo_root)
     if request.approval_workflow.value == "two_gate":
@@ -272,7 +272,7 @@ def run_tilemap_ingest(
         validate_user_approval_files(load_json(style_approval_path), TilemapApprovalGate.STYLE_SAMPLE, repo_root)
     elif style_approval_path is not None:
         raise ValueError("legacy tilemap ingest does not accept --style-approval")
-    decision = MapSourceDecision.from_dict(load_json(decision_path))
+    decision = load_json(decision_path, MapSourceDecision.from_dict)
     if decision.request_fingerprint != fingerprint or decision.source_type is None:
         raise ValueError("source decision does not match tilemap request or has no source")
     if (image_path is None) == (not atlas_page_arguments):
@@ -310,7 +310,7 @@ def run_tilemap_ingest(
             normalization_copy_path = out_path.parent / "atlas-normalization-report.json"
             shutil.copyfile(report_source_path, normalization_copy_path)
             normalization_copy_sha256 = sha256_file(normalization_copy_path)
-            normalization_report = AtlasNormalizationReport.from_dict(load_json(normalization_copy_path))
+            normalization_report = load_json(normalization_copy_path, AtlasNormalizationReport.from_dict)
             final_pages = tuple(parse_atlas_page_argument(argument) for argument in atlas_page_arguments)
             validate_atlas_normalization_report(repo_root, request, decision, normalization_report, final_pages, allow_non_native=decision.source_type is not MapSourceType.AGENT_NATIVE)
         source_set = TileMapSourceSet(
@@ -380,7 +380,7 @@ def run_tilemap_validate(
     payload = load_json(raw_image_path)
     record = RawImageRecord.from_dict(payload) if "pages" not in payload else TileMapSourceSet.from_dict(payload)
     source_fingerprint = record.request_fingerprint if isinstance(record, RawImageRecord) else record.pages[0].image.request_fingerprint
-    result = TileMapProcessingResult.from_dict(load_json(processing_result_path))
+    result = load_json(processing_result_path, TileMapProcessingResult.from_dict)
     if source_fingerprint != fingerprint:
         raise ValueError("raw image fingerprint does not match tilemap request")
     approvals = {}

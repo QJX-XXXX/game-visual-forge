@@ -11,4 +11,4 @@ def save_job(path: Path, state: JobState) -> None:
 
 
 def load_job(path: Path) -> JobState:
-    return JobState.from_dict(load_json(path))
+    return load_json(path, JobState.from_dict)

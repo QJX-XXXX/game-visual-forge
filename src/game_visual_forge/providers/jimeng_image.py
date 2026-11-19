@@ -5,7 +5,7 @@ import os
 from datetime import datetime, timezone
 
 from game_visual_forge.contracts.provider import ExternalProvider
-from game_visual_forge.providers.image_http import ImageApiError, ImageHttpTransport, check_parameters, integer, preflight, response_task_id
+from game_visual_forge.providers.image_http import ImageApiError, ImageHttpTransport, check_parameters, integer, preflight, response_task_id, retry_image_read
 from game_visual_forge.providers.jimeng_video import sign_volcengine_request
 
 
@@ -91,7 +91,7 @@ class JimengImageAdapter:
 
     def query(self, task_id, model, parameters):
         body = {"req_key": model, "task_id": task_id, "req_json": json.dumps({"return_url": True}, separators=(",", ":"))}
-        data = self._request("CVSync2AsyncGetResult", body)
+        data = retry_image_read(lambda: self._request("CVSync2AsyncGetResult", body))
         status = data.get("status")
         if status in {"expired", "not_found"}:
             return {"status": "failed", "error_code": status}

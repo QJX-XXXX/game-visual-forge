@@ -26,7 +26,7 @@ from game_visual_forge.routing import MapSourceCapabilities, NativeAttemptOutcom
 
 
 def _request(path: Path) -> tuple[MapRequest, str]:
-    request = MapRequest.from_dict(load_json(path))
+    request = load_json(path, MapRequest.from_dict)
     return request, fingerprint_request(request.to_dict())
 
 
@@ -52,7 +52,7 @@ def run_map_route(
     request, fingerprint = _request(request_path)
     capabilities_payload = load_json(capabilities_path)
     capabilities = MapSourceCapabilities(bool(capabilities_payload["supported"]), tuple(capabilities_payload["operations"]))
-    preflight = None if preflight_path is None else ProviderPreflight.from_dict(load_json(preflight_path))
+    preflight = None if preflight_path is None else load_json(preflight_path, ProviderPreflight.from_dict)
     decision = route_map(request, capabilities, selected_source=None if selection is None else MapSourceType(selection), provider_preflight=preflight, native_outcome=NativeAttemptOutcome(native_outcome))
     state = load_job(state_path)
     if state.request_fingerprint != fingerprint:
@@ -75,7 +75,7 @@ def run_map_ingest(
     now: str,
 ) -> dict[str, Any]:
     request, fingerprint = _request(request_path)
-    decision = MapSourceDecision.from_dict(load_json(decision_path))
+    decision = load_json(decision_path, MapSourceDecision.from_dict)
     if decision.request_fingerprint != fingerprint or decision.source_type is None:
         raise ValueError("source decision does not match map request or has no source")
     record = ingest_image(repo_root, image_path, SourceType(decision.source_type.value), fingerprint, provider=decision.selected_provider)
@@ -94,7 +94,7 @@ def run_map_process(
     now: str,
 ) -> dict[str, Any]:
     request, fingerprint = _request(request_path)
-    record = RawImageRecord.from_dict(load_json(raw_image_path))
+    record = load_json(raw_image_path, RawImageRecord.from_dict)
     if record.request_fingerprint != fingerprint:
         raise ValueError("raw image fingerprint does not match map request")
     result = process_map(repo_root, request, record, repo_root / PurePosixPath(request.output_dir))
@@ -118,8 +118,8 @@ def run_map_validate(
     now: str,
 ) -> dict[str, Any]:
     request, fingerprint = _request(request_path)
-    record = RawImageRecord.from_dict(load_json(raw_image_path))
-    result = MapProcessingResult.from_dict(load_json(processing_result_path))
+    record = load_json(raw_image_path, RawImageRecord.from_dict)
+    result = load_json(processing_result_path, MapProcessingResult.from_dict)
     if record.request_fingerprint != fingerprint:
         raise ValueError("raw image fingerprint does not match map request")
     report = validate_map_outputs(staging_dir, request, record, result)

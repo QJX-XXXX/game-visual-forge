@@ -5,11 +5,12 @@ import io
 import os
 import unittest
 from unittest.mock import patch
+from urllib.error import HTTPError, URLError
 
 from tests._bootstrap import ROOT  # noqa: F401
 from PIL import Image
 
-from game_visual_forge.providers.image_http import ImageApiError, json_bytes
+from game_visual_forge.providers.image_http import ImageApiError, ImageHttpTransport, json_bytes
 from game_visual_forge.providers.minimax_image import MiniMaxImageAdapter
 from game_visual_forge.providers.jimeng_image import JimengImageAdapter
 from game_visual_forge.providers.wanxiang_image import WanxiangImageAdapter
@@ -46,6 +47,56 @@ class FakeImageTransport:
 
 
 class ImageApiProviderTests(unittest.TestCase):
+    def test_read_retries_transient_http_and_network_failures(self):
+        url = "https://provider.invalid/task"
+        throttled = HTTPError(url, 429, "wait", {"Retry-After": "2"}, io.BytesIO())
+        with patch("urllib.request.urlopen", side_effect=[throttled, URLError(TimeoutError()), io.BytesIO(b'{"ok": true}')]) as send:
+            with patch("time.sleep") as sleep:
+                result = ImageHttpTransport().request("GET", url)
+        self.assertEqual(result, {"ok": True})
+        self.assertEqual(send.call_count, 3)
+        self.assertEqual([call.args[0] for call in sleep.call_args_list], [2, 1])
+
+    def test_image_download_retries_at_most_twice(self):
+        url = "https://provider.invalid/image"
+        failures = [HTTPError(url, 503, "busy", {}, io.BytesIO()) for _ in range(3)]
+        with patch("urllib.request.urlopen", side_effect=failures) as send, patch("time.sleep"):
+            with self.assertRaisesRegex(ImageApiError, "download_http_503"):
+                ImageHttpTransport().read_image(url)
+        self.assertEqual(send.call_count, 3)
+
+    def test_read_does_not_retry_permanent_errors_or_ignore_long_retry_after(self):
+        url = "https://provider.invalid/task"
+        for status, headers in ((404, {}), (429, {"Retry-After": "60"})):
+            with self.subTest(status=status):
+                failed = HTTPError(url, status, "unavailable", headers, io.BytesIO())
+                with patch("urllib.request.urlopen", side_effect=failed) as send, patch("time.sleep") as sleep:
+                    with self.assertRaisesRegex(ImageApiError, f"http_{status}"):
+                        ImageHttpTransport().request("GET", url)
+                send.assert_called_once()
+                sleep.assert_not_called()
+
+    def test_paid_post_keeps_one_attempt_and_preserves_recovered_id(self):
+        url = "https://provider.invalid/generate"
+        failed = HTTPError(url, 503, "busy", {}, io.BytesIO(b'{"data": {"task_id": "task-1"}}'))
+        with patch("urllib.request.urlopen", side_effect=failed) as send, patch("time.sleep") as sleep:
+            with self.assertRaises(ImageApiError) as error:
+                ImageHttpTransport().request("POST", url, body={"prompt": "test"})
+        self.assertEqual(error.exception.external_task_id, "task-1")
+        self.assertFalse(error.exception.definite_rejection)
+        send.assert_called_once()
+        sleep.assert_not_called()
+
+    def test_jimeng_read_only_post_retries_without_changing_transport_interface(self):
+        transport = FakeImageTransport([
+            ImageApiError("http_502"), {"code": 10000, "data": {"status": "running"}},
+        ])
+        with patch.dict(os.environ, {"JIMENG_ACCESS_KEY": "test", "JIMENG_SECRET_KEY": "test"}), patch("time.sleep"):
+            result = JimengImageAdapter(transport=transport).query("task-1", "jimeng_t2i_v40", {})
+        self.assertEqual(result["status"], "running")
+        self.assertEqual(len(transport.calls), 2)
+        self.assertTrue(all("CVSync2AsyncGetResult" in call[1] for call in transport.calls))
+
     def test_preflight_requires_pillow_before_paid_generation(self):
         with patch.dict(os.environ, {"MINIMAX_API_KEY": "secret"}), patch.dict("sys.modules", {"PIL": None}):
             result = MiniMaxImageAdapter().preflight()

@@ -26,7 +26,7 @@ from game_visual_forge.routing.audio import route_audio
 
 
 def _request(path: Path) -> tuple[AudioRequest, str]:
-    request = AudioRequest.from_dict(load_json(path))
+    request = load_json(path, AudioRequest.from_dict)
     return request, fingerprint_request(request.to_dict())
 
 
@@ -48,7 +48,7 @@ def run_audio_plan(request_path: Path, out_dir: Path, now: str) -> dict[str, Any
 
 def run_audio_route(request_path: Path, preflight_path: Path | None, out_path: Path, state_path: Path, now: str) -> dict[str, Any]:
     request, _ = _request(request_path)
-    preflight = AudioProviderPreflight.from_dict(load_json(preflight_path)) if preflight_path else None
+    preflight = load_json(preflight_path, AudioProviderPreflight.from_dict) if preflight_path else None
     decision = route_audio(request, preflight)
     dump_json(out_path, decision.__dict__)
     state = load_job(state_path)
@@ -68,7 +68,7 @@ def run_audio_ingest(request_path: Path, source_path: Path, repo_root: Path, out
 
 def run_audio_generate(request_path: Path, decision_path: Path | None, source_path: Path | None, executable: Path | None, repo_root: Path, out_dir: Path, state_path: Path, now: str) -> dict[str, Any]:
     request, _ = _request(request_path)
-    source = AudioSourceRecord.from_dict(load_json(source_path)) if source_path else None
+    source = load_json(source_path, AudioSourceRecord.from_dict) if source_path else None
     output_dir = repo_root / request.output_dir
     current = load_job(state_path)
     if current.status is JobStatus.READY:
@@ -103,8 +103,8 @@ def run_audio_generate(request_path: Path, decision_path: Path | None, source_pa
 
 def run_audio_process(request_path: Path, generation_path: Path, source_path: Path | None, repo_root: Path, out_dir: Path, state_path: Path, now: str, ffmpeg: Path | None = None, ffprobe: Path | None = None) -> dict[str, Any]:
     request, _ = _request(request_path)
-    generation = AudioGenerationResult.from_dict(load_json(generation_path))
-    source = AudioSourceRecord.from_dict(load_json(source_path)) if source_path else None
+    generation = load_json(generation_path, AudioGenerationResult.from_dict)
+    source = load_json(source_path, AudioSourceRecord.from_dict) if source_path else None
     toolchain = discover_audio_toolchain(explicit_ffmpeg=ffmpeg, explicit_ffprobe=ffprobe)
     result = process_audio_candidates(repo_root, request, generation, source, toolchain.ffmpeg, toolchain.ffprobe)
     result_path = out_dir / "processing-result.json"
@@ -117,8 +117,8 @@ def run_audio_process(request_path: Path, generation_path: Path, source_path: Pa
 
 def run_audio_record_review(request_path: Path, generation_path: Path, processing_path: Path, quality_path: Path, checks_path: Path, selected_candidate: str, repo_root: Path, out_path: Path, now: str) -> dict[str, Any]:
     request, _ = _request(request_path)
-    generation = AudioGenerationResult.from_dict(load_json(generation_path))
-    processing = AudioProcessingResult.from_dict(load_json(processing_path))
+    generation = load_json(generation_path, AudioGenerationResult.from_dict)
+    processing = load_json(processing_path, AudioProcessingResult.from_dict)
     source = None
     report = assess_audio_outputs(repo_root, request, source, generation, processing)
     dump_json(quality_path, report.to_dict())
@@ -131,10 +131,10 @@ def run_audio_record_review(request_path: Path, generation_path: Path, processin
 
 def run_audio_validate(request_path: Path, generation_path: Path, processing_path: Path, review_path: Path, quality_path: Path, repo_root: Path, final_dir: Path, now: str) -> dict[str, Any]:
     request, _ = _request(request_path)
-    generation = AudioGenerationResult.from_dict(load_json(generation_path))
-    processing = AudioProcessingResult.from_dict(load_json(processing_path))
-    review = AudioReview.from_dict(load_json(review_path))
-    report = AudioQualityReport.from_dict(load_json(quality_path))
+    generation = load_json(generation_path, AudioGenerationResult.from_dict)
+    processing = load_json(processing_path, AudioProcessingResult.from_dict)
+    review = load_json(review_path, AudioReview.from_dict)
+    report = load_json(quality_path, AudioQualityReport.from_dict)
     validated = validate_reviewed_audio_outputs(repo_root, request, generation, processing, report, review)
     manifests = build_audio_manifests(repo_root, request, generation, processing, validated, review)
     artifact = next(item for item in processing.artifacts if item.candidate_id == review.selected_candidate_id)

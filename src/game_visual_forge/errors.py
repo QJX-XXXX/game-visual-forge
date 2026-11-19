@@ -6,6 +6,9 @@ from typing import Any
 
 class ErrorCode(StrEnum):
     INVALID_REQUEST = "invalid_request"
+    IO_ERROR = "io_error"
+    INTERNAL_ERROR = "internal_error"
+    PROCESSING_FAILED = "processing_failed"
     UNSUPPORTED_CAPABILITY = "unsupported_capability"
     USER_SELECTION_REQUIRED = "user_selection_required"
     CONFIRMATION_REQUIRED = "confirmation_required"

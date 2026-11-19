@@ -21,6 +21,7 @@ from game_visual_forge.processing.background import (
     BackgroundResult,
     DEFAULT_REMBG_MODEL,
     DIRECT_ONNX_REMBG_MODELS,
+    _rembg_model_path,
     _run_rembg_attempt,
     clean_rembg_chroma_residue,
     remove_background,
@@ -39,6 +40,23 @@ from tests.test_sprite_contract import make_request
 
 
 class SpriteProcessingTests(unittest.TestCase):
+    def test_rembg_finds_current_and_legacy_model_caches(self) -> None:
+        with tempfile.TemporaryDirectory() as directory:
+            root = Path(directory)
+            model = DEFAULT_REMBG_MODEL
+            filename = model + ".onnx"
+            legacy = root / ".u2net" / filename
+            legacy.parent.mkdir()
+            legacy.touch()
+            current = root / "cache" / "models" / model / filename
+            current.parent.mkdir(parents=True)
+            with patch.dict("os.environ", {"XDG_DATA_HOME": str(root), "REMBG_HOME": str(root / "cache")}, clear=True):
+                self.assertEqual(_rembg_model_path(model), legacy)
+                current.touch()
+                self.assertEqual(_rembg_model_path(model), current)
+                with patch.dict("os.environ", {"U2NET_HOME": str(legacy.parent)}):
+                    self.assertEqual(_rembg_model_path(model), legacy)
+
     def make_image(self, root: Path) -> Path:
         path = root / "raw" / "source.png"
         path.parent.mkdir()

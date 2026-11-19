@@ -6,6 +6,7 @@ import sys
 from pathlib import Path
 from pathlib import PurePosixPath
 from typing import Any
+from urllib.error import URLError
 
 from game_visual_forge.cli.planning import build_execution_plan
 from game_visual_forge.cli.map import (
@@ -69,13 +70,19 @@ from game_visual_forge.contracts import AssetBrief, JobState, JobStatus, load_js
 from game_visual_forge.contracts import MapSourceType
 from game_visual_forge.contracts.serialization import dump_json
 from game_visual_forge.contracts.sprite import SourceType
-from game_visual_forge.errors import ForgeError
+from game_visual_forge.errors import ErrorCode, ForgeError
 from game_visual_forge.jobs import fingerprint_request, load_job, save_job
+from game_visual_forge.providers.image_http import ImageApiError
 from game_visual_forge.routing import NativeAttemptOutcome
 
 
+class _ArgumentParser(argparse.ArgumentParser):
+    def error(self, message: str) -> None:
+        raise ForgeError(ErrorCode.INVALID_REQUEST, message, recoverable=True, context={"command": self.prog})
+
+
 def build_parser() -> argparse.ArgumentParser:
-    parser = argparse.ArgumentParser(prog="game-visual-forge")
+    parser = _ArgumentParser(prog="game-visual-forge")
     commands = parser.add_subparsers(dest="command", required=True)
     register_image_commands(commands)
     mcp = commands.add_parser("mcp", help="Project-provided provider MCP bridges")
@@ -435,7 +442,7 @@ def _relative_posix_path(path: Path, *, root: Path) -> str:
 
 
 def run_dry_run(brief_path: Path, out_dir: Path, now: str) -> dict[str, Any]:
-    brief = AssetBrief.from_dict(load_json(brief_path))
+    brief = load_json(brief_path, AssetBrief.from_dict)
     plan = build_execution_plan(brief)
     fingerprint = fingerprint_request(brief.to_dict())
     out_dir = out_dir.resolve()
@@ -461,8 +468,16 @@ def run_dry_run(brief_path: Path, out_dir: Path, now: str) -> dict[str, Any]:
     }
 
 
+def _write_error(error: ForgeError, *, exit_code: int = 1) -> int:
+    print(json.dumps(error.to_dict(), ensure_ascii=False, sort_keys=True), file=sys.stderr)
+    return exit_code
+
+
 def main(argv: list[str] | None = None) -> int:
-    args = build_parser().parse_args(argv)
+    try:
+        args = build_parser().parse_args(argv)
+    except ForgeError as error:
+        return _write_error(error, exit_code=2)
     try:
         if args.command == "mcp":
             from game_visual_forge.providers.workflow_mcp import serve
@@ -569,8 +584,25 @@ def main(argv: list[str] | None = None) -> int:
         print(json.dumps(payload, ensure_ascii=False, indent=2, sort_keys=True))
         return 0
     except ForgeError as error:
-        print(json.dumps(error.to_dict(), ensure_ascii=False, sort_keys=True), file=sys.stderr)
-        return 1
-    except (OSError, ValueError, TypeError, KeyError, json.JSONDecodeError) as error:
-        print(json.dumps({"schema_version": 1, "error": {"code": "invalid_request", "message": str(error), "recoverable": True, "context": {}}}, ensure_ascii=False, sort_keys=True), file=sys.stderr)
-        return 1
+        return _write_error(error)
+    except ImageApiError as error:
+        return _write_error(ForgeError(
+            ErrorCode.PROVIDER_UNAVAILABLE, str(error), recoverable=True,
+            context={"provider_error": error.code},
+        ))
+    except URLError:
+        return _write_error(ForgeError(ErrorCode.PROVIDER_UNAVAILABLE, "Could not connect to the provider", recoverable=True))
+    except OSError as error:
+        return _write_error(ForgeError(ErrorCode.IO_ERROR, str(error), recoverable=False, context={"errno": error.errno}))
+    except ModuleNotFoundError as error:
+        return _write_error(ForgeError(
+            ErrorCode.DEPENDENCY_MISSING, "A Python dependency is unavailable", recoverable=True,
+            context={"module": error.name},
+        ))
+    except ValueError as error:
+        return _write_error(ForgeError(ErrorCode.INVALID_REQUEST, str(error), recoverable=True))
+    except Exception as error:
+        return _write_error(ForgeError(
+            ErrorCode.INTERNAL_ERROR, "Forge could not complete the command", recoverable=False,
+            context={"exception_type": type(error).__name__},
+        ))

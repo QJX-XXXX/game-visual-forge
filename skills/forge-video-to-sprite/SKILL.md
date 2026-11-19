@@ -18,6 +18,8 @@ For missing Python or local processing packages, follow the
 actual OS/interpreter, explain missing prerequisites, and offer manual steps or
 assist within the user's existing setup authorization. Keep provider, ComfyUI,
 model, and license installation gates below separate from Python package setup.
+Check the `background` profile for the default REMBG path. Check the `image`
+profile for Preserve or Chroma. Confirm any required model cache separately.
 
 ## Standard interaction
 

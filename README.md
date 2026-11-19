@@ -37,18 +37,29 @@ Use the five skills independently or combine them into an asset production workf
 ![Adaptive river crossing map in Unity](assets/readme/adaptive-river-crossing-map-unity-game-view.png)
 ![HD background removal comparison](assets/readme/rembg-production-comparison-on-gray.jpg)
 
-HD cleanup uses Pillow and NumPy/SciPy with rembg and the `birefnet-general` model. Optional PyMatting refines edges. Use `U2NET_HOME` for a shared model directory. The processor can fall back from CUDA to CPU, then to Chroma cleanup when needed.
+HD cleanup uses Pillow and NumPy/SciPy with rembg and the `birefnet-general` model. Optional PyMatting refines edges. Configure a shared model cache with `REMBG_HOME` or the legacy `U2NET_HOME`. The processor can fall back from CUDA to CPU, then to Chroma cleanup when needed.
+
+Install the image dependencies for local image processing or video with Preserve or Chroma.
 
 ```powershell
 python -m pip install -e ".[image]"
+```
+
+For rembg processing, install the background dependencies and choose one ONNX Runtime backend. The GPU option requires a working CUDA environment.
+
+```powershell
 python -m pip install -e ".[background]"
-python -m pip install "rembg[cpu]"
-python -m pip install "rembg[gpu]"
+```
+
+Use `python -m pip install "rembg[cpu]"` for CPU or
+`python -m pip install "rembg[gpu]"` for CUDA.
+
+If you need PyMatting refinement, install the matting dependencies in that environment. Pre-cache the model when you're ready to download it.
+
+```powershell
 python -m pip install -e ".[matting]"
 python -c "from rembg import new_session; new_session('birefnet-general')"
 ```
-
-Choose the CPU or GPU rembg package for your environment. GPU requires a verified CUDA setup.
 
 ### Video to sprite
 
@@ -153,8 +164,11 @@ Run the test suite from the repository root (the directory that contains `tests/
 
 ```powershell
 Set-Location "game-visual-forge项目路径"
+python -m pip install -e ".[test]"
 python -m unittest discover -s tests -q
 ```
+
+Workflow commands write their results as JSON to stdout. Invalid command-line arguments write JSON to stderr and exit with code 2. Other failures write JSON to stderr and exit with code 1. Read `error.code` to distinguish request, dependency, I/O, provider, processing, and internal failures.
 
 ## License
 

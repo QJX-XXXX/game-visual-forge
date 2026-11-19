@@ -37,6 +37,32 @@ class TileMapManifestIntegrityTests(unittest.TestCase):
             check = next(item for item in report.deterministic_checks if item.check_id == "building-entrances")
             self.assertEqual(check.status.value, "failed")
 
+    def test_current_river_crossing_evidence_has_one_validated_bridge_contract(self) -> None:
+        evidence = ROOT / "assets" / "readme"
+        contract_path = evidence / "adaptive-river-crossing-map-bridge-connectivity.json"
+        if not contract_path.is_file():
+            self.skipTest("Local river-crossing showcase evidence is not included in the repository")
+        contract = load_json(contract_path)
+        placement = load_json(evidence / contract["placement"])
+        report = load_json(evidence / contract["quality_report"])
+        manifest = load_json(evidence / "adaptive-river-crossing-map-asset-manifest.json")
+        unity = load_json(evidence / "adaptive-river-crossing-map-unity-import-report.json")
+
+        self.assertEqual(len(contract["bridge_connectivity_rules"]), 1)
+        rule = contract["bridge_connectivity_rules"][0]
+        self.assertEqual(rule["id"], "main-river-bridge")
+        details = next(layer for layer in placement["layers"] if layer["id"] == rule["bridge_layer_id"])
+        cells = {(item["x"], item["y"]): item["tile_id"] for item in details["placements"]}
+        for y in range(rule["start"]["y"], rule["end"]["y"] + 1):
+            self.assertEqual(cells[(rule["start"]["x"], y)], "bridge")
+        self.assertEqual(cells[(rule["start"]["x"], rule["start"]["y"] - 1)], "stone-path")
+        self.assertEqual(cells[(rule["end"]["x"], rule["end"]["y"] + 1)], "stone-path")
+        bridge_check = next(item for item in report["deterministic_checks"] if item["check_id"] == "bridge-connectivity")
+        self.assertEqual(bridge_check["status"], "passed")
+        self.assertEqual(unity["bridge_connectivity_status"], "passed")
+        artifact = next(item for item in manifest["artifacts"] if item["role"] == "bridge-connectivity-contract")
+        self.assertEqual(artifact["sha256"], sha256_file(contract_path))
+
     def test_failed_bridge_connectivity_cannot_publish_final_directory(self) -> None:
         with tempfile.TemporaryDirectory() as directory:
             root = Path(directory)

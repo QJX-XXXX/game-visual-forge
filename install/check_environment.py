@@ -8,10 +8,15 @@ import sys
 from pathlib import Path
 
 
+IMAGE_PACKAGES = (("Pillow", "PIL.Image"), ("numpy", "numpy"))
+BACKGROUND_PACKAGES = IMAGE_PACKAGES + (
+    ("scipy", "scipy"), ("rembg", "rembg"), ("ONNX Runtime", "onnxruntime"),
+)
 PROFILES = {
     "core": (),
-    "image": (("Pillow", "PIL.Image"),),
-    "background": (("Pillow", "PIL.Image"), ("numpy", "numpy"), ("scipy", "scipy"), ("rembg", "rembg")),
+    "image": IMAGE_PACKAGES,
+    "background": BACKGROUND_PACKAGES,
+    "matting": BACKGROUND_PACKAGES + (("PyMatting", "pymatting"),),
 }
 
 
@@ -28,10 +33,12 @@ def _probe(module):
     return result.returncode == 0
 
 
-def inspect_environment(repo_root, profile="image", *, version=None, system=None, virtual_environment=None, probe=None, venv_dir=None):
+def inspect_environment(repo_root, profile="image", *, version=None, system=None, virtual_environment=None, probe=None, venv_dir=None, onnx_runtime="cpu"):
     """Report the selected interpreter. Returned argv suggestions never execute."""
     if profile not in PROFILES:
         raise ValueError("unknown environment profile")
+    if onnx_runtime not in {"cpu", "gpu"}:
+        raise ValueError("onnx_runtime must be cpu or gpu")
     root = Path(repo_root).resolve()
     version = tuple(version or sys.version_info[:3])
     system = system or platform.system()
@@ -83,7 +90,10 @@ def inspect_environment(repo_root, profile="image", *, version=None, system=None
             return report
         commands.append({"action": "create-isolated-environment", "argv": [sys.executable, "-m", "venv", str(target)]})
         python = str(target_python)
-    commands.append({"action": "install-selected-extra", "argv": [python, "-m", "pip", "install", "-e", str(root) + "[" + profile + "]"]})
+    install = [python, "-m", "pip", "install", "-e", str(root) + "[" + profile + "]"]
+    if "ONNX Runtime" in report["missing"]:
+        install.append("rembg[" + onnx_runtime + "]")
+    commands.append({"action": "install-selected-extra", "argv": install})
     report["guidance"] += " No commands were executed. Authorize only the required packages and destination. Model files, cache directories, credentials, and paid requests are separate."
     return report
 
@@ -92,9 +102,10 @@ def main(argv=None):
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument("--repo-root", type=Path, default=Path(__file__).resolve().parents[1])
     parser.add_argument("--profile", choices=tuple(PROFILES), default="image")
+    parser.add_argument("--onnx-runtime", choices=("cpu", "gpu"), default="cpu", help="Backend to suggest when ONNX Runtime is missing")
     parser.add_argument("--venv-dir", type=Path)
     args = parser.parse_args(argv)
-    report = inspect_environment(args.repo_root, args.profile, venv_dir=args.venv_dir)
+    report = inspect_environment(args.repo_root, args.profile, venv_dir=args.venv_dir, onnx_runtime=args.onnx_runtime)
     print(json.dumps(report, ensure_ascii=False, indent=2, sort_keys=True))
     return 0 if report["status"] == "ready" else 1
 
